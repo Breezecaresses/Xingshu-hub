@@ -34,6 +34,12 @@ FILES = [
 SKIP_DIRS = {'.git', 'bin', 'obj', 'target', 'node_modules', '__pycache__', 'dist', 'release'}
 SKIP_SUFFIXES = {'.dll', '.exe', '.pdb', '.bundle', '.7z', '.zip', '.rar', '.log', '.pyc', '.tsbuildinfo'}
 
+def initialize_file(path, content):
+    # Published documentation and ignore rules are maintained in the checkout.
+    # Seed them for a new export without overwriting later user edits.
+    if not path.exists():
+        path.write_text(content, encoding='utf-8')
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('destination', type=Path)
@@ -65,7 +71,7 @@ def main():
         count += 1
         size += source.stat().st_size
     (destination / '.xingshu-source-export').write_text('Active source export; generated files can be refreshed from tools/export_source_repo.py\n', encoding='utf-8')
-    (destination / '.gitignore').write_text('''**/node_modules/
+    initialize_file(destination / '.gitignore', '''**/node_modules/
 **/target/
 **/bin/
 **/obj/
@@ -85,8 +91,8 @@ def main():
 *.7z
 *.rar
 *.zip
-''', encoding='utf-8')
-    (destination / 'README.md').write_text('''# 星枢 XingShu
+''')
+    initialize_file(destination / 'README.md', '''# 星枢 XingShu
 
 星枢 Hub（React / Tauri / Rust）与游戏 Runtime（C#）的当前源码。
 
@@ -107,7 +113,7 @@ Runtime：执行 `APX-Dev/tools/build.ps1 -Configuration Release`，需要 Visua
 十倍思考时间修改选人及本地操作计时；不能据此承诺服务端强制截止也延长十倍。免登录全量手牌、远程独立账号池尚未实现。
 
 自动化回归：`npm run test:resolver`、`npm run test:auto-follow`、`npm run test:runtime-truth-closure`；Rust `cargo test --lib local_watcher` 及 `cargo test --lib configured_platform_match_end_releases_only_the_spectator`。C# 独立生命周期测试位于 `APX-Dev/tools/MatchLifecycleTests`。
-''', encoding='utf-8')
+''')
     print(f'Exported {count} source files, {size / 1024 / 1024:.2f} MiB to {destination}')
 
 if __name__ == '__main__':

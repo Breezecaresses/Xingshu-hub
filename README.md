@@ -20,13 +20,25 @@
 
 ## 📖 Overview
 
-**XingShu (星枢)** is a high-performance local multi-process collaborative workstation and game enhancement runtime suite developed for *Astral Party* (星之派对).
+**XingShu (星枢)** is a local multi-process workstation and game enhancement runtime suite developed for *Astral Party* (吉星派对).
 
 The project consists of two core components:
 1. **AstralParty-Hub**: A modern desktop management hub built on Tauri 2 + Rust + React 18. It provides isolated account management, runtime lifecycle supervision, local loopback communication relay, and automated room following for spectating.
 2. **APX Runtime**: A C# Unity enhancement module injected into the game client. It provides floating card status overlays, HUD widgets, match statistics, adaptive lifecycle reconciliation, and authoritative hand truth mirroring.
 
 ---
+
+## Current Runtime Status
+
+The GitHub repository stores source and version history. The Hub, main game, and authenticated spectator client currently run on the local computer. A remote spectator account pool has not been deployed.
+
+- Resource 026 has been tested with a Steam CN main client and a TapTap spectator client: plugin startup, identity recognition, and four-player PVE hand mirroring work in the tested setup.
+- The main client has also been tested across two PVE rooms without restarting the game or Hub; the avatar hand widgets displayed the new match's cards.
+- Spectator commands use the bound `USER_SPECTATOR` platform and player identity. Bilibili, WeGame, and Steam Global still need client compatibility and end-to-end testing.
+- Consecutive spectator matches, automatic departure after natural match completion, and card/coin/healing auto-thanks still need live verification. The tenfold thinking timer changes local timers; server-enforced deadlines still apply.
+- Full hands currently come from authenticated official spectator messages. Login-free full-hand access remains unimplemented.
+
+See [the local watcher notes](AstralParty-Hub/docs/local-managed-watcher.md) for verification details and remaining work.
 
 ## 🏗️ Architecture Overview
 
@@ -42,7 +54,7 @@ flowchart TD
         AccountMgr <--> FSM
     end
 
-    subgraph RuntimeSpectator["APX Runtime (TapTap Spectator Client)"]
+    subgraph RuntimeSpectator["APX Runtime (Bound Spectator Client)"]
         SpecHook["WatchLogic Interception Hooks"]
         SpecStore["SpectatorStateStore (Authoritative Hand Snapshot)"]
         SpecBridge["Bridge Client (Loopback TCP)"]
@@ -50,7 +62,7 @@ flowchart TD
         SpecStore --> SpecBridge
     end
 
-    subgraph RuntimeMain["APX Runtime (Steam Main Game Client)"]
+    subgraph RuntimeMain["APX Runtime (Bound Main Game Client)"]
         MainBridge["Bridge Client (Loopback TCP)"]
         TruthSource["HandTruthSource Authoritative Arbiter"]
         Reconcile["Overlay Lifecycle Adaptive Reconciliation"]
@@ -69,7 +81,7 @@ flowchart TD
 ## ✨ Key Features
 
 - **Authoritative Hand Truth System (`HandTruthSource`)**:
-  - Completely eliminates unauthorized external HTTP third-party APIs. Operates strictly over `127.0.0.1` local loopback communication with zero outbound network data leakage.
+  - The full-hand mirror passes through the Hub over `127.0.0.1` loopback communication. Official game authentication and spectating use the game's own server connections.
   - **No Fake/Placeholder Cards**: Rendering forged placeholder cards (`CardId = -1`) is strictly forbidden; hand card data is strictly validated against the match hero roster.
   - Once the spectator client acquires complete authoritative data, it is mirrored and pushed to the main game client in real-time via the local Hub.
 - **Deterministic Overlay Lifecycle Reconciliation**:
@@ -77,7 +89,7 @@ flowchart TD
   - Driven by 10 distinct lifecycle events with an adaptive two-tier polling and retry mechanism, ensuring hand overlays remain precisely aligned with player avatars at all times.
 - **Secure & Isolated Auto-Follow Protocol**:
   - Managed by a strict 11-state finite state machine that automatically detects matches in the main game and guides the spectator client into the room.
-  - **Enforced Platform Security Boundary**: Auto-follow instructions are strictly restricted to trusted TapTap spectator clients, guaranteeing zero interference with the primary Steam account.
+  - **Bound Account Routing**: Auto-follow instructions target the configured spectator role, platform, and current player identity, with connection and match checks separating it from the main account.
 - **Multi-Platform Account Binding & Scheduling**:
   - Supports concurrent management and routed launching of multiple accounts across Steam, TapTap, and other platforms.
   - Automatically cleans up overlay state, vacates spectator rooms, and resets match fingerprints across game sessions.
@@ -142,22 +154,24 @@ npm run tauri -- build --no-bundle
 ### 2. APX Runtime (C# Game Runtime)
 
 #### Prerequisites
-- Visual Studio (with .NET Framework 4.7.2+ development workload and MSBuild)
+- Visual Studio MSBuild with C# 11 support; the project targets .NET Framework 4.0 using the game's reference assemblies
 - Python 3.x
 - Mono.Cecil and Mono.Cecil.Rocks (placed in `APX-Dev/tools/lib`)
 
 #### Dependency Setup
 Extract the matching version of `AstralParty.Runtime.dll` from your legally owned game client and place it in the default path:
-`APX-Dev/references/updated_20261019_verified/` (or specify via the `AstralPartyRuntimePath` environment variable in your build configuration).
+`APX-Dev/references/updated_20261019_verified/` (or specify the `AstralPartyRuntimePath` MSBuild property in your build configuration).
 Place other dependency assemblies into `APX-Dev/references/{unity,framework,thirdparty}` as needed.
 
 #### Build Steps
 ```powershell
 # Execute build script
-powershell -ExecutionPolicy Bypass -File APX-Dev/tools/build.ps1 -Configuration Release
+.\APX-Dev\tools\build.ps1 -Configuration Release
 ```
 
 ---
+
+When refreshing this checkout from the development workspace, run `python tools/export_source_repo.py <source-checkout-path>` there and review the diff. Existing README files and `.gitignore` are maintained in this checkout and preserved by the export tool.
 
 ## 📚 Detailed Documentation
 
