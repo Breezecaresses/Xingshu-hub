@@ -1,20 +1,115 @@
+# ==========================================
+# 星枢 (XingShu) - .gitignore
+# ==========================================
+
+# ------------------------------------------
+# Operating System & IDE Files
+# ------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Visual Studio & VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+
+# ------------------------------------------
+# Node.js & Web Frontend (AstralParty-Hub)
+# ------------------------------------------
 **/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-store/
+**/.eslintcache
+
+# Build outputs
+**/dist/
+**/build/
+**/out/
+*.tsbuildinfo
+
+# ------------------------------------------
+# Rust & Cargo & Tauri (src-tauri)
+# ------------------------------------------
 **/target/
+**/*.rs.bk
+*.pdb
+
+# ------------------------------------------
+# .NET / C# / MSBuild (APX-Dev)
+# ------------------------------------------
 **/bin/
 **/obj/
-**/build/
-**/dist/
+**/[Bb]in/
+**/[Oo]bj/
 **/release/
+**/debug/
+TestResults/
+[Tt]est[Rr]esults/
+
+# ------------------------------------------
+# Game Assemblies & Proprietary References
+# (Strictly excluded to avoid redistributing proprietary game binaries)
+# ------------------------------------------
 **/references/
-**/__pycache__/
-.env*
 *.dll
 *.exe
-*.pdb
 *.bundle
+*.so
+*.dylib
+
+# ------------------------------------------
+# Python (tools & automation scripts)
+# ------------------------------------------
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+venv/
+.venv/
+env/
+ENV/
+
+# ------------------------------------------
+# Environment & Secrets & Credentials
+# ------------------------------------------
+.env*
+!.env.example
+*.pem
+*.key
+*.cert
+*.pfx
+
+# ------------------------------------------
+# Logs, Temp Files & Archives
+# ------------------------------------------
 *.log
-*.pyc
-*.tsbuildinfo
+*.tmp
+*.temp
+*.bak
+*.swp
 *.7z
 *.rar
 *.zip
+*.tar.gz
+*.dmp
+*.crash
