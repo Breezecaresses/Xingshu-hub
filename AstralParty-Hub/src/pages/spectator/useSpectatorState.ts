@@ -248,6 +248,7 @@ export function useSpectatorState() {
    * Evaluates incoming SpectatorHandPayload with strict Epoch & Sequence freshness gating.
    */
   const handleIncomingPayload = useCallback((payload: SpectatorHandPayload) => {
+    if (autoFollowService.getState() === 'MAIN_MATCH_ENDED') return;
     if (payload.spectatorSessionEpoch <= retiredEpochRef.current) return;
     if (accountModeRef.current === 'XINGSHU_MANAGED') {
       const lease = managedInfoRef.current;

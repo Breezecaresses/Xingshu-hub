@@ -177,7 +177,7 @@ impl LocalWatcher {
             if lease.confirmed {
                 return info(
                     "IN_USE",
-                    "本机托管验证中：已收到当前租约对应的四人真实手牌；仍使用本机 TapTap 官方客户端",
+                    "本机托管验证中：已收到当前租约对应的四人真实手牌；仍使用已绑定平台的本机官方客户端",
                     Some(lease),
                 );
             }
@@ -197,22 +197,22 @@ impl LocalWatcher {
         if worker(&sessions).is_some() {
             info(
                 "AVAILABLE",
-                "本机验证 Worker 已连接；进入 PVE 对局后可租用此 TapTap 观战账号",
+                "本机验证 Worker 已连接；进入 PVE 对局后可租用此观战账号",
                 None,
             )
         } else if sessions
             .iter()
-            .any(|s| s.platform_id == "TAPTAP" && s.connection_state == "CONNECTED")
+            .any(|s| s.expected_bound_player_id.is_some() && s.live_player_id.is_none() && s.connection_state == "CONNECTED")
         {
             info(
                 "IDENTITY_PENDING",
-                "TapTap 已连接，等待绑定账号的真实身份验证",
+                "观战端已连接，等待绑定账号的真实身份验证",
                 None,
             )
         } else {
             info(
                 "OFFLINE",
-                "本机验证 Worker 离线；请启动已绑定账号的 TapTap 官方客户端并进入大厅",
+                "本机验证 Worker 离线；请启动已绑定账号的官方客户端并进入大厅",
                 None,
             )
         }
@@ -240,7 +240,7 @@ impl LocalWatcher {
     ) -> Result<LocalWatcherInfo, String> {
         let sessions = bridge.get_runtime_sessions();
         let (main, actual_room, actual_code) = target(&sessions)?;
-        let w = worker(&sessions).ok_or("TapTap 观战 Worker 尚未完成身份验证")?;
+        let w = worker(&sessions).ok_or("观战 Worker 尚未完成身份验证")?;
         if room.is_some_and(|r| r != actual_room) || code.is_some_and(|c| c.trim() != actual_code) {
             return Err("观战目标与主账号当前真实对局不一致".into());
         }

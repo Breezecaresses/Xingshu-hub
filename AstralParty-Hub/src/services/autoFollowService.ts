@@ -98,6 +98,14 @@ export class AutoFollowService {
     try {
       const { listen } = await import('@tauri-apps/api/event');
 
+      const unlistenEnd = await listen<{ roomId: number }>('spectator://session-ended', ({ payload }) => {
+        // Preserve the end transition even when polling skips a brief lobby between
+        // two games in the same room. The next active context must trigger a new join.
+        if (this.machine.getContext().activeTarget?.roomId === payload.roomId)
+          this.onMainMatchEnded('Previous match session ended');
+      });
+      this.unlistenFns.push(unlistenEnd);
+
       const unlistenResponse = await listen<WatchTargetResponse>(
         'spectator://watch-target-response',
         (event) => {

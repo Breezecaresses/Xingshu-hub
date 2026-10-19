@@ -12,6 +12,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourceRoot = path.resolve(here, '..');
 const sent = [];
+const eventHandlers = new Map();
 let watchSendBarrier = null;
 const modules = new Map();
 // Compile the actual TSX component and services in memory, preserving their real imports.
@@ -29,6 +30,10 @@ function load(file) {
   } };
   const nativeRequire = createRequire(file);
   const requireSource = (specifier) => {
+    if (specifier === '@tauri-apps/api/event') return { listen: async (name, handler) => {
+      eventHandlers.set(name, handler);
+      return () => eventHandlers.delete(name);
+    } };
     if (!specifier.startsWith('.')) return nativeRequire(specifier);
     const base = path.resolve(path.dirname(file), specifier);
     const resolved = [base, `${base}.ts`, `${base}.tsx`].find(p => fs.existsSync(p) && fs.statSync(p).isFile());
@@ -77,6 +82,7 @@ for (let i = 0; i < 24; i++) {
   assert.ok(html.includes(`>${code}</strong>`));
   assert.ok(html.includes(`>#${roomId}</span>`));
   const service = new AutoFollowService({ mainPlayerId: main.playerId, expectedSpectatorPlayerId: spectator.playerId });
+  await service.initListeners();
   const before = sent.length;
   service.updateRuntimeSessions([spectator, main]);
   await new Promise(setImmediate);
@@ -94,7 +100,14 @@ for (let i = 0; i < 24; i++) {
   service.updateRuntimeSessions([main, spectator]);
   await new Promise(setImmediate);
   assert.equal(sent.length, before + 1, 'Polling must not repeatedly join the same room');
-  main.matchContext = { ...main.matchContext, sequence: 2, matchState: 'LOBBY', inMatch: false };
+  eventHandlers.get('spectator://session-ended')({ payload: { roomId } });
+  assert.equal(service.getState(), 'MAIN_MATCH_ENDED', 'End notification must survive a skipped lobby poll');
+  main.matchContext = { ...main.matchContext, sequence: 2 };
+  service.updateRuntimeSessions([main, spectator]);
+  await new Promise(setImmediate);
+  assert.equal(sent.length, before + 2, 'Same-room rematch must send a new watch request');
+  service.handleHandSnapshot(roomId);
+  main.matchContext = { ...main.matchContext, sequence: 3, matchState: 'LOBBY', inMatch: false };
   service.updateRuntimeSessions([main, spectator]);
   assert.equal(service.getState(), 'MAIN_MATCH_ENDED');
   assert.equal(service.getContext().activeTarget, null);

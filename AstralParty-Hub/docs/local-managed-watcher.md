@@ -19,3 +19,13 @@ Rust `LocalWatcher` 持有租约和账号身份，前端仅持有租约 ID。一
 无头鉴权、SteamKit2 票据接纳和单账号多房仍需专项验证。首阶段迁移目标是独立 Windows 机器运行官方客户端 Worker。[Steamworks 认证文档](https://partner.steamgames.com/doc/features/auth)说明票据获取与服务端验证流程，不能据此推断游戏服务器接受第三方无头鉴权。
 
 主要入口：`src/services/localManagedAccountProvider.ts`、`src-tauri/src/xing_shu/local_watcher.rs`、`src-tauri/src/commands/local_watcher_commands.rs`。当前本机验证仅开放 PVE。
+
+## 跨局与资源回收（2026-10-19）
+
+真实状态离开 RUNNING 战斗时，清空手牌真值、观战缓存及头像旁挂件；同房重开通过 StartTime 区分。Hub 收到主端结束或换房后清空旧快照、广播 session-ended，并向绑定观战端发送 WATCH_STOP。观战端仅为绑定账号和对应房间执行官方退出，等待完成后允许新加入；官方成功退出回调直接完成原有清理，不停在结束确认框。旧局 epoch 清空后也禁止回流。
+
+当前选择是一局期间持续接收、结束退房回大厅。读取一次即退出只能获得当时快照，无法反映后续抽牌、出牌等变化。退房释放订阅，不会释放客户端全部进程内存。服务器后续应按需启动、空闲回收、同房用户共用订阅；轻量 Worker 仍需验证正常鉴权和持续订阅。现有完整真实 CardIds 来自已登录官方观战消息，尚无免登录实现。
+
+启动和身份路由按账号中心绑定的平台和账号，非 Steam 可保存对应 exe。Bilibili、WeGame 目前只有路由逻辑，缺少本机客户端、官方安装路径及容器兼容实测，不能视为全链路支持。
+
+针对性自动化回归已通过。当前实机复测被启动界面阻挡：TapTap 提示 10.86MB 游戏资源更新、公告自动点击无响应；Steam 启动窗口激活失败。连续两局及真实收牌/星币/治疗自动致谢仍待验证。

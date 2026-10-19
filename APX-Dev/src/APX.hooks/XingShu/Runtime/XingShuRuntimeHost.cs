@@ -534,7 +534,7 @@ namespace XingShu.Runtime
                 string platform = XingShuBridgeClient.DetectPlatform();
                 long localId = CurrentLocalPlayerId;
                 string fingerprint = RuntimeMatchFingerprint.Create(matchState, matchKind, internalRoomId,
-                    spectatorCode, localId, platform, roster);
+                    spectatorCode, localId, platform, roster) + "/" + roomInfo?.info?.StartTime;
                 if (force || fingerprint != _lastReportedContextFingerprint)
                 {
 

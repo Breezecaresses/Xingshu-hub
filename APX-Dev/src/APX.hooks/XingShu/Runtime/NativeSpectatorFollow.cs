@@ -15,10 +15,12 @@ namespace XingShu.Runtime
     public static class NativeSpectatorFollow
     {
         private static bool _running;
+        private static bool _stopping;
         private static long _stopRoom;
 
         public static async void Stop(BridgeEnvelope envelope)
         {
+            bool ownsStop = false;
             try
             {
                 var payload = envelope.payload as Dictionary<string, object>;
@@ -27,20 +29,34 @@ namespace XingShu.Runtime
                 var manager = SimpleSingletonProvider<GameLogicManager>.inst;
                 long roomId = Convert.ToInt64(payload["roomId"]);
                 if (roomId <= 0 || manager?.account?.GetPlayerID() != Convert.ToInt64(payload["expectedSpectatorPlayerId"])) return;
+                if (_stopping) return;
+                _stopping = true;
+                ownsStop = true;
                 _stopRoom = roomId;
                 float deadline = Time.realtimeSinceStartup + 20f;
                 await UniTask.WaitUntil(() => !_running || manager.watch.PlayerIsWatcher() || Time.realtimeSinceStartup >= deadline);
                 // A delayed stop for room A must never leave a new room B or a player room.
                 if (manager.room?.curRoomInfo?.Id != roomId || !manager.watch.PlayerIsWatcher()) return;
-                manager.watch.RequestWatchExitRoomC2S();
+                var exit = manager.watch.RequestWatchExitRoomC2S();
                 XingShuRuntimeHost.LogLifecycle("[NativeSpectatorFollow] Auto-leaving completed spectator room " + roomId);
+                float exitDeadline = Time.realtimeSinceStartup + 20f;
+                await UniTask.WaitUntil(() => manager.room?.curRoomInfo?.Id != roomId || !manager.watch.PlayerIsWatcher() || Time.realtimeSinceStartup >= exitDeadline);
+                if (manager.room?.curRoomInfo?.Id == roomId && manager.watch.PlayerIsWatcher())
+                    XingShuRuntimeHost.LogLifecycle("[NativeSpectatorFollow] Exit not confirmed, errId=" + exit.errId);
             }
             catch (Exception ex) { XingShuRuntimeHost.LogLifecycle("[NativeSpectatorFollow] Stop failed: " + ex.Message); }
+            finally { if (ownsStop) _stopping = false; }
         }
 
         public static async void Execute(BridgeEnvelope envelope)
         {
             object target = null;
+            if (_stopping)
+            {
+                float deadline = Time.realtimeSinceStartup + 25f;
+                await UniTask.WaitUntil(() => !_stopping || Time.realtimeSinceStartup >= deadline);
+                if (_stopping) { Reply(envelope, target, BridgeProtocol.TypeWatchJoinTimeout, "Previous spectator exit is still pending"); return; }
+            }
             if (_running) { Reply(envelope, target, BridgeProtocol.TypeWatchJoinRejected, "Another watch join is still running"); return; }
             _running = true;
             _stopRoom = 0;
@@ -128,6 +144,7 @@ namespace XingShu.Runtime
                 {
                     Reply(envelope, target, BridgeProtocol.TypeWatchJoinRejected, "Official game preconditions rejected the watch join"); return;
                 }
+                if (roomId > 0 && _stopRoom == roomId) return;
 
                 XingShuRuntimeHost.LogLifecycle(string.Format("[NativeSpectatorFollow] RequestWatchJoinRoomC2S: gamePid={0}, playerId={1}, watchCode='{2}', targetRoomId={3}, requestId={4}",
                     System.Diagnostics.Process.GetCurrentProcess().Id, actual, code, roomId, envelope.requestId));
@@ -143,6 +160,7 @@ namespace XingShu.Runtime
                     Reply(envelope, target, BridgeProtocol.TypeWatchJoinRejected, "Official watch join errId=" + join.errId); return;
                 }
                 var joinedRoom = manager.room?.curRoomInfo;
+                if (roomId > 0 && _stopRoom == roomId) return;
                 // WatchJoin returns the room ID but may omit the watch code. An omitted
                 // code is safe only when the server-returned ID verifies the target.
                 if (joinedRoom == null || (roomId > 0 && joinedRoom.Id != roomId) ||

@@ -64,6 +64,11 @@ export const AutoFollowStatusPanel: React.FC<AutoFollowStatusPanelProps> = ({
 
   const isMainOnline = !!mainSession && mainSession.status === 'CONNECTED';
   const isSpectatorOnline = !!spectatorSession && spectatorSession.status === 'CONNECTED';
+  const platformNames: Record<string, string> = { STEAM_CN: 'Steam CN', STEAM_GLOBAL: 'Steam Global', TAPTAP: 'TapTap', BILIBILI: 'Bilibili', WEGAME: 'WeGame' };
+  const mainPlatform = mainSession?.platformId ?? '—';
+  const spectatorPlatform = spectatorSession?.platformId ?? autoFollowContext.targetPlatform;
+  const mainPlatformName = platformNames[mainPlatform] ?? mainPlatform;
+  const spectatorPlatformName = platformNames[spectatorPlatform] ?? spectatorPlatform;
 
   const rawMainSession = mainSession?.session;
   const rawSpectatorSession = spectatorSession?.session;
@@ -105,7 +110,7 @@ export const AutoFollowStatusPanel: React.FC<AutoFollowStatusPanelProps> = ({
     {
       title: isZh ? '2. 观战端就绪' : '2. Spectator Ready',
       desc: isSpectatorOnline
-        ? (isZh ? 'TapTap 已连入' : 'TapTap Connected')
+        ? (isZh ? `${spectatorPlatformName} 已连入` : `${spectatorPlatformName} Connected`)
         : (isZh ? '等待拉起' : 'Waiting Launch'),
       completed: ['SPECTATOR_READY', 'AUTO_JOINING', 'SPECTATING'].includes(effectiveAutoFollowState),
       active: ['SPECTATOR_CLIENT_OFFLINE', 'LAUNCHING_SPECTATOR_CLIENT', 'WAITING_SPECTATOR_RUNTIME', 'WAITING_SPECTATOR_LOGIN'].includes(effectiveAutoFollowState),
@@ -187,7 +192,7 @@ export const AutoFollowStatusPanel: React.FC<AutoFollowStatusPanelProps> = ({
                     {isZh ? '主游戏账号 (MAIN)' : 'Primary Account (MAIN)'}
                   </div>
                   <div style={{ fontSize: 11, color: '#94a3b8' }}>
-                    Steam 国服 · STEAM_CN
+                    {mainPlatformName} · {mainPlatform}
                   </div>
                 </div>
               </div>
@@ -405,7 +410,7 @@ export const AutoFollowStatusPanel: React.FC<AutoFollowStatusPanelProps> = ({
                     </span>
                   </div>
                   <div style={{ fontSize: 11, color: '#94a3b8' }}>
-                    TapTap 独立端 · TAPTAP
+                    {spectatorPlatformName} · {spectatorPlatform}
                   </div>
                 </div>
               </div>
@@ -485,7 +490,7 @@ export const AutoFollowStatusPanel: React.FC<AutoFollowStatusPanelProps> = ({
                 }}
               >
                 <Play size={12} />
-                <span>{isZh ? '启动 TapTap' : 'Launch TapTap'}</span>
+                <span>{isZh ? `启动 ${spectatorPlatformName}` : `Launch ${spectatorPlatformName}`}</span>
               </button>
             )}
           </div>
@@ -832,15 +837,15 @@ export const AutoFollowStatusPanel: React.FC<AutoFollowStatusPanelProps> = ({
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#94a3b8' }}>Bound Main Player ID:</span>
-                <span>{boundMainId} (Platform: STEAM_CN)</span>
+                <span>{boundMainId} (Platform: {mainPlatform})</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#94a3b8' }}>Bound Spectator Player ID:</span>
-                <span>{boundSpectatorId} (Platform: TAPTAP)</span>
+                <span>{boundSpectatorId} (Platform: {spectatorPlatform})</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#94a3b8' }}>Local Control Protocol Security Gate:</span>
-                <span style={{ color: '#4ade80' }}>PASSED: ROUTING RESTRICTED TO TAPTAP ONLY (STEAM_CN BLOCKED)</span>
+                <span>WATCH_TARGET: {spectatorPlatform} / {boundSpectatorId}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#94a3b8' }}>Spectator Connection ID:</span>

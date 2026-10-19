@@ -144,9 +144,10 @@ namespace XingShu.Bridge
         {
             // Unity's data directory is authoritative even when ProcessName is unavailable.
             string value = (dataPath ?? "") + "|" + (processName ?? "");
-            if (value.IndexOf("吉星派对", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                value.IndexOf("JiXing", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                value.IndexOf("TAPTAP", StringComparison.OrdinalIgnoreCase) >= 0) return "TAPTAP";
+            // Several CN channels share 吉星派对.exe. Its name alone cannot identify TapTap.
+            if (value.IndexOf("BILIBILI", StringComparison.OrdinalIgnoreCase) >= 0) return "BILIBILI";
+            if (value.IndexOf("WEGAME", StringComparison.OrdinalIgnoreCase) >= 0) return "WEGAME";
+            if (value.IndexOf("TAPTAP", StringComparison.OrdinalIgnoreCase) >= 0) return "TAPTAP";
             if (value.IndexOf("AstralParty_INT", StringComparison.OrdinalIgnoreCase) >= 0) return "STEAM_GLOBAL";
             if (value.IndexOf("AstralParty_CN", StringComparison.OrdinalIgnoreCase) >= 0) return "STEAM_CN";
             return "UNKNOWN";
