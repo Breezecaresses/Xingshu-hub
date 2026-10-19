@@ -9,6 +9,11 @@ $allowedTargets = @(
     'E:\Steam\steamapps\common\Astral Party\8vJXn6CN\AstralParty_CN_Data\com.unity.addressables\AssetBundles\57a198703b66364d5420d39c0d251747\6cc68f014947b66dea74130802768a37\__data',
     'F:\TapTap\PC Games\524022\CN_TAPTAP_V3.3.0\吉星派对_Data\com.unity.addressables\AssetBundles\57a198703b66364d5420d39c0d251747\b7c4592a112e6cee19eecf1d5a0a7dfd\__data'
 )
+$gameNames = @([IO.Path]::GetFileNameWithoutExtension($steamExe), [IO.Path]::GetFileNameWithoutExtension($tapExe))
+$unverifiableGames = @(Get-Process | Where-Object { $_.ProcessName -in $gameNames -and -not $_.Path })
+if ($unverifiableGames.Count) {
+    throw '游戏仍在运行，当前权限无法核对进程路径；请手动退出双端游戏后再安装。尚未修改安装文件。'
+}
 $updates = @(Get-Content -LiteralPath (Join-Path $updateDir 'deployment.json') -Raw | ConvertFrom-Json)
 if ($updates.Count -ne 2) { throw 'Expected exactly two runtime updates' }
 foreach ($update in $updates) {
