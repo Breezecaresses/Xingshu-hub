@@ -1,0 +1,118 @@
+[
+  {
+    "cardId": 21026,
+    "name": "疾行菇",
+    "description": "指定一个可放置建筑的地块，将地块变更为疾行格，放置建筑疾行菇\n本回合出牌数+1",
+    "icon": "/cards/UT_HandCard_21026.png",
+    "imageKey": "UT_HandCard_21026",
+    "cardType": 9,
+    "effectType": 7,
+    "cardTargetType": 3,
+    "cost": 0,
+    "isPlayable": true,
+    "buildingId": 30001,
+    "buildingName": "疾行菇",
+    "associatedCharacter": {
+      "characterId": 107,
+      "characterName": "恋",
+      "skillId": 107311,
+      "skillName": "遗落礼物",
+      "skillDescription": "被击倒时，给予击倒者随机1张植物类型建筑卡。"
+    },
+    "provenance": {
+      "classification": "RUNTIME_OFFICIAL",
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET",
+      "sourceBundle": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+      "assetBundle": "fe7210508775fe1b72d5f00dda61d485.bundle"
+    }
+  },
+  {
+    "cardId": 21027,
+    "name": "仙品杨桃",
+    "description": "指定一个可放置建筑的地块，将地块变更为保障点，放置建筑仙品杨桃\n本回合出牌数+1",
+    "icon": "/cards/UT_HandCard_21027.png",
+    "imageKey": "UT_HandCard_21027",
+    "cardType": 9,
+    "effectType": 7,
+    "cardTargetType": 3,
+    "cost": 0,
+    "isPlayable": true,
+    "buildingId": 30002,
+    "buildingName": "仙品杨桃",
+    "associatedCharacter": {
+      "characterId": 107,
+      "characterName": "恋",
+      "skillId": 107311,
+      "skillName": "遗落礼物",
+      "skillDescription": "被击倒时，给予击倒者随机1张植物类型建筑卡。"
+    },
+    "provenance": {
+      "classification": "RUNTIME_OFFICIAL",
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET",
+      "sourceBundle": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+      "assetBundle": "55191bc42a7f3ebbaa3263811e590ccb.bundle"
+    }
+  },
+  {
+    "cardId": 21028,
+    "name": "芳香蜜桃",
+    "description": "指定一个可放置建筑的地块，放置建筑芳香蜜桃\n本回合出牌数+1",
+    "icon": "/cards/UT_HandCard_21028.png",
+    "imageKey": "UT_HandCard_21028",
+    "cardType": 9,
+    "effectType": 7,
+    "cardTargetType": 3,
+    "cost": 0,
+    "isPlayable": true,
+    "buildingId": 30003,
+    "buildingName": "芳香蜜桃",
+    "associatedCharacter": {
+      "characterId": 107,
+      "characterName": "恋",
+      "skillId": 107311,
+      "skillName": "遗落礼物",
+      "skillDescription": "被击倒时，给予击倒者随机1张植物类型建筑卡。"
+    },
+    "provenance": {
+      "classification": "RUNTIME_OFFICIAL",
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET",
+      "sourceBundle": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+      "assetBundle": "e82e54a6d40163cd0f29ba8f0baa7294.bundle"
+    }
+  },
+  {
+    "cardId": 21029,
+    "name": "招财树",
+    "description": "指定一个可放置建筑的地块，将地块变更为商店，放置建筑招财树\n本回合出牌数+1",
+    "icon": "/cards/UT_HandCard_21029.png",
+    "imageKey": "UT_HandCard_21029",
+    "cardType": 9,
+    "effectType": 7,
+    "cardTargetType": 3,
+    "cost": 0,
+    "isPlayable": true,
+    "buildingId": 30004,
+    "buildingName": "招财树",
+    "associatedCharacter": {
+      "characterId": 107,
+      "characterName": "恋",
+      "skillId": 107311,
+      "skillName": "遗落礼物",
+      "skillDescription": "被击倒时，给予击倒者随机1张植物类型建筑卡。"
+    },
+    "provenance": {
+      "classification": "RUNTIME_OFFICIAL",
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET",
+      "sourceBundle": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+      "assetBundle": "125bb7d6d0308ff3b25ce43eda2a7aad.bundle"
+    }
+  }
+]

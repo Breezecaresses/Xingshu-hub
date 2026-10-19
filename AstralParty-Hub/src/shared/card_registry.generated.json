@@ -1,0 +1,968 @@
+[
+  {
+    "cardId": 10001,
+    "name": "攻击(中)",
+    "icon": "/cards/UT_HandCard_10001.png",
+    "imageKey": "UT_HandCard_10001",
+    "cardType": 1,
+    "effectType": 1,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 10002,
+    "name": "防御(中)",
+    "icon": "/cards/UT_HandCard_10002.png",
+    "imageKey": "UT_HandCard_10002",
+    "cardType": 2,
+    "effectType": 2,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 10003,
+    "name": "攻击(大)",
+    "icon": "/cards/UT_HandCard_10003.png",
+    "imageKey": "UT_HandCard_10003",
+    "cardType": 1,
+    "effectType": 1,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 10004,
+    "name": "防御(大)",
+    "icon": "/cards/UT_HandCard_10004.png",
+    "imageKey": "UT_HandCard_10004",
+    "cardType": 2,
+    "effectType": 2,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 10005,
+    "name": "攻击(特大)",
+    "icon": "/cards/UT_HandCard_10005.png",
+    "imageKey": "UT_HandCard_10005",
+    "cardType": 1,
+    "effectType": 1,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 10006,
+    "name": "防御(特大)",
+    "icon": "/cards/UT_HandCard_10006.png",
+    "imageKey": "UT_HandCard_10006",
+    "cardType": 2,
+    "effectType": 2,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 10007,
+    "name": "名刀：嘎呜切",
+    "icon": "/cards/UT_HandCard_10007.png",
+    "imageKey": "UT_HandCard_10007",
+    "cardType": 1,
+    "effectType": 1,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 10008,
+    "name": "暗影突袭",
+    "icon": "/cards/UT_HandCard_10008.png",
+    "imageKey": "UT_HandCard_10008",
+    "cardType": 1,
+    "effectType": 1,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 10009,
+    "name": "蓄力",
+    "icon": "/cards/UT_HandCard_10009.png",
+    "imageKey": "UT_HandCard_10009",
+    "cardType": 1,
+    "effectType": 1,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 10010,
+    "name": "全力攻击",
+    "icon": "/cards/UT_HandCard_10010.png",
+    "imageKey": "UT_HandCard_10010",
+    "cardType": 1,
+    "effectType": 1,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 10011,
+    "name": "毒牙",
+    "icon": "/cards/UT_HandCard_10011.png",
+    "imageKey": "UT_HandCard_10011",
+    "cardType": 1,
+    "effectType": 1,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 10012,
+    "name": "撕咬",
+    "icon": "/cards/UT_HandCard_10012.png",
+    "imageKey": "UT_HandCard_10012",
+    "cardType": 1,
+    "effectType": 1,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 10013,
+    "name": "龙之咆哮",
+    "icon": "/cards/UT_HandCard_10013.png",
+    "imageKey": "UT_HandCard_10013",
+    "cardType": 1,
+    "effectType": 1,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20001,
+    "name": "激光",
+    "icon": "/cards/UT_HandCard_20001.png",
+    "imageKey": "UT_HandCard_20001",
+    "cardType": 3,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20002,
+    "name": "巧克力蛋糕",
+    "icon": "/cards/UT_HandCard_20002.png",
+    "imageKey": "UT_HandCard_20002",
+    "cardType": 4,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20003,
+    "name": "保护屏障",
+    "icon": "/cards/UT_HandCard_20003.png",
+    "imageKey": "UT_HandCard_20003",
+    "cardType": 5,
+    "effectType": 4,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20004,
+    "name": "钓鱼执法",
+    "icon": "/cards/UT_HandCard_20004.png",
+    "imageKey": "UT_HandCard_20004",
+    "cardType": 6,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20005,
+    "name": "遥控骰子",
+    "icon": "/cards/UT_HandCard_20005.png",
+    "imageKey": "UT_HandCard_20005",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20006,
+    "name": "以毒攻毒",
+    "icon": "/cards/UT_HandCard_20006.png",
+    "imageKey": "UT_HandCard_20006",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20007,
+    "name": "灵魂链接",
+    "icon": "/cards/UT_HandCard_20007.png",
+    "imageKey": "UT_HandCard_20007",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20008,
+    "name": "狂暴",
+    "icon": "/cards/UT_HandCard_20008.png",
+    "imageKey": "UT_HandCard_20008",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20009,
+    "name": "自爆",
+    "icon": "/cards/UT_HandCard_20009.png",
+    "imageKey": "UT_HandCard_20009",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20010,
+    "name": "路障",
+    "icon": "/cards/UT_HandCard_20010.png",
+    "imageKey": "UT_HandCard_20010",
+    "cardType": 6,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20011,
+    "name": "方向抉择",
+    "icon": "/cards/UT_HandCard_20011.png",
+    "imageKey": "UT_HandCard_20011",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20012,
+    "name": "皮筋弹弓",
+    "icon": "/cards/UT_HandCard_20012.png",
+    "imageKey": "UT_HandCard_20012",
+    "cardType": 3,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20013,
+    "name": "板砖",
+    "icon": "/cards/UT_HandCard_20013.png",
+    "imageKey": "UT_HandCard_20013",
+    "cardType": 3,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20014,
+    "name": "汉堡",
+    "icon": "/cards/UT_HandCard_20014.png",
+    "imageKey": "UT_HandCard_20014",
+    "cardType": 4,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20015,
+    "name": "以牙还牙",
+    "icon": "/cards/UT_HandCard_20015.png",
+    "imageKey": "UT_HandCard_20015",
+    "cardType": 5,
+    "effectType": 4,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20017,
+    "name": "错误的目标",
+    "icon": "/cards/UT_HandCard_20017.png",
+    "imageKey": "UT_HandCard_20017",
+    "cardType": 5,
+    "effectType": 4,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20018,
+    "name": "爆破专家",
+    "icon": "/cards/UT_HandCard_20018.png",
+    "imageKey": "UT_HandCard_20018",
+    "cardType": 6,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20019,
+    "name": "过期便当",
+    "icon": "/cards/UT_HandCard_20019.png",
+    "imageKey": "UT_HandCard_20019",
+    "cardType": 4,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20020,
+    "name": "丧心病狂",
+    "icon": "/cards/UT_HandCard_20020.png",
+    "imageKey": "UT_HandCard_20020",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20021,
+    "name": "传递炸弹",
+    "icon": "/cards/UT_HandCard_20021.png",
+    "imageKey": "UT_HandCard_20021",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20022,
+    "name": "抢夺",
+    "icon": "/cards/UT_HandCard_20022.png",
+    "imageKey": "UT_HandCard_20022",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20023,
+    "name": "拾荒",
+    "icon": "/cards/UT_HandCard_20023.png",
+    "imageKey": "UT_HandCard_20023",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20024,
+    "name": "随机传送门",
+    "icon": "/cards/UT_HandCard_20024.png",
+    "imageKey": "UT_HandCard_20024",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20025,
+    "name": "雪球攻击",
+    "icon": "/cards/UT_HandCard_20025.png",
+    "imageKey": "UT_HandCard_20025",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20026,
+    "name": "定向加速",
+    "icon": "/cards/UT_HandCard_20026.png",
+    "imageKey": "UT_HandCard_20026",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20027,
+    "name": "符卡-福",
+    "icon": "/cards/UT_HandCard_20027.png",
+    "imageKey": "UT_HandCard_20027",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20028,
+    "name": "符卡-祸",
+    "icon": "/cards/UT_HandCard_20028.png",
+    "imageKey": "UT_HandCard_20028",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20029,
+    "name": "符卡-祸",
+    "icon": "/cards/UT_HandCard_20028.png",
+    "imageKey": "UT_HandCard_20028",
+    "cardType": 3,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20030,
+    "name": "活体书页",
+    "icon": "/cards/UT_HandCard_20030.png",
+    "imageKey": "UT_HandCard_20030",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20031,
+    "name": "活体书页",
+    "icon": "/cards/UT_HandCard_20030.png",
+    "imageKey": "UT_HandCard_20030",
+    "cardType": 3,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20032,
+    "name": "命运的指引",
+    "icon": "/cards/UT_HandCard_20032.png",
+    "imageKey": "UT_HandCard_20032",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 20033,
+    "name": "强化拒止",
+    "icon": "/cards/UT_HandCard_20033.png",
+    "imageKey": "UT_HandCard_20033",
+    "cardType": 6,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21001,
+    "name": "轨道炮",
+    "icon": "/cards/UT_HandCard_21001.png",
+    "imageKey": "UT_HandCard_21001",
+    "cardType": 3,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21002,
+    "name": "你有我有",
+    "icon": "/cards/UT_HandCard_21002.png",
+    "imageKey": "UT_HandCard_21002",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21003,
+    "name": "加急加快",
+    "icon": "/cards/UT_HandCard_21003.png",
+    "imageKey": "UT_HandCard_21003",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21004,
+    "name": "王之力",
+    "icon": "/cards/UT_HandCard_21004.png",
+    "imageKey": "UT_HandCard_21004",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21005,
+    "name": "岿然不动",
+    "icon": "/cards/UT_HandCard_21005.png",
+    "imageKey": "UT_HandCard_21005",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21006,
+    "name": "奢华大餐",
+    "icon": "/cards/UT_HandCard_21006.png",
+    "imageKey": "UT_HandCard_21006",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21007,
+    "name": "定向爆破",
+    "icon": "/cards/UT_HandCard_21007.png",
+    "imageKey": "UT_HandCard_21007",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21008,
+    "name": "支援",
+    "icon": "/cards/UT_HandCard_21008.png",
+    "imageKey": "UT_HandCard_21008",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21009,
+    "name": "高升炮",
+    "icon": "/cards/UT_HandCard_21009.png",
+    "imageKey": "UT_HandCard_21009",
+    "cardType": 3,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21010,
+    "name": "是他干的",
+    "icon": "/cards/UT_HandCard_21010.png",
+    "imageKey": "UT_HandCard_21010",
+    "cardType": 3,
+    "effectType": 8,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21012,
+    "name": "对怪激光",
+    "icon": "/cards/UT_HandCard_20001.png",
+    "imageKey": "UT_HandCard_20001",
+    "cardType": 3,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21013,
+    "name": "对怪板砖",
+    "icon": "/cards/UT_HandCard_20013.png",
+    "imageKey": "UT_HandCard_20013",
+    "cardType": 3,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21014,
+    "name": "支援口香糖",
+    "icon": "/cards/UT_HandCard_21014.png",
+    "imageKey": "UT_HandCard_21014",
+    "cardType": 3,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21015,
+    "name": "能量补充棒",
+    "icon": "/cards/UT_HandCard_21015.png",
+    "imageKey": "UT_HandCard_21015",
+    "cardType": 3,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21016,
+    "name": "大聪明软糖",
+    "icon": "/cards/UT_HandCard_21016.png",
+    "imageKey": "UT_HandCard_21016",
+    "cardType": 3,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21017,
+    "name": "古怪的附灵物",
+    "icon": "/cards/UT_HandCard_21017.png",
+    "imageKey": "UT_HandCard_21017",
+    "cardType": 8,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21018,
+    "name": "释放青魂",
+    "icon": "/cards/UT_HandCard_21018.png",
+    "imageKey": "UT_HandCard_21018",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21019,
+    "name": "释放赤魂",
+    "icon": "/cards/UT_HandCard_21019.png",
+    "imageKey": "UT_HandCard_21019",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21020,
+    "name": "彩羽",
+    "icon": "/cards/UT_HandCard_21020.png",
+    "imageKey": "UT_HandCard_21020",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21021,
+    "name": "振作起来",
+    "icon": "/cards/UT_HandCard_21021.png",
+    "imageKey": "UT_HandCard_21021",
+    "cardType": 3,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21022,
+    "name": "灰烬之羽",
+    "icon": "/cards/UT_HandCard_21022.png",
+    "imageKey": "UT_HandCard_21022",
+    "cardType": 7,
+    "effectType": 8,
+    "cost": 0,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21023,
+    "name": "吉星高照",
+    "icon": "/cards/UT_HandCard_21023.png",
+    "imageKey": "UT_HandCard_21023",
+    "cardType": 7,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21024,
+    "name": "人机交融",
+    "icon": "/cards/UT_HandCard_21024.png",
+    "imageKey": "UT_HandCard_21024",
+    "cardType": 3,
+    "effectType": 3,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  },
+  {
+    "cardId": 21025,
+    "name": "罪证嫌疑",
+    "icon": "/cards/UT_HandCard_21025.png",
+    "imageKey": "UT_HandCard_21025",
+    "cardType": 7,
+    "effectType": 8,
+    "cost": 1,
+    "provenance": {
+      "metadata": "OFFICIAL_CONFIG",
+      "name": "OFFICIAL_LOCALIZATION",
+      "icon": "OFFICIAL_ASSET"
+    }
+  }
+]

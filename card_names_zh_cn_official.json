@@ -1,0 +1,416 @@
+{
+  "10001": {
+    "name": "攻击(中)",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "10001",
+    "verified": true
+  },
+  "10002": {
+    "name": "防御(中)",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "10002",
+    "verified": true
+  },
+  "10003": {
+    "name": "攻击(大)",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "10003",
+    "verified": true
+  },
+  "10004": {
+    "name": "防御(大)",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "10004",
+    "verified": true
+  },
+  "10005": {
+    "name": "攻击(特大)",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "10005",
+    "verified": true
+  },
+  "10006": {
+    "name": "防御(特大)",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "10006",
+    "verified": true
+  },
+  "10007": {
+    "name": "名刀：嘎呜切",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "10007",
+    "verified": true
+  },
+  "10008": {
+    "name": "暗影突袭",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "10008",
+    "verified": true
+  },
+  "10009": {
+    "name": "蓄力",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "10009",
+    "verified": true
+  },
+  "10010": {
+    "name": "全力攻击",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "10010",
+    "verified": true
+  },
+  "10011": {
+    "name": "毒牙",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "10011",
+    "verified": true
+  },
+  "10012": {
+    "name": "撕咬",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "10012",
+    "verified": true
+  },
+  "10013": {
+    "name": "龙之咆哮",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "10013",
+    "verified": true
+  },
+  "20001": {
+    "name": "激光",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20001",
+    "verified": true
+  },
+  "20002": {
+    "name": "巧克力蛋糕",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20002",
+    "verified": true
+  },
+  "20003": {
+    "name": "保护屏障",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20003",
+    "verified": true
+  },
+  "20004": {
+    "name": "钓鱼执法",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20004",
+    "verified": true
+  },
+  "20005": {
+    "name": "遥控骰子",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20005",
+    "verified": true
+  },
+  "20006": {
+    "name": "以毒攻毒",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20006",
+    "verified": true
+  },
+  "20007": {
+    "name": "灵魂链接",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20007",
+    "verified": true
+  },
+  "20008": {
+    "name": "狂暴",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20008",
+    "verified": true
+  },
+  "20009": {
+    "name": "自爆",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20009",
+    "verified": true
+  },
+  "20010": {
+    "name": "路障",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20010",
+    "verified": true
+  },
+  "20011": {
+    "name": "方向抉择",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20011",
+    "verified": true
+  },
+  "20012": {
+    "name": "皮筋弹弓",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20012",
+    "verified": true
+  },
+  "20013": {
+    "name": "板砖",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20013",
+    "verified": true
+  },
+  "20014": {
+    "name": "汉堡",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20014",
+    "verified": true
+  },
+  "20015": {
+    "name": "以牙还牙",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20015",
+    "verified": true
+  },
+  "20017": {
+    "name": "错误的目标",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20017",
+    "verified": true
+  },
+  "20018": {
+    "name": "爆破专家",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20018",
+    "verified": true
+  },
+  "20019": {
+    "name": "过期便当",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20019",
+    "verified": true
+  },
+  "20020": {
+    "name": "丧心病狂",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20020",
+    "verified": true
+  },
+  "20021": {
+    "name": "传递炸弹",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20021",
+    "verified": true
+  },
+  "20022": {
+    "name": "抢夺",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20022",
+    "verified": true
+  },
+  "20023": {
+    "name": "拾荒",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20023",
+    "verified": true
+  },
+  "20024": {
+    "name": "随机传送门",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20024",
+    "verified": true
+  },
+  "20025": {
+    "name": "雪球攻击",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20025",
+    "verified": true
+  },
+  "20026": {
+    "name": "定向加速",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20026",
+    "verified": true
+  },
+  "20027": {
+    "name": "符卡-福",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20027",
+    "verified": true
+  },
+  "20028": {
+    "name": "符卡-祸",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20028",
+    "verified": true
+  },
+  "20029": {
+    "name": "符卡-祸",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20029",
+    "verified": true
+  },
+  "20030": {
+    "name": "活体书页",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20030",
+    "verified": true
+  },
+  "20031": {
+    "name": "活体书页",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20030",
+    "verified": true
+  },
+  "20032": {
+    "name": "命运的指引",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20032",
+    "verified": true
+  },
+  "20033": {
+    "name": "强化拒止",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "20033",
+    "verified": true
+  },
+  "21001": {
+    "name": "轨道炮",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21001",
+    "verified": true
+  },
+  "21002": {
+    "name": "你有我有",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21002",
+    "verified": true
+  },
+  "21003": {
+    "name": "加急加快",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21003",
+    "verified": true
+  },
+  "21004": {
+    "name": "王之力",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21004",
+    "verified": true
+  },
+  "21005": {
+    "name": "岿然不动",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21005",
+    "verified": true
+  },
+  "21006": {
+    "name": "奢华大餐",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21006",
+    "verified": true
+  },
+  "21007": {
+    "name": "定向爆破",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21007",
+    "verified": true
+  },
+  "21008": {
+    "name": "支援",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21008",
+    "verified": true
+  },
+  "21009": {
+    "name": "高升炮",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21009",
+    "verified": true
+  },
+  "21010": {
+    "name": "是他干的",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21010",
+    "verified": true
+  },
+  "21012": {
+    "name": "对怪激光",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21012",
+    "verified": true
+  },
+  "21013": {
+    "name": "对怪板砖",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21013",
+    "verified": true
+  },
+  "21014": {
+    "name": "支援口香糖",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21014",
+    "verified": true
+  },
+  "21015": {
+    "name": "能量补充棒",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21015",
+    "verified": true
+  },
+  "21016": {
+    "name": "大聪明软糖",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21016",
+    "verified": true
+  },
+  "21017": {
+    "name": "古怪的附灵物",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21017",
+    "verified": true
+  },
+  "21018": {
+    "name": "释放青魂",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21018",
+    "verified": true
+  },
+  "21019": {
+    "name": "释放赤魂",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21019",
+    "verified": true
+  },
+  "21020": {
+    "name": "彩羽",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21020",
+    "verified": true
+  },
+  "21021": {
+    "name": "振作起来",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21021",
+    "verified": true
+  },
+  "21022": {
+    "name": "灰烬之羽",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21022",
+    "verified": true
+  },
+  "21023": {
+    "name": "吉星高照",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21023",
+    "verified": true
+  },
+  "21024": {
+    "name": "人机交融",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21024",
+    "verified": true
+  },
+  "21025": {
+    "name": "罪证嫌疑",
+    "sourceFile": "AstralParty_CN_Data/com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/10381fc5c55c7b0896a3a91a257cc9ce/__data",
+    "sourceKey": "21025",
+    "verified": true
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "name": "xingshu-hub",
+  "private": true,
+  "version": "0.1.0",
+  "description": "星枢 Hub (XingShu Hub) - Astral Party Next-Gen Management, Spectator & Runtime Integration Platform",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "test": "node --experimental-strip-types src/test/platform_profile_conformance.test.ts",
+    "test:conformance": "node --experimental-strip-types src/test/platform_profile_conformance.test.ts",
+    "test:managed-provider": "node --experimental-strip-types src/test/managed_account_provider.test.ts",
+    "test:local-managed": "node --experimental-strip-types src/test/local_managed_provider.test.ts",
+    "test:spectator-account": "node --experimental-strip-types src/test/spectator_account.test.ts",
+    "test:account-integration": "node --experimental-strip-types src/test/account_services_integration.test.ts",
+    "test:identity-truth": "node --experimental-strip-types src/test/identity_truth.test.ts",
+    "test:runtime-truth": "node --experimental-strip-types src/test/runtime_truth.test.ts",
+    "test:card-truth": "node --experimental-strip-types src/test/card_registry_truth.test.ts",
+    "test:game-account": "node --experimental-strip-types src/test/game_account_identity.test.ts",
+    "test:platform-strategy": "node --experimental-strip-types src/test/platform_strategy.test.ts",
+    "test:resolver": "node --experimental-strip-types src/test/runtime_session_resolver.test.ts",
+    "test:session-truth": "node --experimental-strip-types src/test/frontend_session_truth.test.ts",
+    "test:multi-runtime": "node --experimental-strip-types src/test/multi_runtime_bridge.test.ts",
+    "test:auto-follow": "node --experimental-strip-types src/test/auto_follow_state_machine.test.ts",
+    "test:master": "node --experimental-strip-types src/test/hs4_p1_4_master.test.ts",
+    "test:identity-regression": "node --experimental-strip-types src/test/identity_isolation_regression.test.ts",
+    "test:p1_6r2-regression": "node --experimental-strip-types src/test/hs4_p1_6r2_dual_client_regression.test.ts",
+    "test:p1_6r3-regression": "node --experimental-strip-types src/test/hs4_p1_6r3_main_match_truth.test.ts",
+    "test:session-state": "node --experimental-strip-types src/test/hs4_p1_6r3_session_state.test.ts",
+    "test:runtime-truth-closure": "node src/test/runtime_truth_closure.test.mjs",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "lucide-react": "^1.57.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.18.4"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^6.0.2",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.16"
+  }
+}
