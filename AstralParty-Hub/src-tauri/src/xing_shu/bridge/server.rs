@@ -5211,7 +5211,7 @@ mod tests {
 
         // 4b. Client 1 (Steam CN) reports active match context for room 88888
         let mut match_ctx1 = RuntimeMatchContext {
-            connection_id: "conn1".into(),
+            connection_id: conn1_id.clone(),
             platform_id: "STEAM_CN".into(),
             process_id: my_pid,
             local_player_id: Some(1556514),
@@ -5222,7 +5222,8 @@ mod tests {
             is_pve: Some(true),
             match_kind: Some("PVE".into()),
             timestamp: chrono::Utc::now().timestamp_millis() as u64,
-            generation: Some(1),
+            generation: Some(s1_post2.generation),
+            sequence: 1,
             ..Default::default()
         };
         match_ctx1.normalize();
@@ -5546,10 +5547,11 @@ mod tests {
 
         // Verify session updated
         let s_updated = server.get_runtime_session("conn_rt_ctx").expect("Session exists");
-        assert_eq!(s_updated.player_id, Some(1556514));
-        assert_eq!(s_updated.live_player_id, Some(1556514));
-        assert_eq!(s_updated.role, "MAIN");
-        assert_eq!(s_updated.bound_role, "MAIN");
+        // Match context cannot manufacture a local account identity.
+        assert_eq!(s_updated.player_id, None);
+        assert_eq!(s_updated.live_player_id, None);
+        assert_eq!(s_updated.role, "UNBOUND");
+        assert_eq!(s_updated.bound_role, "UNBOUND");
         assert_eq!(s_updated.room_id, Some(654321));
         assert_eq!(s_updated.internal_room_id, Some(654321));
         assert_eq!(s_updated.spectator_code.as_deref(), Some("C05FE7B"));
