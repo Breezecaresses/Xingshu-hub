@@ -1,7 +1,7 @@
 # 星枢 (XingShu)
 
 <p align="center">
-  <strong>AstralParty（星之派对）多端游戏增强运行时与跨进程控制枢纽</strong>
+  <strong>AstralParty（吉星派对）多端游戏增强运行时与跨进程控制枢纽</strong>
 </p>
 
 <p align="center">
@@ -20,13 +20,25 @@
 
 ## 📖 项目简介
 
-**星枢 (XingShu)** 是针对《AstralParty》（星之派对）开发的高性能本地多进程协同工作站与游戏增强运行时套件。
+**星枢 (XingShu)** 是针对《AstralParty》（吉星派对）开发的本地多进程协同工作站与游戏增强运行时套件。
 
 项目由两大部分构成：
 1. **AstralParty-Hub（星枢控制台）**：基于 Tauri 2 + Rust + React 18 构建的现代化桌面管理中枢。提供账号隔离管理、运行时生命周期监管、本地回环通信中继以及自动化观战跟房控制。
 2. **APX Runtime（游戏增强运行时）**：注入游戏进程的 C# Unity 增强模块。提供浮动状态卡牌悬浮窗、HUD 挂件、对局统计、自适应生命周期调和以及基于权威数据源的手牌真值镜像。
 
 ---
+
+## 当前运行状态
+
+GitHub 仓库用于保存源码和版本记录。当前仍需在本机运行 Hub、主游戏及已登录的官方观战客户端；远程观战账号池尚未部署。
+
+- 资源 026 已在 Steam 国服主端 + TapTap 观战端验证插件启动、身份识别及 PVE 四人手牌镜像。
+- 主端已实测不重启游戏和 Hub 连续进入两个 PVE 房间，头像旁挂件显示新局手牌。
+- 观战指令按绑定的 `USER_SPECTATOR` 平台和玩家身份路由。Bilibili、WeGame、Steam 国际服仍需客户端兼容及全链路实测。
+- 观战端连续两局、自然结算后自动退房，以及收牌/星币/治疗自动致谢仍待实机验证。十倍思考时间修改本地计时，服务端强制截止仍有效。
+- 当前完整手牌来自已登录官方观战消息；免登录全量手牌尚未实现。
+
+验证细节和剩余工作见[本机托管观战说明](AstralParty-Hub/docs/local-managed-watcher.md)。
 
 ## 🏗️ 架构概览
 
@@ -42,7 +54,7 @@ flowchart TD
         AccountMgr <--> FSM
     end
 
-    subgraph RuntimeSpectator["APX Runtime (TapTap 观战客户端)"]
+    subgraph RuntimeSpectator["APX Runtime (已绑定的观战客户端)"]
         SpecHook["WatchLogic 拦截挂钩"]
         SpecStore["SpectatorStateStore (权威手牌快照)"]
         SpecBridge["Bridge Client (Loopback TCP)"]
@@ -50,7 +62,7 @@ flowchart TD
         SpecStore --> SpecBridge
     end
 
-    subgraph RuntimeMain["APX Runtime (Steam 主游戏客户端)"]
+    subgraph RuntimeMain["APX Runtime (已绑定的主游戏客户端)"]
         MainBridge["Bridge Client (Loopback TCP)"]
         TruthSource["HandTruthSource 权威数据源判定"]
         Reconcile["Overlay 生命周期自适应调和"]
@@ -69,7 +81,7 @@ flowchart TD
 ## ✨ 核心特性
 
 - **权威手牌真值体系 (HandTruthSource)**：
-  - 彻底摒弃外部第三方未授权 HTTP 接口，全链路采用 `127.0.0.1` 本地回环通信，零外网数据泄漏。
+  - 完整手牌镜像经 Hub 使用 `127.0.0.1` 本地回环通信；官方游戏登录及观战仍使用游戏自身的服务器连接。
   - **绝不伪造虚假卡牌**：严禁渲染伪造的占位卡牌 (`CardId = -1`)，手牌数据严格与对局英雄名单校验。
   - 观战端获得完整权威数据后，通过本地 Hub 实时镜像推送给主玩客户端。
 - **确定性挂件生命周期调和 (Overlay Lifecycle Reconciliation)**：
@@ -77,7 +89,7 @@ flowchart TD
   - 涵盖 10 类生命周期事件驱动触发，采用自适应两级轮询重试机制，确保手牌卡框始终精准对齐头像。
 - **安全隔离的自动跟房控制 (Auto-Follow Protocol)**：
   - 11 状态严格有限状态机调度，自动发现主游戏对局并引导观战端进房。
-  - **强制平台安全边界**：跟房指令严格限定发送至受信任的 TapTap 观战客户端，绝不污染 Steam 主账号。
+  - **绑定账号路由**：跟房指令发送至设置好的观战角色、平台与当前玩家身份，通过连接和对局检查与主账号分离。
 - **多平台账号绑定与调度**：
   - 支持 Steam / TapTap 等多渠道账户并行管理与路由启动。
   - 支持跨局自动清理挂件状态、释放观战房间、重置对局指纹。
@@ -142,22 +154,24 @@ npm run tauri -- build --no-bundle
 ### 2. APX Runtime (C# 游戏运行时)
 
 #### 环境要求
-- Visual Studio (包含 .NET Framework 4.7.2+ 开发组件与 MSBuild)
+- 支持 C# 11 的 Visual Studio MSBuild；项目使用游戏引用程序集，目标框架为 .NET Framework 4.0
 - Python 3.x
 - Mono.Cecil 及 Mono.Cecil.Rocks（放置于 `APX-Dev/tools/lib`）
 
 #### 依赖准备
 从合法的自身游戏客户端提取对应版本的 `AstralParty.Runtime.dll`，放置于项目默认路径：
-`APX-Dev/references/updated_20261019_verified/`（或在生成配置中通过 `AstralPartyRuntimePath` 环境变量指定）。
+`APX-Dev/references/updated_20261019_verified/`（或在生成配置中通过 `AstralPartyRuntimePath` MSBuild 属性指定）。
 其余依赖程序集按需要配置于 `APX-Dev/references/{unity,framework,thirdparty}`。
 
 #### 构建步骤
 ```powershell
 # 执行编译脚本
-powershell -ExecutionPolicy Bypass -File APX-Dev/tools/build.ps1 -Configuration Release
+.\APX-Dev\tools\build.ps1 -Configuration Release
 ```
 
 ---
+
+从开发工作区刷新此仓库时，在开发工作区执行 `python tools/export_source_repo.py <源码仓库路径>`，然后检查差异。现有 README 与 `.gitignore` 在源码仓库中维护，同步工具会保留这些文件。
 
 ## 📚 详细设计文档
 
