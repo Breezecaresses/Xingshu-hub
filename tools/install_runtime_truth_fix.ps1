@@ -5,10 +5,13 @@ $hubSource = Join-Path $taskRoot 'AstralParty-Hub\src-tauri\target\release\xings
 $hubTarget = Join-Path $taskRoot 'AstralParty-Hub\release\XingShu\Hub\xingshu-hub.exe'
 $steamExe = 'E:\Steam\steamapps\common\Astral Party\8vJXn6CN\AstralParty_CN.exe'
 $tapExe = 'F:\TapTap\PC Games\524022\CN_TAPTAP_V3.3.0\吉星派对.exe'
-$allowedTargets = @(
-    'E:\Steam\steamapps\common\Astral Party\8vJXn6CN\AstralParty_CN_Data\com.unity.addressables\AssetBundles\57a198703b66364d5420d39c0d251747\6cc68f014947b66dea74130802768a37\__data',
-    'F:\TapTap\PC Games\524022\CN_TAPTAP_V3.3.0\吉星派对_Data\com.unity.addressables\AssetBundles\57a198703b66364d5420d39c0d251747\b7c4592a112e6cee19eecf1d5a0a7dfd\__data'
-)
+$profiles = @(Get-Content -LiteralPath (Join-Path $taskRoot 'AstralParty-Hub/src-tauri/src/xing_shu/platform/platform_profiles.json') -Raw | ConvertFrom-Json)
+$allowedTargets = @($profiles | Where-Object platformId -In @('STEAM_CN', 'TAPTAP') | ForEach-Object {
+    $resolvedRoot = [IO.Path]::GetFullPath($_.installRoot).TrimEnd('\') + '\'
+    $resolvedTarget = [IO.Path]::GetFullPath((Join-Path $_.installRoot $_.bundleRelativePath))
+    if (!$resolvedTarget.StartsWith($resolvedRoot, [StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($resolvedTarget) -ne '__data') { throw 'Unexpected profile target' }
+    $resolvedTarget
+})
 $gameNames = @([IO.Path]::GetFileNameWithoutExtension($steamExe), [IO.Path]::GetFileNameWithoutExtension($tapExe))
 $unverifiableGames = @(Get-Process | Where-Object { $_.ProcessName -in $gameNames -and -not $_.Path })
 if ($unverifiableGames.Count) {
@@ -27,8 +30,10 @@ foreach ($update in $updates) {
     if ((Get-FileHash -LiteralPath $update.candidate -Algorithm SHA256).Hash -ne $update.candidateSha256) { throw 'Candidate verification failed' }
 }
 if ((Get-Item -LiteralPath $hubSource).LastWriteTime -lt (Get-Item -LiteralPath (Join-Path $taskRoot 'AstralParty-Hub\dist\index.html')).LastWriteTime) { throw 'Hub build is not finished' }
-$hubBackup = Join-Path $updateDir 'xingshu-hub.before.exe'
+$hubBeforeHash = (Get-FileHash -LiteralPath $hubTarget -Algorithm SHA256).Hash
+$hubBackup = Join-Path $updateDir ('xingshu-hub.before.' + $hubBeforeHash.Substring(0,12) + '.exe')
 if (-not (Test-Path -LiteralPath $hubBackup)) { Copy-Item -LiteralPath $hubTarget -Destination $hubBackup }
+if ((Get-FileHash -LiteralPath $hubBackup -Algorithm SHA256).Hash -ne $hubBeforeHash) { throw 'Hub backup verification failed' }
 $exactProcesses = @(Get-Process | Where-Object { $_.Path -in @($steamExe, $tapExe, $hubTarget) })
 foreach ($process in $exactProcesses) {
     Write-Output ('Stopping exact application: ' + $process.Path)
@@ -62,5 +67,10 @@ $hub = Start-Process -FilePath $hubTarget -WorkingDirectory (Split-Path -Literal
 Write-Output ('Hub started: pid=' + $hub.Id)
 Start-Process -FilePath 'steam://rungameid/2622000'
 Write-Output 'Steam game launch requested through the Steam client'
-$tap = Start-Process -FilePath $tapExe -WorkingDirectory (Split-Path -LiteralPath $tapExe) -PassThru
-Write-Output ('TapTap game started: pid=' + $tap.Id)
+$tapLauncher = 'E:\TapTap\TapTap.exe'
+if (Test-Path -LiteralPath $tapLauncher) {
+    Start-Process -FilePath $tapLauncher -WorkingDirectory (Split-Path -LiteralPath $tapLauncher)
+    Write-Output 'TapTap launcher opened; start the spectator game through the official launcher'
+} else {
+    Write-Output 'Start the spectator game through the official TapTap launcher; direct exe launch may fail platform validation'
+}

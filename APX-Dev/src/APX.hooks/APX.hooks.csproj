@@ -21,7 +21,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <AstralPartyRuntimePath Condition=" '$(AstralPartyRuntimePath)' == '' ">..\..\references\game\AstralParty.Runtime.dll</AstralPartyRuntimePath>
+    <AstralPartyRuntimePath Condition=" '$(AstralPartyRuntimePath)' == '' ">..\..\references\updated_20261019_verified\AstralParty.Runtime.dll</AstralPartyRuntimePath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

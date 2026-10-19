@@ -390,12 +390,12 @@ mod tests {
         assert!(verify_hs4_a_baseline_governance(&profiles).is_ok());
 
         let steam_cn = profiles.iter().find(|p| p.platform_id == PlatformId::SteamCn).unwrap();
-        assert_eq!(steam_cn.compatibility_status, CompatibilityStatus::Verified);
+        assert_eq!(steam_cn.compatibility_status, CompatibilityStatus::PartiallyAudited);
         assert!(steam_cn.hook_text_asset_path_id.is_some());
-        assert!(steam_cn.last_verified_at.is_some());
+        assert!(steam_cn.last_verified_at.is_none());
         assert!(!steam_cn.hook_signatures.is_empty());
         assert!(steam_cn.bundle_id.is_some());
-        assert_eq!(steam_cn.bundle_id.as_deref(), Some("6cc68f014947b66dea74130802768a37"));
+        assert_eq!(steam_cn.bundle_id.as_deref(), Some("3486f99276eba77677d4880fd8d32918"));
 
         let steam_global = profiles.iter().find(|p| p.platform_id == PlatformId::SteamGlobal).unwrap();
         assert_eq!(steam_global.compatibility_status, CompatibilityStatus::PartiallyAudited);
@@ -406,7 +406,7 @@ mod tests {
     fn test_get_profile() {
         let steam_cn = get_profile(PlatformId::SteamCn).expect("STEAM_CN profile");
         assert_eq!(steam_cn.channel, "CN_STEAM");
-        assert_eq!(steam_cn.compatibility_status, CompatibilityStatus::Verified);
+        assert_eq!(steam_cn.compatibility_status, CompatibilityStatus::PartiallyAudited);
 
         let steam_global = get_profile(PlatformId::SteamGlobal).expect("STEAM_GLOBAL profile");
         assert_eq!(steam_global.channel, "INT_STEAM");
@@ -554,9 +554,9 @@ mod tests {
     // 12 SPECIFICATION CONFORMANCE SCENARIOS (PROJECT XINGSHU HS4-A.1)
     // =========================================================================
 
-    // Scenario 1: STEAM_CN full VERIFIED profile PASS: all 17 fields valid, passes validate_profile().
+    // Scenario 1: Resource 026 selects the new cache and does not inherit old runtime verification.
     #[test]
-    fn test_scenario_1_steam_cn_full_verified_profile_pass() {
+    fn test_scenario_1_resource_026_profile_requires_new_verification() {
         let profile = get_profile(PlatformId::SteamCn).expect("STEAM_CN profile must exist");
         assert_eq!(profile.platform_id, PlatformId::SteamCn);
         assert_eq!(profile.channel, "CN_STEAM");
@@ -573,13 +573,13 @@ mod tests {
         );
         assert_eq!(
             profile.xingshu_runtime_dll_sha256.as_deref(),
-            Some("B8CC3264CC36B33DA6B28930F7854223160B39B09991F17917DEDD6A41D7927F")
+            None
         );
         assert!(profile.bundle_relative_path.is_some());
-        assert_eq!(profile.bundle_id.as_deref(), Some("6cc68f014947b66dea74130802768a37"));
+        assert_eq!(profile.bundle_id.as_deref(), Some("3486f99276eba77677d4880fd8d32918"));
         assert_eq!(
             profile.container_sha256.as_deref(),
-            Some("105E39705202C5DC125063D2A9412FB0573E61213906C731827F14660C996C10")
+            Some("420FBB1DEE1CEFE7298213EBF5F292B4722D0CB08A2A5E3F96EE94AB4AABDDEF")
         );
         assert_eq!(profile.hook_text_asset_path_id, Some(99992000));
         assert_eq!(
@@ -591,8 +591,8 @@ mod tests {
                 "SpectatorHandStateReducer.ProcessPayload"
             ]
         );
-        assert_eq!(profile.compatibility_status, CompatibilityStatus::Verified);
-        assert_eq!(profile.last_verified_at.as_deref(), Some("2026-10-17T00:00:00Z"));
+        assert_eq!(profile.compatibility_status, CompatibilityStatus::PartiallyAudited);
+        assert_eq!(profile.last_verified_at.as_deref(), None);
 
         assert!(
             profile.validate_profile().is_ok(),
@@ -604,6 +604,7 @@ mod tests {
     #[test]
     fn test_scenario_2_verified_missing_hash_reject() {
         let mut profile = get_profile(PlatformId::SteamCn).expect("STEAM_CN profile");
+        profile.compatibility_status = CompatibilityStatus::Verified;
         profile.game_runtime_dll_sha256 = None;
         let result = profile.validate_profile();
         assert!(result.is_err(), "Scenario 2: Missing gameRuntimeDllSha256 must be rejected");

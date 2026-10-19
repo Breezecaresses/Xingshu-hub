@@ -11,6 +11,7 @@ namespace XingShu.Truth
     public static class HandSessionLifecycle
     {
         private static string _match;
+        private static bool _observing;
         public static long RetiredMirrorEpoch { get; private set; }
 
         public static long ActiveRoomId()
@@ -29,29 +30,37 @@ namespace XingShu.Truth
 
         public static void Observe()
         {
-            long roomId = ActiveRoomId();
-            string token = null;
-            if (roomId > 0)
+            // Reset notifications synchronously reach UI observers. They must not
+            // start another transition while either store is still being cleared.
+            if (_observing) return;
+            _observing = true;
+            try
             {
-                var room = SimpleSingletonProvider<GameLogicManager>.inst.room.curRoomInfo;
-                token = roomId + "/" + room.info?.StartTime;
-            }
-            if (token != _match || (token == null &&
-                (HandTruthSource.IsInSession || SpectatorStateStore.IsInSpectatorSession())))
-            {
-                // An initial official watch snapshot may precede the scene transition.
-                bool initialWatch = _match == null && token != null &&
-                    SpectatorStateStore.RoomId == roomId &&
-                    SimpleSingletonProvider<GameLogicManager>.inst.watch.PlayerIsWatcher();
-                if (!initialWatch)
+                long roomId = ActiveRoomId();
+                string token = null;
+                if (roomId > 0)
                 {
-                    if (SimpleSingletonProvider<GameLogicManager>.inst?.watch?.PlayerIsWatcher() != true)
-                        RetiredMirrorEpoch = Math.Max(RetiredMirrorEpoch, SpectatorStateStore.SpectatorSessionEpoch);
-                    HandTruthSource.ResetSession("MatchLifecycle");
-                    SpectatorStateStore.Reset();
+                    var room = SimpleSingletonProvider<GameLogicManager>.inst.room.curRoomInfo;
+                    token = roomId + "/" + room.info?.StartTime;
                 }
-                _match = token;
+                if (token != _match || (token == null &&
+                    (HandTruthSource.IsInSession || SpectatorStateStore.IsInSpectatorSession())))
+                {
+                    // An initial official watch snapshot may precede the scene transition.
+                    bool initialWatch = _match == null && token != null &&
+                        SpectatorStateStore.RoomId == roomId &&
+                        SimpleSingletonProvider<GameLogicManager>.inst.watch.PlayerIsWatcher();
+                    _match = token;
+                    if (!initialWatch)
+                    {
+                        if (SimpleSingletonProvider<GameLogicManager>.inst?.watch?.PlayerIsWatcher() != true)
+                            RetiredMirrorEpoch = Math.Max(RetiredMirrorEpoch, SpectatorStateStore.SpectatorSessionEpoch);
+                        HandTruthSource.ResetSession("MatchLifecycle");
+                        SpectatorStateStore.Reset();
+                    }
+                }
             }
+            finally { _observing = false; }
         }
     }
 }

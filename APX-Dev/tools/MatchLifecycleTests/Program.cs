@@ -29,6 +29,24 @@ class Program {
         Check(!SpectatorStateStore.Active && HandSessionLifecycle.ActiveRoomId() == 0, "cached room in lobby cannot revive previous match");
         manager.watch.Watching = true; Seed(); SpectatorStateStore.RoomId = 72; HandSessionLifecycle.Observe();
         Check(SpectatorStateStore.Active && HandSessionLifecycle.ActiveRoomId() == 72, "initial watch refresh survives Home to Battle transition");
+        manager.watch.Watching = false; scene.currentType.Value = SceneType.Battle;
+        int callbackCount = 0;
+        Action reenter = () => {
+            if (++callbackCount > 8) throw new Exception("reset callbacks recursively re-entered the lifecycle");
+            HandSessionLifecycle.Observe();
+        };
+        HandTruthSource.OnReset = reenter;
+        SpectatorStateStore.OnReset = reenter;
+        Seed(); manager.room.curRoomInfo.info.StartTime = 300;
+        HandSessionLifecycle.Observe();
+        Check(callbackCount == 2 && !HandTruthSource.IsInSession && !SpectatorStateStore.Active,
+            "rematch reset callbacks can inspect lifecycle without recursive reset");
+        HandSessionLifecycle.Observe();
+        Check(callbackCount == 2, "reentrant reset settles once and does not repeat next tick");
+        Seed(); scene.currentType.Value = SceneType.Home;
+        HandSessionLifecycle.Observe();
+        Check(callbackCount == 4 && HandSessionLifecycle.ActiveRoomId() == 0,
+            "exit cleanup callbacks cannot recurse while the other store is still active");
     }
 }
 namespace Tools { public static class SimpleSingletonProvider<T> where T:new() { public static T inst = new T(); } }
@@ -42,5 +60,5 @@ namespace GameLogic {
     public class Watch { public bool Watching; public bool PlayerIsWatcher() => Watching; }
     public class GameLogicManager { public RoomLogic room = new RoomLogic(); public Watch watch = new Watch(); }
 }
-namespace XingShu.Truth { public static class HandTruthSource { public static bool IsInSession; public static void ResetSession(string _) { IsInSession = false; } } }
-namespace XingShu.Spectator { public static class SpectatorStateStore { public static bool Active; public static long RoomId; public static long SpectatorSessionEpoch; public static bool IsInSpectatorSession() => Active; public static void Reset() { Active = false; RoomId = 0; SpectatorSessionEpoch = 0; } } }
+namespace XingShu.Truth { public static class HandTruthSource { public static bool IsInSession; public static Action OnReset; public static void ResetSession(string _) { IsInSession = false; OnReset?.Invoke(); } } }
+namespace XingShu.Spectator { public static class SpectatorStateStore { public static bool Active; public static long RoomId; public static long SpectatorSessionEpoch; public static Action OnReset; public static bool IsInSpectatorSession() => Active; public static void Reset() { Active = false; RoomId = 0; SpectatorSessionEpoch = 0; OnReset?.Invoke(); } } }

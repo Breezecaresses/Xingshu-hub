@@ -602,7 +602,9 @@ namespace XingShu.Truth
 
             try
             {
-                XingShu.Bridge.XingShuBridgeClient.Instance.PublishRuntimeMatchContext(0, false, null);
+                // Clearing cached hands also happens while entering a new battle.
+                // Only the host may derive and publish the actual game state.
+                XingShu.Runtime.XingShuRuntimeHost.Instance?.EvaluateAndPublishMatchContext();
             }
             catch { }
         }

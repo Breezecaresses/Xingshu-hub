@@ -29,7 +29,7 @@ console.log('PROJECT XINGSHU HS4-A.2: TYPESCRIPT PLATFORMPROFILE CONFORMANCE TES
 console.log('================================================================================');
 
 try {
-  // Scenario 1: STEAM_CN full VERIFIED profile PASS: all 17 fields valid, passes validatePlatformProfile()
+  // Scenario 1: Resource 026 selects the new cache without inheriting previous runtime verification
   {
     const p = getDefaultPlatformProfile(PlatformId.STEAM_CN);
     assert(p !== undefined, 'Scenario 1: STEAM_CN profile exists');
@@ -49,19 +49,19 @@ try {
       'Scenario 1: gameRuntimeDllSha256 matches frozen hash'
     );
     assert(
-      p.xingshuRuntimeDllSha256 === 'B8CC3264CC36B33DA6B28930F7854223160B39B09991F17917DEDD6A41D7927F',
-      'Scenario 1: xingshuRuntimeDllSha256 matches frozen hash'
+      p.xingshuRuntimeDllSha256 === null,
+      'Scenario 1: old runtime hash cleared'
     );
     assert(p.bundleRelativePath !== null && p.bundleRelativePath.length > 0, 'Scenario 1: bundleRelativePath is set');
-    assert(p.bundleId === '6cc68f014947b66dea74130802768a37', 'Scenario 1: bundleId matches real 32-hex hash');
+    assert(p.bundleId === '3486f99276eba77677d4880fd8d32918', 'Scenario 1: bundleId matches real 32-hex hash');
     assert(
-      p.containerSha256 === '105E39705202C5DC125063D2A9412FB0573E61213906C731827F14660C996C10',
+      p.containerSha256 === '420FBB1DEE1CEFE7298213EBF5F292B4722D0CB08A2A5E3F96EE94AB4AABDDEF',
       'Scenario 1: containerSha256 matches baseline'
     );
     assert(p.hookTextAssetPathId === 99992000, 'Scenario 1: hookTextAssetPathId === 99992000');
     assert(p.hookSignatures !== null && p.hookSignatures.length === 4, 'Scenario 1: hookSignatures has 4 signatures');
-    assert(p.compatibilityStatus === 'VERIFIED', 'Scenario 1: compatibilityStatus === VERIFIED');
-    assert(p.lastVerifiedAt === '2026-10-17T00:00:00Z', 'Scenario 1: lastVerifiedAt is set');
+    assert(p.compatibilityStatus === 'PARTIALLY_AUDITED', 'Scenario 1: updated runtime awaits live validation');
+    assert(p.lastVerifiedAt === null, 'Scenario 1: old validation timestamp cleared');
 
     const validationResult = validatePlatformProfile(p);
     assert(validationResult.valid, 'Scenario 1: STEAM_CN passes validatePlatformProfile', validationResult.error);
@@ -71,6 +71,7 @@ try {
   {
     const p: PlatformProfile = {
       ...getDefaultPlatformProfile(PlatformId.STEAM_CN)!,
+      compatibilityStatus: 'VERIFIED',
       gameRuntimeDllSha256: null,
     };
     const res = validatePlatformProfile(p);
@@ -148,8 +149,8 @@ try {
     assert(pt.installRoot === 'F:\\TapTap\\PC Games\\524022\\CN_TAPTAP_V3.3.0', 'Scenario 4: TAPTAP installRoot matches');
     assert(pt.processExecutable === '吉星派对.exe', 'Scenario 4: TAPTAP processExecutable === 吉星派对.exe');
     assert(pt.gameRuntimeDllSha256 === 'BAE3828CEF31104E4B77856115E7106FB8539FCC0A0A6098B57A34E9354044E6', 'Scenario 4: TAPTAP gameRuntimeDllSha256 matches');
-    assert(pt.bundleId === 'b7c4592a112e6cee19eecf1d5a0a7dfd', 'Scenario 4: TAPTAP bundleId is b7c4592a112e6cee19eecf1d5a0a7dfd');
-    assert(pt.containerSha256 === '3BB2997326B9DC1FFB2F2D37E47DAB1051B4D55A32235FD8296134374D8AAA7A', 'Scenario 4: TAPTAP containerSha256 matches candidate');
+    assert(pt.bundleId === '71c9197f5dd65c9b30bdf1e716719991', 'Scenario 4: TAPTAP bundleId is 71c9197f5dd65c9b30bdf1e716719991');
+    assert(pt.containerSha256 === 'EA45C939DBC86ACA6950AC757FCABB773A86F9D14FEF6B3D8ED7C49F47D33598', 'Scenario 4: TAPTAP containerSha256 matches candidate');
     assert(pt.hookTextAssetPathId === 99992000, 'Scenario 4: TAPTAP hookTextAssetPathId is 99992000');
     assert(pt.hookSignatures !== null && pt.hookSignatures.length === 4, 'Scenario 4: TAPTAP hookSignatures has 4 signatures');
     const resTap = validatePlatformProfile(pt);

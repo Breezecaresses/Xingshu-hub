@@ -19,10 +19,10 @@ namespace XingShu.Platform
     ""installRoot"": ""E:\\Steam\\steamapps\\common\\Astral Party\\8vJXn6CN"",
     ""gameRuntimeDllPath"": ""GameAssembly.dll"",
     ""gameRuntimeDllSha256"": ""6279B4A1814E9B0DEF32779EBC2DFD5810373F112F0B12EE02F5C97CAA4F46FA"",
-    ""xingshuRuntimeDllSha256"": ""B8CC3264CC36B33DA6B28930F7854223160B39B09991F17917DEDD6A41D7927F"",
-    ""bundleRelativePath"": ""AstralParty_CN_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\6cc68f014947b66dea74130802768a37\\__data"",
-    ""bundleId"": ""6cc68f014947b66dea74130802768a37"",
-    ""containerSha256"": ""105E39705202C5DC125063D2A9412FB0573E61213906C731827F14660C996C10"",
+    ""xingshuRuntimeDllSha256"": null,
+    ""bundleRelativePath"": ""AstralParty_CN_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\3486f99276eba77677d4880fd8d32918\\__data"",
+    ""bundleId"": ""3486f99276eba77677d4880fd8d32918"",
+    ""containerSha256"": ""420FBB1DEE1CEFE7298213EBF5F292B4722D0CB08A2A5E3F96EE94AB4AABDDEF"",
     ""hookTextAssetPathId"": 99992000,
     ""hookSignatures"": [
       ""APXBootstrap.EnsureRuntimeHost"",
@@ -30,8 +30,9 @@ namespace XingShu.Platform
       ""LoopbackTcpTransport.Connect"",
       ""SpectatorHandStateReducer.ProcessPayload""
     ],
-    ""compatibilityStatus"": ""VERIFIED"",
-    ""lastVerifiedAt"": ""2026-10-17T00:00:00Z""
+    ""compatibilityStatus"": ""PARTIALLY_AUDITED"",
+    ""lastVerifiedAt"": null,
+    ""resourceVersion"": ""026""
   },
   {
     ""platformId"": ""STEAM_GLOBAL"",
@@ -71,11 +72,11 @@ namespace XingShu.Platform
     ""installDir"": ""F:\\TapTap\\PC Games\\524022\\CN_TAPTAP_V3.3.0"",
     ""gameRuntimeDllPath"": ""GameAssembly.dll"",
     ""gameRuntimeDllSha256"": ""BAE3828CEF31104E4B77856115E7106FB8539FCC0A0A6098B57A34E9354044E6"",
-    ""xingshuRuntimeDllSha256"": ""23E860515B41CFBEE86A652E90117ED583272758DF0BEE541ED055EE89C44185"",
-    ""bundleRelativePath"": ""吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\b7c4592a112e6cee19eecf1d5a0a7dfd\\__data"",
-    ""bundleId"": ""b7c4592a112e6cee19eecf1d5a0a7dfd"",
-    ""containerSha256"": ""3BB2997326B9DC1FFB2F2D37E47DAB1051B4D55A32235FD8296134374D8AAA7A"",
-    ""containerHash"": ""3BB2997326B9DC1FFB2F2D37E47DAB1051B4D55A32235FD8296134374D8AAA7A"",
+    ""xingshuRuntimeDllSha256"": null,
+    ""bundleRelativePath"": ""吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\71c9197f5dd65c9b30bdf1e716719991\\__data"",
+    ""bundleId"": ""71c9197f5dd65c9b30bdf1e716719991"",
+    ""containerSha256"": ""EA45C939DBC86ACA6950AC757FCABB773A86F9D14FEF6B3D8ED7C49F47D33598"",
+    ""containerHash"": ""EA45C939DBC86ACA6950AC757FCABB773A86F9D14FEF6B3D8ED7C49F47D33598"",
     ""hookTextAssetPathId"": 99992000,
     ""hookSignatures"": [
       ""APXBootstrap.EnsureRuntimeHost"",
@@ -86,7 +87,8 @@ namespace XingShu.Platform
     ""compatibilityStatus"": ""PARTIALLY_AUDITED"",
     ""status"": ""PARTIALLY_AUDITED"",
     ""runtimeCompatible"": true,
-    ""lastVerifiedAt"": null
+    ""lastVerifiedAt"": null,
+    ""resourceVersion"": ""026""
   },
   {
     ""platformId"": ""BILIBILI"",

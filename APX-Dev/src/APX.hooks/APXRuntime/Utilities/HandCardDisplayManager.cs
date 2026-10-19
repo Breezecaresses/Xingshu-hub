@@ -252,7 +252,6 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 		get
 		{
 			if (!_isEnabled) return 0;
-			XingShu.Truth.HandSessionLifecycle.Observe();
             bool inSpectator = XingShu.Spectator.SpectatorStateStore.IsInSpectatorSession();
 			if (inSpectator)
 			{
@@ -746,6 +745,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 
 	private void Update()
 	{
+		XingShu.Truth.HandSessionLifecycle.Observe();
 		if (APXCentralInputManager.TryConsumeHotkeyChord(APXHotkeyAction.HandCardDebug, "HandCardDisplayManager", KeyCode.H, APXHotkeyModifiers.Ctrl | APXHotkeyModifiers.Shift, exactModifiers: true, allowDuringTextEntry: false))
 		{
 			if (UseModernView)
@@ -3211,7 +3211,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 			_needFetchFromServer = false;
 			RemoveRoundListener();
 			MarkOverlayDirty("SpectatorStoreSessionReset");
-			RefreshAllWidgets();
+			// Rebuild on the next Update after both truth stores finish clearing.
 		}
 		catch (Exception ex)
 		{

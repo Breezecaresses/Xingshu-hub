@@ -1,18 +1,60 @@
 """Prepare reversible runtime updates from the currently installed containers."""
 import hashlib
+import copy
 import json
 from pathlib import Path
 import shutil
 import subprocess
 import UnityPy
+from UnityPy.files.ObjectReader import ObjectReader
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'APX-Dev/build/runtime-truth-fix'
 DLL = ROOT / 'APX-Dev/build/bin/Release/APX.hooks.dll'
-TARGETS = {
-    'STEAM_CN': Path(r'E:\Steam\steamapps\common\Astral Party\8vJXn6CN\AstralParty_CN_Data\com.unity.addressables\AssetBundles\57a198703b66364d5420d39c0d251747\6cc68f014947b66dea74130802768a37\__data'),
-    'TAPTAP': Path(r'F:\TapTap\PC Games\524022\CN_TAPTAP_V3.3.0\吉星派对_Data\com.unity.addressables\AssetBundles\57a198703b66364d5420d39c0d251747\b7c4592a112e6cee19eecf1d5a0a7dfd\__data'),
-}
+PROFILES = ROOT / 'AstralParty-Hub/src-tauri/src/xing_shu/platform/platform_profiles.json'
+MSBUILD = Path(r'D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe')
+CSC = MSBUILD.parent / 'Roslyn/csc.exe'
+
+
+def build_bootstrap():
+    project = ROOT / 'APX-Dev/tools/RuntimeBootstrap/Bootstrap.csproj'
+    subprocess.run([str(MSBUILD), str(project), '/t:Rebuild', '/nologo', '/v:q'], check=True)
+    patcher = OUT / 'RuntimeBootstrapPatcher.exe'
+    libraries = ROOT / 'APX-Dev/tools/lib'
+    subprocess.run([str(CSC), '/nologo', '/out:' + str(patcher),
+                    '/reference:' + str(libraries / 'Mono.Cecil.dll'),
+                    '/reference:' + str(libraries / 'Mono.Cecil.Rocks.dll'),
+                    str(ROOT / 'tools/patch_taptap_runtime.cs')], check=True)
+    for name in ('Mono.Cecil.dll', 'Mono.Cecil.Rocks.dll'):
+        shutil.copy2(libraries / name, OUT / name)
+    return patcher, project.parent / 'bin/Bootstrap.dll'
+
+
+def put_hooks(env, dll):
+    hooks = [o for o in env.objects if o.path_id == 99992000]
+    if hooks:
+        if len(hooks) != 1 or hooks[0].type.name != 'TextAsset' or hooks[0].read().m_Name != 'APX.hooks.dll':
+            raise RuntimeError('Hooks path ID collision')
+        hook = hooks[0].read()
+    else:
+        sample = next(o for o in env.objects if o.type.name == 'TextAsset')
+        sf = sample.assets_file
+        reader = ObjectReader(assets_file=sf, reader=sample.reader, path_id=99992000,
+                              type_id=sample.type_id, serialized_type=sample.serialized_type,
+                              class_id=sample.class_id, type=sample.type, byte_start=0,
+                              byte_size=0, is_destroyed=False, is_stripped=False)
+        hook = sample.read()
+        hook.object_reader = reader
+        sf.objects[99992000] = reader
+        bundle = next(o.read() for o in sf.objects.values() if o.type.name == 'AssetBundle')
+        entry = copy.copy(bundle.m_Container[0][1])
+        entry.asset = copy.copy(entry.asset)
+        entry.asset.m_PathID = 99992000
+        bundle.m_Container.append(('APX.hooks.dll', entry))
+        bundle.save()
+    hook.m_Name = 'APX.hooks.dll'
+    hook.m_Script = dll.decode('utf8', errors='surrogateescape')
+    hook.save()
 
 def sha(data):
     return hashlib.sha256(data).hexdigest()
@@ -29,10 +71,19 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     manifest = []
     dll = DLL.read_bytes()
-    for platform, target in TARGETS.items():
+    patcher, bootstrap = build_bootstrap()
+    previous = json.loads((OUT / 'deployment.json').read_text(encoding='utf8')) if (OUT / 'deployment.json').exists() else []
+    for profile in json.loads(PROFILES.read_text(encoding='utf8')):
+        platform = profile['platformId']
+        if platform not in ('STEAM_CN', 'TAPTAP'):
+            continue
+        target = Path(profile['installRoot']) / profile['bundleRelativePath']
         folder = OUT / platform
         folder.mkdir(exist_ok=True)
         original = target.read_bytes()
+        known_installed = any(p['target'] == str(target) and p['candidateSha256'] == sha(original) for p in previous)
+        if sha(original).upper() != profile['containerSha256'].upper() and not known_installed:
+            raise RuntimeError(f'{platform}: cache differs from selected current baseline; update compatibility data first')
         backup = folder / ('__data.before.' + sha(original)[:12])
         if backup.exists() and sha(backup.read_bytes()) != sha(original):
             raise RuntimeError(f'{platform}: original changed since preparation')
@@ -40,33 +91,34 @@ def main():
             backup.write_bytes(original)
         env = UnityPy.load(original)
         before = assets(env)
-        hooks = [o for o in env.objects if o.path_id == 99992000 and o.type.name == 'TextAsset']
-        if len(hooks) != 1 or hooks[0].read().m_Name != 'APX.hooks.dll':
-            raise RuntimeError(f'{platform}: expected installed hooks asset missing')
-        hook = hooks[0].read()
-        hook.m_Script = dll.decode('utf8', errors='surrogateescape')
-        hook.save()
         runtime_objects = [o for o in env.objects if o.type.name == 'TextAsset' and o.read().m_Name == 'AstralParty.Runtime.dll']
         assert len(runtime_objects) == 1, 'Expected exactly one existing game runtime'
         runtime = runtime_objects[0].read()
         original_runtime = folder / 'AstralParty.Runtime.before.dll'
         patched_runtime = folder / 'AstralParty.Runtime.dll'
         original_runtime.write_bytes(runtime.m_Script.encode('utf8', errors='surrogateescape'))
+        subprocess.run(['pwsh', '-NoProfile', '-File', str(ROOT / 'tools/check_runtime_compatibility.ps1'),
+                        '-RuntimeDll', str(original_runtime)], check=True)
+        boot_runtime = folder / 'AstralParty.Runtime.bootstrap.dll'
+        subprocess.run([str(patcher), str(original_runtime), str(bootstrap), str(boot_runtime),
+                        sha(original_runtime.read_bytes())], check=True)
         subprocess.run(['pwsh', '-NoProfile', '-File', str(ROOT / 'tools/patch_thinking_time.ps1'),
-                        '-InputDll', str(original_runtime), '-OutputDll', str(patched_runtime)], check=True)
+                        '-InputDll', str(boot_runtime), '-OutputDll', str(patched_runtime)], check=True)
         runtime.m_Script = patched_runtime.read_bytes().decode('utf8', errors='surrogateescape')
         runtime.save()
+        put_hooks(env, dll)
         candidate = folder / '__data'
         candidate.write_bytes(env.file.save())
         after = assets(UnityPy.load(str(candidate)))
-        assert before.keys() == after.keys()
+        assert set(before) | {99992000} == set(after)
         assert after[99992000] == ('APX.hooks.dll', sha(dll))
         changed = {99992000, runtime_objects[0].path_id}
         assert all(after[key] == value for key, value in before.items() if key not in changed)
-        manifest.append({'platform': platform, 'target': str(target), 'candidate': str(candidate),
+        manifest.append({'platform': platform, 'resourceVersion': profile.get('resourceVersion'),
+                         'target': str(target), 'candidate': str(candidate),
                          'backup': str(backup), 'beforeSha256': sha(original),
                          'candidateSha256': sha(candidate.read_bytes())})
-        print(f'{platform}: prepared; {len(before)-2} other assemblies unchanged; hooks and three timer methods updated', flush=True)
+        print(f'{platform}: prepared; {len(before)-len(set(before) & changed)} other assemblies unchanged; bootstrap, hooks and three timer methods updated', flush=True)
     (OUT / 'deployment.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf8')
 
 if __name__ == '__main__':
