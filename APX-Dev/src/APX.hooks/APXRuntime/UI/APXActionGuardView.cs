@@ -298,8 +298,7 @@ namespace APXRuntime.UI
             apRt.anchoredPosition = new Vector2(-20f, 0f);
             apRt.sizeDelta = new Vector2(130f, 32f);
 
-            // 底部说明附注 (Track B 算法就绪)
-            Text socialDesc = APXUIFactory.CreateText(_root, "SocialDesc", "• 怪物索敌与路径预测算法已就绪 (Track B 纯算法就绪 · 零游戏AI修改 · 零网络开销)", 11, APXUITheme.MutedText, TextAnchor.MiddleLeft);
+            Text socialDesc = APXUIFactory.CreateText(_root, "SocialDesc", "• 怪物索敌已接入：在“击飞预测”页调整地图索敌显示（最大10格推演）。", 11, APXUITheme.MutedText, TextAnchor.MiddleLeft);
             RectTransform sdRt = socialDesc.rectTransform;
             sdRt.anchorMin = new Vector2(0f, 1f);
             sdRt.anchorMax = new Vector2(1f, 1f);
@@ -382,19 +381,19 @@ namespace APXRuntime.UI
                     if (!enabled)
                     {
                         _statusBadgeText.text = "已关闭";
-                        _statusBadgeText.color = APXUITheme.MutedText;
+                        _statusBadgeText.color = APXUITheme.BadgeMuted;
                         if (_statusBadgeBg != null) _statusBadgeBg.color = new Color(0.12f, 0.16f, 0.22f, 0.85f);
                     }
                     else if (!isBattle)
                     {
                         _statusBadgeText.text = "已就绪 · 等待对局";
-                        _statusBadgeText.color = APXUITheme.NumericAccent;
+                        _statusBadgeText.color = APXUITheme.Pink;
                         if (_statusBadgeBg != null) _statusBadgeBg.color = new Color(0.25f, 0.20f, 0.08f, 0.85f);
                     }
                     else
                     {
                         _statusBadgeText.text = hookRegistered ? "战局中保护生效" : "保护已启用 · 等待挂接";
-                        _statusBadgeText.color = APXUITheme.Positive;
+                        _statusBadgeText.color = APXUITheme.BadgeActive;
                         if (_statusBadgeBg != null) _statusBadgeBg.color = new Color(0.08f, 0.22f, 0.16f, 0.85f);
                     }
                 }

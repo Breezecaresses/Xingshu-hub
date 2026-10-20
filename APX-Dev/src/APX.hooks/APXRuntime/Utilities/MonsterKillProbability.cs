@@ -20,6 +20,12 @@ public sealed class MonsterKillProbability : MonoBehaviour
 		public string Original;
 
 		public string Applied;
+
+		public bool OriginalUbb;
+
+		public GTextField WorldStatus;
+
+		public GGraph WorldStatusBack;
 	}
 
 	private sealed class Prediction
@@ -33,6 +39,13 @@ public sealed class MonsterKillProbability : MonoBehaviour
 		public string Detail;
 
 		public float Probability;
+
+		public int SkillId;
+
+		public string SkillName;
+
+		// A negative value means the current cooldown has not been synchronized yet.
+		public int SkillCooldown = -1;
 	}
 
 	private const string ActionId = "apx.match.monster-kill";
@@ -431,7 +444,8 @@ public sealed class MonsterKillProbability : MonoBehaviour
 		long id = Instance._targetOrder[page];
 		if (Instance._predictions.TryGetValue(id, out var pred))
 		{
-			return $"[{page + 1}/{count}] {pred.Prefix}{pred.Name}\n{pred.Detail}";
+			string skill = pred.SkillId > 0 ? pred.SkillName + " · " + SkillCooldownText(pred) + "\n" : "";
+			return $"[{page + 1}/{count}] {pred.Prefix}{pred.Name}\n{skill}{pred.Detail}";
 		}
 		return $"[{page + 1}/{count}] 目标 ID: {id}";
 	}
@@ -603,17 +617,23 @@ public sealed class MonsterKillProbability : MonoBehaviour
 			}
 			if (!_predictions.TryGetValue(playerData.player.Id, out var value))
 			{
-				if (!flag)
+				if (flag)
 				{
-					continue;
+					value = Build(battlePlayerData, playerData, null);
+					_targetOrder.Add(value.Id);
 				}
-				value = Build(battlePlayerData, playerData, null);
+				else
+				{
+					// Cooldowns remain visible while another combat is in progress, even
+					// when a fresh pre-combat probability cannot be calculated.
+					value = new Prediction { Id = playerData.player.Id, Name = CombatName(playerData), Prefix = "" };
+					ReadSkillStatus(playerData, value);
+				}
 				_predictions[value.Id] = value;
-				_targetOrder.Add(value.Id);
 			}
 			if (playerData.CharacterInst != null && playerData.CharacterInst.window != null)
 			{
-				Decorate((playerData.CharacterInst.window.Com_AttrInfo == null) ? null : playerData.CharacterInst.window.Com_AttrInfo.txt_Name, value);
+				Decorate((playerData.CharacterInst.window.Com_AttrInfo == null) ? null : playerData.CharacterInst.window.Com_AttrInfo.txt_Name, value, world: true);
 			}
 		}
 		if (Time.unscaledTime >= _nextScan)
@@ -729,7 +749,7 @@ public sealed class MonsterKillProbability : MonoBehaviour
 
 	private static string ProbabilityPrefix(bool playerDefender, KillProbabilityMath.Result probability)
 	{
-		if (probability == null || !(probability.Expected > 0.0))
+		if (probability == null)
 		{
 			return "";
 		}
@@ -948,7 +968,7 @@ public sealed class MonsterKillProbability : MonoBehaviour
 		}
 		stringBuilder.AppendLine();
 		stringBuilder.Append("普通独立公平D6。支持上述PVE筹码与标记修正；未计护盾/免伤/复活及其他追加伤害、连击。回合预测只模拟一次治愈回血，其他属性/星币/目标标记假设不变，不预支奖励或再次减半；不是最终胜率保证。");
-		return new Prediction
+		Prediction prediction = new Prediction
 		{
 			Id = defender.player.Id,
 			Name = text4,
@@ -956,6 +976,43 @@ public sealed class MonsterKillProbability : MonoBehaviour
 			Detail = stringBuilder.ToString(),
 			Probability = (float)result2.Expected
 		};
+		ReadSkillStatus(defender, prediction);
+		return prediction;
+	}
+
+	private static void ReadSkillStatus(BattlePlayerData target, Prediction prediction)
+	{
+		if (target?.player == null || target.characterType != CharacterType.Monster) return;
+		int id = target.player.GetBattleActiveSkillId();
+		if (id <= 0) return; // Passive-only monsters do not have an active cooldown.
+		prediction.SkillId = id;
+		prediction.SkillName = "主动技能";
+		if (StaticConfigure.Skill.InfoDict.TryGetValue(id, out var config))
+		{
+			string name = config.NameID.GetLocal(UIStringType.Skill);
+			if (!string.IsNullOrEmpty(name)) prediction.SkillName = name;
+		}
+		// Use the same reactive property as the game's skill panel. The runtime
+		// initializes it from Hero.SkillCds and refreshes it on server messages.
+		if (target.CharacterInst?.skill?.skillConfig?.Id == id && target.Property?.activeSkillCD != null)
+			prediction.SkillCooldown = target.Property.activeSkillCD.Value;
+		else if (target.player.Hero != null && target.player.Hero.SkillCds.TryGetValue(id, out int cd))
+			prediction.SkillCooldown = cd;
+	}
+
+	private static string SkillCooldownText(Prediction p)
+	{
+		return p.SkillCooldown < 0 ? "冷却待同步" : p.SkillCooldown == 0 ? "冷却就绪" : $"冷却 {p.SkillCooldown} 回合";
+	}
+
+	private string StatusMarkup(Prediction p, bool includeCooldown = true)
+	{
+		string probability = string.IsNullOrEmpty(p.Prefix) ? "" :
+			$"[color={GetEffectiveProbabilityColorHex(p.Probability)}]{p.Prefix.Trim().Trim('[', ']')}[/color]";
+		if (!includeCooldown || p.SkillId <= 0) return probability;
+		string color = p.SkillCooldown < 0 ? "#BEC7D5" : p.SkillCooldown == 0 ? "#67E480" : "#73DAFF";
+		return probability + (probability.Length > 0 ? "  [color=#D1D5DF]·[/color]  " : "") +
+			$"[color={color}]{SkillCooldownText(p)}[/color]";
 	}
 
 	private static bool IsPveAttack(BattlePlayerData attacker, BattlePlayerData defender)
@@ -987,13 +1044,13 @@ public sealed class MonsterKillProbability : MonoBehaviour
 		return true;
 	}
 
-	private void Decorate(GTextField label, Prediction p)
+	private void Decorate(GTextField label, Prediction p, bool world = false)
 	{
 		if (label == null || label.isDisposed)
 		{
 			return;
 		}
-		if (string.IsNullOrEmpty(p.Prefix))
+		if (string.IsNullOrEmpty(p.Prefix) && p.SkillId <= 0)
 		{
 			if (_names.TryGetValue(label, out var value))
 			{
@@ -1007,15 +1064,62 @@ public sealed class MonsterKillProbability : MonoBehaviour
 		{
 			value2 = new NameState
 			{
-				Original = label.text
+				Original = label.text,
+				OriginalUbb = label.UBBEnabled
 			};
 			_names[label] = value2;
 		}
-		else if (label.text != value2.Applied)
+		else if (!world && label.text != value2.Applied)
 		{
 			value2.Original = label.text;
 		}
-		value2.Applied = p.Prefix + value2.Original;
+		if (world)
+		{
+			// Keep the native name, number, HP and guide line untouched. The extra
+			// row inherits the existing annotation's camera scale automatically.
+			if (label.parent == null) return;
+			GTextField status = value2.WorldStatus;
+			if (status == null || status.isDisposed || status.parent != label.parent)
+			{
+				if (status != null && !status.isDisposed) status.Dispose();
+				if (value2.WorldStatusBack != null && !value2.WorldStatusBack.isDisposed) value2.WorldStatusBack.Dispose();
+				value2.WorldStatusBack = new GGraph { name = "APX_MonsterStatusBack", touchable = false };
+				label.parent.AddChild(value2.WorldStatusBack);
+				status = Label(label.parent, 20, Color.white);
+				status.name = "APX_MonsterStatus";
+				status.autoSize = AutoSizeType.Both;
+				status.singleLine = true;
+				status.UBBEnabled = true;
+				// Native name fonts can be TMP/SDF fonts: their outline is normalized,
+				// unlike a DynamicFont's pixel outline. A 1.5 outline covers the face.
+				// Use an unoutlined face on a separate dark plate for both font types.
+				status.stroke = 0f;
+				value2.WorldStatus = status;
+			}
+			TextFormat format = status.textFormat;
+			int size = Mathf.Clamp(Mathf.RoundToInt(label.textFormat.size * 0.95f), 22, 32);
+			if (format.size != size || format.font != label.textFormat.font)
+			{
+				format.size = size;
+				format.font = label.textFormat.font;
+				status.textFormat = format;
+			}
+			status.text = StatusMarkup(p);
+			GGraph back = value2.WorldStatusBack;
+			float width = status.width + 12f;
+			float height = status.height + 6f;
+			if (!Mathf.Approximately(back.width, width) || !Mathf.Approximately(back.height, height))
+				back.DrawRoundRect(width, height, new Color(0.055f, 0.065f, 0.09f, 0.84f), new float[] { 6f, 6f, 6f, 6f });
+			back.SetXY(label.x - 2f, label.y - height - 4f);
+			status.SetXY(back.x + 6f, back.y + 3f);
+			status.visible = label.visible;
+			status.alpha = label.alpha;
+			back.visible = label.visible;
+			back.alpha = label.alpha;
+			return;
+		}
+		value2.Applied = StatusMarkup(p, false) + "  " + value2.Original;
+		label.UBBEnabled = true;
 		if (label.text != value2.Applied)
 		{
 			label.text = value2.Applied;
@@ -1024,10 +1128,17 @@ public sealed class MonsterKillProbability : MonoBehaviour
 
 	private static void Restore(GTextField label, NameState state)
 	{
+		if (state.WorldStatus != null)
+		{
+			if (!state.WorldStatus.isDisposed) state.WorldStatus.Dispose();
+			if (state.WorldStatusBack != null && !state.WorldStatusBack.isDisposed) state.WorldStatusBack.Dispose();
+			return;
+		}
 		if (!label.isDisposed && label.text == state.Applied)
 		{
 			label.text = state.Original;
 		}
+		if (!label.isDisposed) label.UBBEnabled = state.OriginalUbb;
 	}
 
 	private void RestoreNames()
@@ -1059,7 +1170,7 @@ public sealed class MonsterKillProbability : MonoBehaviour
 			RemoveFightLabel();
 			_fightLabel = Label(uIFight_PlayerInfo, _fightFontSize, Color.white);
 			_fightLabel.name = "APX_MonsterKill_Name";
-			_fightLabel.singleLine = false;
+			_fightLabel.singleLine = true;
 			_fightLabel.align = AlignType.Center;
 			_fightLabel.UBBEnabled = true;
 			_fightLabel.stroke = 1.5f;
@@ -1079,14 +1190,13 @@ public sealed class MonsterKillProbability : MonoBehaviour
 				_fightLabel.textFormat = textFormat;
 			}
 			float num = (float)_fightFontSize / 18f;
-			_fightLabel.SetSize(520f * num, 52f * num);
+			_fightLabel.SetSize(520f * num, 44f * num);
 			_fightLabel.SetXY(_fightX - (520f * num - 520f) / 2f, _fightY);
-			if (_currentFightPrediction != null && !string.IsNullOrEmpty(_currentFightPrediction.Prefix))
+			if (_currentFightPrediction != null)
 			{
 				int fontSize = _fightFontSize;
-				string probColorHex = GetEffectiveProbabilityColorHex(_currentFightPrediction.Probability);
 				string targetColorHex = _targetColorHex;
-				_fightLabel.text = $"[size={fontSize}][b][color={probColorHex}]{_currentFightPrediction.Prefix.TrimEnd()}[/color][/b][/size] [size={fontSize}][b][color={targetColorHex}]{_currentFightPrediction.Name}[/color][/b][/size]";
+				_fightLabel.text = $"[size={fontSize}]{StatusMarkup(_currentFightPrediction, false)}  [b][color={targetColorHex}]{_currentFightPrediction.Name}[/color][/b][/size]";
 			}
 		}
 	}

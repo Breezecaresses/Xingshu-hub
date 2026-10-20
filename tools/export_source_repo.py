@@ -15,10 +15,14 @@ FOLDERS = [
 FILES = [
     'CARD_ASSET_INVENTORY_V2.csv', 'card_metadata_official.json',
     'card_names_zh_cn_official.json', 'runtime_card_registry.generated.json',
-    'HAND_TRUTH_SOURCE_ARCHITECTURE.md', 'OVERLAY_LIFECYCLE_RECONCILIATION.md',
+    'HAND_TRUTH_SOURCE_ARCHITECTURE.md', 'OVERLAY_LIFECYCLE_RECONCILIATION.md', 'GAME_UI_R1.md', 'GAME_UI_R2.md', 'GAME_UI_R3.md', 'GAME_UI_R4.md', 'MONSTER_TARGETING.md',
     'AUTO_FOLLOW_PROTOCOL.md', 'AUTO_FOLLOW_STATE_MACHINE.md',
     'APX-Dev/tools/build.ps1', 'APX-Dev/tools/generate_platform_profiles_cs.py',
+    'APX-Dev/tools/TestMonsterTargetRunner.cs', 'APX-Dev/tools/TestMonsterTargetContextRunner.cs',
+    'APX-Dev/tools/test_monster_targeting.ps1',
+    'APX-Dev/tools/test_decision_stats.ps1', 'APX-Dev/tools/test_native_ipc_harness.py',
     'APX-Dev/tools/generate_canonical_card_registries.py',
+    'APX-Dev/tools/build_game_ui_skin.py', 'APX-Dev/tools/generate_ui_payloads.py',
     'AstralParty-Hub/package.json', 'AstralParty-Hub/package-lock.json',
     'AstralParty-Hub/index.html', 'AstralParty-Hub/vite.config.ts',
     'AstralParty-Hub/tsconfig.json', 'AstralParty-Hub/tsconfig.node.json',
@@ -29,13 +33,14 @@ FILES = [
     'AstralParty-Hub/docs/specs/package_manifest_v1_schema.json',
     'tools/export_game_catalog.py',
     'tools/patch_thinking_time.ps1', 'tools/verify_thinking_time.ps1',
+    'tools/patch_thinking_clock.cs', 'tools/install_game_ui_r2.ps1', 'tools/install_game_ui_candidate.ps1',
     'tools/prepare_runtime_truth_fix.py', 'tools/install_runtime_truth_fix.ps1',
     'tools/patch_taptap_runtime.cs',
     'tools/check_runtime_compatibility.ps1',
     'tools/prepare_android_runtime.py', 'tools/android_runtime_device.py',
     'tools/check_android_runtime.ps1', 'ANDROID_COMPATIBILITY.md',
     'tools/install_hub_watch_join_fix.ps1', 'tools/export_source_repo.py',
-    'tools/GroupTestInstaller.cs', 'tools/package_group_test.py',
+    'tools/GroupTestInstaller.cs', 'tools/package_group_test.py', 'tools/publish_release.py', 'GROUP_DISTRIBUTION_20261021_2.md',
 ]
 SKIP_DIRS = {'.git', 'bin', 'obj', 'target', 'node_modules', '__pycache__', 'dist', 'release'}
 SKIP_SUFFIXES = {'.dll', '.exe', '.pdb', '.bundle', '.7z', '.zip', '.rar', '.log', '.pyc', '.tsbuildinfo'}

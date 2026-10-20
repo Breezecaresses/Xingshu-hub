@@ -45,8 +45,9 @@ namespace APXRuntime.UI
             GameObject go = CreateUIObject(name, parent);
             Text txt = go.AddComponent<Text>();
             txt.text = content;
-            txt.font = APXUITheme.GetMainFont();
+            txt.font = APXUITheme.GetFontForText(content);
             txt.fontSize = fontSize;
+            txt.raycastTarget = false;
             txt.color = color;
             txt.alignment = alignment;
             txt.fontStyle = style;
@@ -96,7 +97,8 @@ namespace APXRuntime.UI
 
             if (!string.IsNullOrEmpty(label))
             {
-                Text txt = CreateText(go, "Text", label, fontSize, textColor, TextAnchor.MiddleCenter, FontStyle.Bold, HorizontalWrapMode.Overflow, VerticalWrapMode.Truncate);
+                Color labelColor = bgSprite != null && bgSprite.name.Contains("button_primary") ? Color.white : textColor;
+                Text txt = CreateText(go, "Text", label, fontSize, labelColor, TextAnchor.MiddleCenter, FontStyle.Bold, HorizontalWrapMode.Overflow, VerticalWrapMode.Truncate);
                 RectTransform txtRt = txt.rectTransform;
                 txtRt.anchorMin = Vector2.zero;
                 txtRt.anchorMax = Vector2.one;
@@ -113,7 +115,7 @@ namespace APXRuntime.UI
             RectTransform sliderRt = sliderRoot.GetComponent<RectTransform>();
             sliderRt.sizeDelta = new Vector2(240f, 28f);
 
-            // 1. Background Track (Capsule 6px high, round cap endpoints)
+            // White capsule and official pink bar, with a four-point star handle.
             Sprite trackSprite = APXUIAssetService.GetSprite("slider_track.png");
             GameObject bgGo = CreateUIObject("Background", sliderRoot);
             Image bgImg = bgGo.AddComponent<Image>();
@@ -125,17 +127,17 @@ namespace APXRuntime.UI
             bgRt.anchorMax = new Vector2(1f, 0.5f);
             bgRt.pivot = new Vector2(0.5f, 0.5f);
             bgRt.anchoredPosition = Vector2.zero;
-            bgRt.sizeDelta = new Vector2(0f, 6f);
+            bgRt.sizeDelta = new Vector2(-20f, 18f);
 
-            // 2. Fill Area (6px high, horizontal range matching Handle Area)
+            // The fill and star share their horizontal range, including both endpoints.
             GameObject fillArea = CreateUIObject("Fill Area", sliderRoot);
             RectTransform fillAreaRt = fillArea.GetComponent<RectTransform>();
             fillAreaRt.anchorMin = new Vector2(0f, 0.5f);
             fillAreaRt.anchorMax = new Vector2(1f, 0.5f);
             fillAreaRt.pivot = new Vector2(0.5f, 0.5f);
             fillAreaRt.anchoredPosition = Vector2.zero;
-            fillAreaRt.offsetMin = new Vector2(14f, -3f);
-            fillAreaRt.offsetMax = new Vector2(-14f, 3f);
+            fillAreaRt.offsetMin = new Vector2(20f, -7f);
+            fillAreaRt.offsetMax = new Vector2(-20f, 7f);
 
             Sprite fillSprite = APXUIAssetService.GetSprite("slider_fill.png");
             GameObject fillGo = CreateUIObject("Fill", fillArea);
@@ -146,15 +148,15 @@ namespace APXRuntime.UI
             RectTransform fillRt = fillGo.GetComponent<RectTransform>();
             fillRt.sizeDelta = Vector2.zero;
 
-            // 3. Handle Slide Area (28px high, horizontal range strictly matching Fill Area)
+            // Keep a 40px pointer target even in rows whose preferred height is 28px.
             GameObject handleArea = CreateUIObject("Handle Slide Area", sliderRoot);
             RectTransform handleAreaRt = handleArea.GetComponent<RectTransform>();
             handleAreaRt.anchorMin = new Vector2(0f, 0.5f);
             handleAreaRt.anchorMax = new Vector2(1f, 0.5f);
             handleAreaRt.pivot = new Vector2(0.5f, 0.5f);
             handleAreaRt.anchoredPosition = Vector2.zero;
-            handleAreaRt.offsetMin = new Vector2(14f, -14f);
-            handleAreaRt.offsetMax = new Vector2(-14f, 14f);
+            handleAreaRt.offsetMin = new Vector2(20f, -20f);
+            handleAreaRt.offsetMax = new Vector2(-20f, 20f);
 
             Sprite handleSprite = APXUIAssetService.GetSprite("slider_handle.png");
             GameObject handleGo = CreateUIObject("Handle", handleArea);
@@ -164,7 +166,7 @@ namespace APXRuntime.UI
             handleImg.preserveAspect = true;
             handleImg.color = Color.white;
             RectTransform handleRt = handleGo.GetComponent<RectTransform>();
-            handleRt.sizeDelta = new Vector2(28f, 0f); // Width 28px, height inherits 28px from handleArea (28px + 0px = 28px)
+            handleRt.sizeDelta = new Vector2(40f, 0f);
 
             // 4. Slider Component
             Slider slider = sliderRoot.AddComponent<Slider>();

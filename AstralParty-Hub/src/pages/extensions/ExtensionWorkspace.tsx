@@ -90,8 +90,8 @@ export function ExtensionManager({ view }: { view: 'packages' | 'plugins' | 'mod
     <ExtensionTargetPicker target={target} disabled={actionBusy} />
     {target.selected && <>
       <div className="extension-summary"><div><strong>{entries.filter(e => e.category === 'apx-plugin').length}</strong><span>检测到的运行时与插件</span></div><div><strong>{entries.filter(e => e.category !== 'apx-plugin').length}</strong><span>本地模组与资源</span></div><div><strong>{entries.filter(e => e.managed).length}</strong><span>可由 Hub 管理的扩展</span></div></div>
-      {view !== 'mods' && <section className="panel extension-runtime"><Puzzle size={25} /><div><h2>星枢运行时安装 / 更新</h2><p>{runtimeSupported ? '本版为此渠道提供已校验的运行时文件。打开群测助手后，所选渠道与目录会自动带入，安装和还原均保留备份。' : '此渠道已纳入目录管理；本版尚未提供经过验证的运行时安装文件。可导入明确声明支持此渠道的独立扩展。'}</p></div>{runtimeSupported && <button className="btn btn-primary" disabled={actionBusy || !inventory?.installerAvailable} onClick={() => void openInstaller()}>打开群测助手</button>}</section>}
-      {view !== 'mods' && runtimeSupported && inventory && !inventory.installerAvailable && <p className="extension-hint">请完整解压群测 ZIP，并从其中的 Hub 文件夹启动，以使用配套安装助手。</p>}
+      {view !== 'mods' && <section className="panel extension-runtime"><Puzzle size={25} /><div><h2>星枢运行时安装 / 更新</h2><p>{runtimeSupported ? '本版为此渠道提供已校验的运行时文件。打开安装助手后，所选渠道与目录会自动带入，安装和还原均保留备份。' : '此渠道已纳入目录管理；本版尚未提供经过验证的运行时安装文件。可导入明确声明支持此渠道的独立扩展。'}</p></div>{runtimeSupported && <button className="btn btn-primary" disabled={actionBusy || !inventory?.installerAvailable} onClick={() => void openInstaller()}>打开安装助手</button>}</section>}
+      {view !== 'mods' && runtimeSupported && inventory && !inventory.installerAvailable && <p className="extension-hint">请完整解压发布 ZIP，并从其中的 Hub 文件夹启动，以使用配套安装助手。</p>}
       <div className="extension-directories"><span>插件 <code>{inventory?.pluginDirectory || '读取中…'}</code></span><span>模组 <code>{inventory?.modDirectory || '读取中…'}</code></span><span>资源 <code>{inventory?.resourceDirectory || '读取中…'}</code></span></div>
     </>}
     {(error || inventory?.warnings.length) && <div className="extension-hint" role="status">{error || inventory?.warnings.join(' ')}</div>}

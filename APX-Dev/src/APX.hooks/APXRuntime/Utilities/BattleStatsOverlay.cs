@@ -40,6 +40,8 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 	private bool _diagnostics;
 
 	private bool _hpAttached;
+	private bool _settled;
+	private readonly Queue<object> _goldSeen = new Queue<object>();
 
 	private float _nextBind;
 
@@ -92,7 +94,7 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 			}
 			if (!Context(out RoomInfo room, out BattleLogic battle, out string key))
 			{
-				return false;
+				return Instance._settled && Instance._ledger.Key != null;
 			}
 			if (Instance._ledger == null || Instance._ledger.Key == null || Instance._ledger.Key != key || Instance._battle != battle)
 			{
@@ -349,6 +351,7 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 		{
 			if (!Context(out var room, out var battle, out var key))
 			{
+				if (_settled) return;
 				if (_ledger.Key != null)
 				{
 					ResetObservation();
@@ -369,6 +372,7 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 					_ledger.Issue("同局采集对象更换：已重新开始观察，不拼接缺口");
 				}
 			}
+			if (_settled) return;
 			MovementBridge.Pump();
 			if (Time.unscaledTime >= _nextBind)
 			{
@@ -389,6 +393,7 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 				{
 					value.HpReady |= _hpAttached;
 					value.TransferReady |= flag;
+					value.MetricsReady = _hpAttached && flag;
 				}
 			}
 			if (MovementBridge.Available)
@@ -454,7 +459,12 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 			{
 				text = CharacterHandle.GetCharacterName(player.characterConfig.Id, player.characterConfig.CharacterType);
 			}
-			_ledger.Register(player.Id, player.Slot, text);
+			_ledger.Register(player.Id, player.Slot, player.GetNick());
+			var ledgerRow = _ledger.Rows[player.Id];
+			ledgerRow.Character = text;
+			ledgerRow.Turns = Math.Max(0, player.Hero?.Round ?? 0);
+			ledgerRow.Gold = Math.Max(0, player.Hero?.Gold ?? 0);
+			try { ledgerRow.HeadUrl = _battle.GetPlayerDataById(player.Id)?.GetCharacterHeadUrl(); } catch { }
 			_live.Add(player.Id);
 		}
 		if (_live.Count != 4)
@@ -487,7 +497,7 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 			{
 				try
 				{
-					if (message != null && SameContext(battle, key, generation) && _live.Contains(message.Killer))
+					if (message != null && SameContext(battle, key, generation))
 					{
 						int? currentHp = null;
 						foreach (BattlePlayerData playerData in battle.PlayerDatas)
@@ -535,6 +545,8 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 
 	private void ResetObservation()
 	{
+		_settled = false;
+		_goldSeen.Clear();
 		_generation++;
 		DetachHp();
 		MovementBridge.Reset();
@@ -543,6 +555,51 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 		_ledger.Clear(null);
 		_live.Clear();
 		_nextBind = 0f;
+	}
+
+	// Invoked at the verified game protocol handlers; never sends or changes a message.
+	public static void ObserveGold(HeroGoldChangeS2C message)
+	{
+		try
+		{
+			var instance = Instance;
+			if (message == null || instance == null || !instance._enabled || instance._settled || !HasActiveBattleContext) return;
+			// Protobuf messages compare their values; two equal gold awards are still two events.
+			foreach (var seen in instance._goldSeen) if (ReferenceEquals(seen, message)) return;
+			instance._goldSeen.Enqueue(message);
+			if (instance._goldSeen.Count > 128) instance._goldSeen.Dequeue();
+			MatchLedger.Row row;
+			if (instance._ledger.Rows.TryGetValue(message.PlayerId, out row) && message.ChangeGold > 0) row.Coins += message.ChangeGold;
+		}
+		catch (Exception ex) { Debug.LogWarning("[APX Stats] Gold: " + ex.GetType().Name); }
+	}
+
+	public static void ObserveSettlement(GameFinishS2C message)
+	{
+		try
+		{
+			var instance = Instance;
+			if (message == null || instance == null || !instance._enabled || instance._settled || !HasActiveBattleContext ||
+				SimpleSingletonProvider<GameLogicManager>.inst.replay?.Session?.IsReplay == true) return;
+			var room = SimpleSingletonProvider<GameLogicManager>.inst.room.curRoomInfo;
+			if (room == null || room.Id != message.RoomId) return;
+			instance.ReadRoster(room);
+			foreach (var row in instance._ledger.Rows.Values)
+			{
+				PlayerFinishAchieve achieve;
+				if (!message.NewAchieve.TryGetValue(row.Id, out achieve)) { row.MetricsReady = false; continue; }
+				row.Kills = achieve.KillCount; row.Deaths = achieve.TotalDie;
+				row.Damage = achieve.TotalDamage; row.Taken = achieve.TotalInjured;
+				row.Healing = achieve.TreatmentScore; row.Coins = achieve.TotalGold;
+				row.Transferred = achieve.PveTransferGold;
+				row.KillsKnown = row.DamageKnown = row.HealingKnown = row.TransferKnown = true;
+				row.MetricsReady = row.Settled = true;
+			}
+			instance._settled = true;
+			instance._state = "服务器结算 · 星枢评分 v2";
+			instance._nextWidgetRefresh = 0;
+		}
+		catch (Exception ex) { Debug.LogWarning("[APX Stats] Settlement: " + ex.GetType().Name); }
 	}
 
 	private void SetObserving(bool value)

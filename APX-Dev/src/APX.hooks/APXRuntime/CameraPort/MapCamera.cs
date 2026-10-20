@@ -14,6 +14,8 @@ internal sealed class MapCamera
 
 	private Behaviour _brain;
 
+	private CinemachineBrain.BrainEvent _cameraUpdatedEvent;
+
 	private Behaviour _freeObject;
 
 	private bool _brainWasEnabled;
@@ -35,6 +37,8 @@ internal sealed class MapCamera
 	private float _originalFar;
 
 	private float _zoom;
+
+	private float _referenceZoom;
 
 	private float _boardHeight;
 
@@ -76,6 +80,10 @@ internal sealed class MapCamera
 
 	internal float Zoom => _zoom;
 
+	// World labels should shrink with the board when zooming out, never grow past native size.
+	internal float AnnotationScale => !Enabled || (_control.Yielded && _control.Mode != CameraControlMode.Selection) || _referenceZoom <= 0f
+		? 1f : Mathf.Clamp(_referenceZoom / Mathf.Max(_zoom, 0.01f), 0.35f, 1f);
+
 	internal string OwnerDescription
 	{
 		get
@@ -86,7 +94,7 @@ internal sealed class MapCamera
 				{
 					return "自由镜头";
 				}
-				return "保留视角 · 操作输入暂停：" + _control.Mode;
+				return "原版镜头接管：" + _control.Mode;
 			}
 			return "保留视角 · 输入暂停";
 		}
@@ -293,11 +301,16 @@ internal sealed class MapCamera
 		a = Mathf.Max(a, 5f);
 		_focus = _originalPosition + vector * a;
 		_zoom = PortMath.ClampZoom(mainCamera.orthographic ? mainCamera.orthographicSize : a);
+		_referenceZoom = _zoom;
 		_mapBounds = mapBounds;
 		_control.Reset();
 		Enabled = true;
 		try
 		{
+			// Cinemachine can run after this component's LateUpdate and overwrite
+			// the selected distance. Correct selection zoom after each native push.
+			_cameraUpdatedEvent = CinemachineCore.CameraUpdatedEvent;
+			_cameraUpdatedEvent.AddListener(OnNativeCameraUpdated);
 			_freeObject.enabled = _freeWasEnabled;
 			_brain.enabled = false;
 		}
@@ -459,6 +472,23 @@ internal sealed class MapCamera
 	{
 		if (Enabled && CanControl() && !(_camera == null) && (bool)_camera)
 		{
+			// Selection windows keep the game's own panning and target picking. Merely
+			// pausing our input while writing this pose would freeze their camera.
+			if (_control.Yielded)
+			{
+				if (_brain != null && (bool)_brain) _brain.enabled = _brainWasEnabled;
+				if (_control.Mode == CameraControlMode.Selection)
+				{
+					// Keep native panning/target picking, but do not inherit its default zoom.
+					// Projecting onto the board makes this correction safe to apply both
+					// before FairyGUI projection and after Cinemachine in the same frame.
+					if (ReadNativeFocus())
+					{
+						ApplyPose();
+					}
+				}
+				return;
+			}
 			if (_brain != null && (bool)_brain)
 			{
 				_brain.enabled = false;
@@ -467,15 +497,50 @@ internal sealed class MapCamera
 			{
 				_freeObject.enabled = _freeWasEnabled;
 			}
-			_camera.fieldOfView = _originalFov;
-			float num = (_camera.orthographic ? 300f : _zoom);
-			_camera.transform.SetPositionAndRotation(_focus - _rotation * Vector3.forward * num, _rotation);
-			if (_camera.orthographic)
-			{
-				_camera.orthographicSize = _zoom;
-			}
-			_camera.farClipPlane = Math.Max(_originalFar, num + 1000f);
+			ApplyPose();
 		}
+	}
+
+	private void OnNativeCameraUpdated(CinemachineBrain brain)
+	{
+		if (!Enabled || brain != _brain) return;
+		try
+		{
+			// The native camera still chooses the target and processes map panning.
+			// Only its final distance is replaced; combat/system cameras stay native.
+			if (!CanControl()) return;
+			if (!_control.Yielded || (_control.Mode == CameraControlMode.Selection && ReadNativeFocus()))
+				ApplyPose();
+		}
+		catch (Exception ex)
+		{
+			APXRuntime.UI.APXUIAssetService.LogUIRuntime("[CAMERA_OWNER] Native update failed: " + ex.GetType().Name);
+			Restore();
+		}
+	}
+
+	private void ApplyPose()
+	{
+		_camera.fieldOfView = _originalFov;
+		float distance = _camera.orthographic ? 300f : _zoom;
+		_camera.transform.SetPositionAndRotation(_focus - _rotation * Vector3.forward * distance, _rotation);
+		if (_camera.orthographic) _camera.orthographicSize = _zoom;
+		_camera.farClipPlane = Math.Max(_originalFar, distance + 1000f);
+	}
+
+	private bool ReadNativeFocus()
+	{
+		Quaternion rotation = _camera.transform.rotation;
+		Vector3 forward = rotation * Vector3.forward;
+		if (Mathf.Abs(forward.y) <= 0.05f) return false;
+		Vector3 position = _camera.transform.position;
+		float distance = (_boardHeight - position.y) / forward.y;
+		if (!PortMath.Finite(distance) || distance <= 0f) return false;
+		Vector3 focus = position + forward * distance;
+		if (!PortMath.Finite(focus.x) || !PortMath.Finite(focus.z)) return false;
+		_rotation = rotation;
+		_focus = focus;
+		return true;
 	}
 
 	private bool CanControl()
@@ -502,11 +567,29 @@ internal sealed class MapCamera
 		{
 			cameraControlMode = CameraControlMode.System;
 		}
-		if (_control.Update(cameraControlMode) != 0)
+		CameraControlMode previousMode = _control.Mode;
+		CameraControlChange change = _control.Update(cameraControlMode);
+		if (change == CameraControlChange.None && previousMode != cameraControlMode)
+			APXRuntime.UI.APXUIAssetService.LogUIRuntime("[CAMERA_OWNER] Mode=" + cameraControlMode + "; SavedZoom=" + _zoom.ToString("0.00"));
+		if (change != CameraControlChange.None)
 		{
+			APXRuntime.UI.APXUIAssetService.LogUIRuntime("[CAMERA_OWNER] " + change + "; Mode=" + cameraControlMode + "; SavedZoom=" + _zoom.ToString("0.00"));
 			CancelDrag();
 			_pointerBlocked = null;
 			_awaitFreshInput = true;
+			if (change == CameraControlChange.Yield)
+			{
+				RestoreLens();
+				_brain.enabled = _brainWasEnabled;
+			}
+			else
+			{
+				// Follow the native camera's final target while keeping the user's zoom.
+				// Adopting its default distance here would permanently zoom in after
+				// every target selection, combat animation or system-camera handoff.
+				ReadNativeFocus();
+				_brain.enabled = false;
+			}
 		}
 		return true;
 	}
@@ -523,6 +606,11 @@ internal sealed class MapCamera
 
 	internal void Restore()
 	{
+		if (_cameraUpdatedEvent != null)
+		{
+			_cameraUpdatedEvent.RemoveListener(OnNativeCameraUpdated);
+			_cameraUpdatedEvent = null;
+		}
 		CancelDrag();
 		_pointerBlocked = null;
 		try

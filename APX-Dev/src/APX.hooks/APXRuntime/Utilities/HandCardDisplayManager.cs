@@ -347,6 +347,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 
 	public static void ReconcileOverlayWidgets()
 	{
+		if (UseModernView) { OverlayRenderDirty = false; return; }
 		if (!_isEnabled) return;
 		bool inSpectator = XingShu.Spectator.SpectatorStateStore.IsInSpectatorSession();
 		if (!inSpectator && !IsPVEMode() && MockHeadButtonResolver == null) return;
@@ -669,7 +670,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 		}
 		try
 		{
-			AssistBall.RegisterAction("hand_card_display", "局内手牌监视与设置", ToggleWindow, 25, "服务端实时同步真实手牌，支持卡牌缩放、防抖探测与总开关切换", "\ud83c\udfb4", () => IsEnabled && (XingShu.Spectator.SpectatorStateStore.IsInSpectatorSession() || IsPVEMode()));
+			AssistBall.RegisterAction("hand_card_display", "手牌详情挂件", HandCardDock.Toggle, 25, "打开/收起贴边手牌详情；玩家切换、滚动查看，拖动标题可移动", "牌", () => HandCardDock.IsOpen);
 		}
 		catch (Exception ex)
 		{
@@ -792,9 +793,10 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 					RefreshAllWidgets();
 					Log("SPECTATOR_EPOCH_OR_ROOM_RESET", $"观战房间或 Epoch 变迁 (Room={currentRoomId}, Epoch={currentEpoch})，清空旧手牌缓存");
 
-					if (SpectatorAutoOpen && !_isEnabled && currentRoomId > 0)
+					if (SpectatorAutoOpen && currentRoomId > 0)
 					{
 						IsEnabled = true;
+						HandCardDock.SetOpen(true);
 						Log("SPECTATOR_AUTO_ENABLE_POLL", "观战状态变迁检测: 自动启用实时手牌悬浮窗");
 					}
 				}
@@ -2062,6 +2064,11 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 
 	private static void AttachOrUpdateWidget(UIBattleInfo_Button_PlayerInfo headBtn, TrackedPlayerHand hand)
 	{
+		if (UseModernView)
+		{
+			CleanWidgetFromHeadButton(headBtn);
+			return;
+		}
 		if (headBtn == null || headBtn.isDisposed)
 		{
 			return;
@@ -2713,7 +2720,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 		}
 	}
 
-	private static List<string> GetCardImageCandidates(CardInfoConfigure config, TrackedPlayerHand hand, bool isSelf, out bool isAltArt, out string altArtTitle)
+	internal static List<string> GetCardImageCandidates(CardInfoConfigure config, TrackedPlayerHand hand, bool isSelf, out bool isAltArt, out string altArtTitle)
 	{
 		isAltArt = false;
 		altArtTitle = "";

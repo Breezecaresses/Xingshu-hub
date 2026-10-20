@@ -11,10 +11,16 @@
 <p align="center">
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" />
   <img src="https://img.shields.io/badge/Hub-Tauri%202%20%7C%20Rust-orange.svg" alt="Tauri Rust" />
-  <img src="https://img.shields.io/badge/Frontend-React%2018%20%7C%20TypeScript-blue.svg" alt="React TS" />
+  <img src="https://img.shields.io/badge/Frontend-React%2019%20%7C%20TypeScript-blue.svg" alt="React TS" />
   <img src="https://img.shields.io/badge/Runtime-C%23%20%7C%20.NET-purple.svg" alt="C# .NET" />
   <img src="https://img.shields.io/badge/Platform-Windows-lightgrey.svg" alt="Windows" />
 </p>
+
+---
+
+## 群发测试包
+
+当前[群发测试包](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261021.2)标记为预发布，不作为正式稳定版。完整解压 ZIP 后运行“星枢安装助手.exe”，支持 Steam 国服、TapTap 3.3.0 / 资源026。手牌挂件默认整体60%，可调40%–120%。已知边界见[本次说明](GROUP_DISTRIBUTION_20261021_2.md)，包中不附带仅限本地验证的原生变速原型。
 
 ---
 
@@ -23,7 +29,7 @@
 **星枢 (XingShu)** 是针对《AstralParty》（吉星派对）开发的本地多进程协同工作站与游戏增强运行时套件。
 
 项目由两大部分构成：
-1. **AstralParty-Hub（星枢控制台）**：基于 Tauri 2 + Rust + React 18 构建的现代化桌面管理中枢。提供账号隔离管理、运行时生命周期监管、本地回环通信中继以及自动化观战跟房控制。
+1. **AstralParty-Hub（星枢控制台）**：基于 Tauri 2 + Rust + React 19 构建的现代化桌面管理中枢。提供账号隔离管理、运行时生命周期监管、本地回环通信中继以及自动化观战跟房控制。
 2. **APX Runtime（游戏增强运行时）**：注入游戏进程的 C# Unity 增强模块。提供浮动状态卡牌悬浮窗、HUD 挂件、对局统计、自适应生命周期调和以及基于权威数据源的手牌真值镜像。
 
 ---
@@ -47,7 +53,8 @@ GitHub 仓库用于保存源码和版本记录。当前仍需在本机运行 Hub
 - 对局历史和单场结算按账号保存；PVE 显示胜负、PVP 显示名次。评分提高辅助转账贡献，结算金币保留展示且不参与评分。
 - 运行时、包管理器、插件与模组按五个渠道和实际安装目录管理，支持同渠道多个位置；手动文件仅展示检测状态。
 - 运行时页分别展示文件校验、实际进程与已确认连接上报的版本。本版安装文件覆盖 Steam 国服和 TapTap Windows，其他渠道仍待运行时实测。
-- Hub 侧栏、设置页与插件 F1 功能中心均附项目来源。当前运行时版本为 `1.0.0-library-r3`。
+- Hub 侧栏、设置页与插件 F1 功能中心均附项目来源。当前桌面运行时版本为 `1.0.0-game-ui-r1`。
+- 游戏内功能中心采用半透明无条纹框架、游戏字体与官方星形滑块，修复彩色浮字预览；选目标时保留原版平移及自定义缩放，拉远后名字与指向线缩小。实测范围及仍待确认的项目见[界面与镜头验证记录](GAME_UI_R1.md)。
 
 扩展渠道声明、目录映射及管理边界见[扩展包说明](AstralParty-Hub/docs/specs/extension_channels.md)。游戏美术、配置及资源版权归原权利人所有，不随本项目代码的 MIT 许可证重新授权。
 
@@ -61,7 +68,7 @@ GitHub 仓库用于保存源码和版本记录。当前仍需在本机运行 Hub
 
 ```mermaid
 flowchart TD
-    subgraph Hub["AstralParty-Hub (Tauri 2 / Rust + React 18)"]
+    subgraph Hub["AstralParty-Hub (Tauri 2 / Rust + React 19)"]
         UI["前端控制台 (React + TS + Vite)"]
         FSM["Auto-Follow 自动跟房状态机 (11 状态)"]
         TCPServer["Bridge TCP Server (127.0.0.1:25890)"]
@@ -118,7 +125,7 @@ flowchart TD
 ```text
 星枢源码/
 ├── AstralParty-Hub/            # 星枢桌面控制台
-│   ├── src/                    # 前端代码 (React 18, TypeScript, TailwindCSS)
+│   ├── src/                    # 前端代码 (React 19, TypeScript, TailwindCSS)
 │   │   ├── pages/              # 各功能页面 (观战、账号中心、运行时、诊断等)
 │   │   ├── services/           # 核心服务 (自动跟房、真值决策、账号管理)
 │   │   └── shared/             # 共享卡牌注册表与数据模型

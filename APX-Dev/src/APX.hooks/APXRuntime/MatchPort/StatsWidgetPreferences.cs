@@ -16,9 +16,9 @@ internal sealed class StatsWidgetPreferences
 
 	internal bool Locked;
 
-	internal const float Width = 448f;
+	internal const float Width = 360f;
 
-	internal const float Height = 224f;
+	internal const float Height = 328f;
 
 	internal static float Limit(float v, float min, float max, float fallback)
 	{
@@ -59,12 +59,12 @@ internal sealed class StatsWidgetPreferences
 		float num = Math.Min(12f, Math.Min(width, height) * 0.025f);
 		float num2 = Math.Max(1f, width - 2f * num);
 		float num3 = Math.Max(1f, height - 2f * num);
-		float num4 = Math.Min(Limit(baseScale, 0.5f, 3f, 1f) * Scale, Math.Min(num2 / 448f, num3 / 224f));
+		float num4 = Math.Min(Limit(baseScale, 0.5f, 3f, 1f) * Scale, Math.Min(num2 / 360f, num3 / 328f));
 		StatsWidgetBounds result = default(StatsWidgetBounds);
-		result.X = x + num + X * Math.Max(0f, num2 - 448f * num4);
-		result.Y = y + num + Y * Math.Max(0f, num3 - 224f * num4);
-		result.Width = 448f * num4;
-		result.Height = 224f * num4;
+		result.X = x + num + X * Math.Max(0f, num2 - 360f * num4);
+		result.Y = y + num + Y * Math.Max(0f, num3 - 328f * num4);
+		result.Width = 360f * num4;
+		result.Height = 328f * num4;
 		result.Scale = num4;
 		return result;
 	}

@@ -447,6 +447,43 @@ namespace APXRuntime.Targeting
             };
         }
 
+        /// <summary>
+        /// Return all equally nearest players without inventing missing tie-break data.
+        /// Used by the maximum-dice preview when the default first step is ambiguous.
+        /// </summary>
+        public static List<MonsterTargetPrediction> FindNearestCandidates(TargetPredictionInput input)
+        {
+            var candidates = new List<MonsterTargetPrediction>();
+            if (!input.GraphKnown || input.GraphEdges == null || !input.PostMoveNodeKnown ||
+                !input.GraphEdges.ContainsKey(input.PostMoveNode) || !input.PlayersKnown || input.Players == null ||
+                !input.SearchRangeKnown || input.SearchRange < 0) return candidates;
+
+            // A one-step budget can still reach a player on the post-move node itself.
+            var reached = PerformPriorityAwareBFS(input.PostMoveNode, Math.Max(1, input.SearchRange), input.GraphEdges, input.BranchPriorities);
+            int nearest = int.MaxValue;
+            foreach (var player in input.Players)
+            {
+                NodeSearchState node;
+                if (!player.IsValid || !player.IsAlive || player.PlayerId == 0 || player.NodeId <= 0 ||
+                    !reached.TryGetValue(player.NodeId, out node) || node.Distance > input.SearchRange) continue;
+                if (node.Distance < nearest)
+                {
+                    candidates.Clear();
+                    nearest = node.Distance;
+                }
+                if (node.Distance != nearest) continue;
+                candidates.Add(new MonsterTargetPrediction
+                {
+                    MonsterId = input.MonsterId, TargetPlayerId = player.PlayerId,
+                    TargetNodeId = player.NodeId, CurrentNodeId = input.CurrentNode,
+                    PostMoveNodeId = input.PostMoveNode, Distance = node.Distance,
+                    Path = new List<int>(node.Path), Reason = PredictionReason.Unresolved,
+                    Confidence = PredictionConfidence.Unresolved
+                });
+            }
+            return candidates;
+        }
+
         private static bool HasDivergingUnmappedBranch(
             List<EvaluatedCandidate> candidates,
             IReadOnlyDictionary<int, BranchPriorityEntry> branchPriorities)

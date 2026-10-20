@@ -105,7 +105,11 @@ pub struct ExtensionInventory {
 fn package_root() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     [exe.parent()?, exe.parent()?.parent()?].into_iter()
-        .find(|p| p.join("release.json").is_file() && p.join("星枢群测助手.exe").is_file()).map(Path::to_path_buf)
+        .find(|p| p.join("release.json").is_file() && installer_path(p).is_some()).map(Path::to_path_buf)
+}
+fn installer_path(package: &Path) -> Option<PathBuf> {
+    ["星枢安装助手.exe", "星枢群测助手.exe"].into_iter()
+        .map(|name| package.join(name)).find(|path| path.is_file())
 }
 pub fn inventory(db: &Database, game: &GameInstallation) -> HubResult<ExtensionInventory> {
     let root = game_root(game)?;
@@ -177,8 +181,9 @@ pub async fn get_extension_runtime_state(installation_id: String, center: State<
 pub async fn open_group_installer(installation_id: String, center: State<'_, ExtensionCenter>) -> HubResult<()> {
     let game = get_game(&center.db, &installation_id)?;
     let root = game_root(&game)?;
-    let package = package_root().ok_or_else(|| HubError::game_not_found("请完整解压群测包，并从其中的 Hub 目录运行。"))?;
-    let mut command = std::process::Command::new(package.join("星枢群测助手.exe"));
+    let package = package_root().ok_or_else(|| HubError::game_not_found("请完整解压发布包，并从其中的 Hub 目录运行。"))?;
+    let installer = installer_path(&package).ok_or_else(|| HubError::game_not_found("安装助手不存在，请重新完整解压发布包。"))?;
+    let mut command = std::process::Command::new(installer);
     command.args(["--ui", &game.platform, &root.display().to_string()]);
     command.spawn().map_err(|e| HubError::game_not_found(&e.to_string()))?;
     Ok(())

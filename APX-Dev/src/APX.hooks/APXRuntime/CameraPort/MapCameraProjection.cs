@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Core.Scene;
 using FairyGUI;
 using GameLogic;
@@ -28,6 +29,65 @@ internal sealed class MapCameraProjection
 
 	private string _failure;
 
+	private readonly Dictionary<UICom_AttrInfo, Vector2> _nativeScales = new Dictionary<UICom_AttrInfo, Vector2>();
+	private readonly List<UICom_AttrInfo> _compactLabels = new List<UICom_AttrInfo>();
+	internal float AnnotationScale = 1f;
+
+	private void RestoreLabelScales()
+	{
+		foreach (var entry in _nativeScales)
+			if (!entry.Key.isDisposed) entry.Key.SetScale(entry.Value.x, entry.Value.y);
+		_nativeScales.Clear();
+		_compactLabels.Clear();
+	}
+
+	private void CompactLabels(GComponent container, Camera camera)
+	{
+		_compactLabels.Clear();
+		float scale = Mathf.Clamp(AnnotationScale, 0.35f, 1f);
+		for (int i = 0; i < container.numChildren; i++)
+		{
+			if (!(container.GetChildAt(i) is UICom_AttrInfo label) || label.isDisposed) continue;
+			if (!_nativeScales.TryGetValue(label, out var nativeScale))
+			{
+				nativeScale = new Vector2(label.scaleX, label.scaleY);
+				_nativeScales.Add(label, nativeScale);
+			}
+			label.SetScale(nativeScale.x * scale, nativeScale.y * scale);
+			if (scale >= 0.999f || !label.visible || label.parent?.displayObject == null) continue;
+			Vector3 owner = label.GetOwnerPos();
+			if (owner == Vector3.zero) continue;
+			Vector3 screen = camera.WorldToScreenPoint(owner);
+			if (screen.z <= 0f) continue;
+			Vector2 position = label.parent.displayObject.GlobalToLocal(new Vector2(screen.x, Screen.height - screen.y));
+			var character = label.PlayerData?.CharacterInst;
+			bool right = character != null && character.standLand != null && character.canStep == 0
+				&& (character.transform.localPosition - character.standLand.transform.localPosition).x > 0.1f;
+			// The native layout uses a fixed 200px rise and 0.8 * width side offset.
+			// Scale both offsets with the label, so the leader line also gets shorter.
+			position.x += (right ? 1f : -1f) * label.width * 0.8f * scale;
+			position.y -= 200f * scale;
+			label.xy = position;
+			_compactLabels.Add(label);
+		}
+		// The native collision pass uses unscaled sizes; repeat only for compact labels
+		// using their actual visible sizes to avoid spreading them across the board.
+		for (int i = 0; i < _compactLabels.Count; i++)
+			for (int j = i + 1; j < _compactLabels.Count; j++)
+			{
+				var a = _compactLabels[i];
+				var b = _compactLabels[j];
+				float overlapX = (a.width * Math.Abs(a.scaleX) + b.width * Math.Abs(b.scaleX)) * 0.5f - Math.Abs(a.x - b.x);
+				float overlapY = (a.height * Math.Abs(a.scaleY) + b.height * Math.Abs(b.scaleY)) * 0.5f - Math.Abs(a.y - b.y);
+				if (overlapX > 0f && overlapY > 0f)
+				{
+					float offset = (overlapY + 4f) * 0.5f;
+					if (a.y <= b.y) { a.y -= offset; b.y += offset; }
+					else { a.y += offset; b.y -= offset; }
+				}
+			}
+	}
+
 	internal string Status => "头顶定位 v7 / 标注投影 v2 · " + ((_failure != null) ? ("异常：" + _failure) : ((_panel == null) ? "等待有效面板" : ("已校正 " + _corrected + "，锚点组件 " + _anchored + "，原生飘字锚点 " + _playerAnchors + "，坐标回算误差 " + _maxError.ToString("0.00") + " px")));
 
 	internal void Bind(bool active)
@@ -44,6 +104,7 @@ internal sealed class MapCameraProjection
 		if (uIBattleInfoPanel != _panel)
 		{
 			_headTips.Restore();
+			RestoreLabelScales();
 			if (_root != null)
 			{
 				_root.onUpdate -= CorrectGuideLines;
@@ -116,6 +177,7 @@ internal sealed class MapCameraProjection
 			{
 				return;
 			}
+			CompactLabels(com_AttrInfos, camera);
 			for (int i = 0; i < com_AttrInfos.numChildren; i++)
 			{
 				if (!(com_AttrInfos.GetChildAt(i) is UICom_AttrInfo { isDisposed: false, visible: not false, displayObject: not null, graph_Sign: not null } uICom_AttrInfo))

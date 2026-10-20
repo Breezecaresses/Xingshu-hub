@@ -72,7 +72,7 @@ def write_inventory(manifest):
     """Keep Hub's file inventory in sync with the packaged runtime candidates."""
     profiles = json.loads(PROFILES.read_text(encoding='utf8'))
     source = (ROOT / 'APX-Dev/src/APX.hooks/XingShu/Runtime/XingShuRuntimeHost.cs').read_text('utf8')
-    version = re.search(r'const string RuntimeVersion = "([^"]+)"', source).group(1)
+    version = re.search(r'#else\s+public const string RuntimeVersion = "([^"]+)"', source).group(1)
     inventory = [{'platform': item['platform'], 'version': version,
                   'sha256': item['candidateSha256'],
                   'bundleRelativePath': next(p['bundleRelativePath'] for p in profiles if p['platformId'] == item['platform'])}
@@ -139,7 +139,7 @@ def main():
                          'target': str(target), 'candidate': str(candidate),
                          'backup': str(backup), 'beforeSha256': sha(original),
                          'candidateSha256': sha(candidate.read_bytes())})
-        print(f'{platform}: prepared; {len(before)-len(set(before) & changed)} other assemblies unchanged; bootstrap, hooks and three timer methods updated', flush=True)
+        print(f'{platform}: prepared; {len(before)-len(set(before) & changed)} other assemblies unchanged; bootstrap, hooks, real-clock decisions and statistics observers updated', flush=True)
     (OUT / 'deployment.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf8')
     write_inventory(manifest)
 

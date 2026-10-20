@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Events;
 
 namespace APXRuntime.UI
 {
@@ -8,7 +9,7 @@ namespace APXRuntime.UI
     /// 功能中心标题栏拖动手柄 (Phase 2B-R4-R2a)
     /// 遵循 uGUI 事件驱动模型，与 APXOverlayInput 遮罩协同，支持屏幕安全区 Clamp 与显式排他区门禁
     /// </summary>
-    internal sealed class APXUIDragHandle : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, IDragHandler, IPointerUpHandler, IInitializePotentialDragHandler
+    internal sealed class APXUIDragHandle : MonoBehaviour
     {
         [SerializeField]
         internal RectTransform targetRect;
@@ -23,6 +24,26 @@ namespace APXRuntime.UI
         private bool _dragAllowedForCurrentPointer;
         private Vector2 _dragStartLocalPos;
         private Vector2 _dragStartFramePos;
+
+        internal void BindEvents()
+        {
+            // Use Unity's built-in event receiver across the IL2CPP/hot-update boundary.
+            // Custom interpreted IEventSystemHandler implementations are not dispatched
+            // by every client, while UnityEvent callbacks work on both verified builds.
+            EventTrigger trigger = gameObject.AddComponent<EventTrigger>();
+            AddEvent(trigger, EventTriggerType.PointerDown, data => OnPointerDown((PointerEventData)data));
+            AddEvent(trigger, EventTriggerType.InitializePotentialDrag, data => OnInitializePotentialDrag((PointerEventData)data));
+            AddEvent(trigger, EventTriggerType.BeginDrag, data => OnBeginDrag((PointerEventData)data));
+            AddEvent(trigger, EventTriggerType.Drag, data => OnDrag((PointerEventData)data));
+            AddEvent(trigger, EventTriggerType.PointerUp, data => OnPointerUp((PointerEventData)data));
+        }
+
+        private static void AddEvent(EventTrigger trigger, EventTriggerType type, UnityAction<BaseEventData> callback)
+        {
+            var entry = new EventTrigger.Entry { eventID = type };
+            entry.callback.AddListener(callback);
+            trigger.triggers.Add(entry);
+        }
 
         internal void AddExcludedRect(RectTransform rect)
         {
@@ -59,7 +80,11 @@ namespace APXRuntime.UI
             _pointerId = int.MinValue;
 
             if (eventData.button != PointerEventData.InputButton.Left) return;
-            if (targetRect == null || parentRect == null) return;
+            if (targetRect == null || parentRect == null)
+            {
+                APXUIAssetService.LogUIRuntime("[UI_DRAG] Missing frame or canvas RectTransform");
+                return;
+            }
 
             // 显式排他区判定: 若点击命中任一排除控件 (如 Close 按钮、F1 徽章等)，立即阻断拖动
             if (IsPointerInExcludedZone(eventData))
@@ -74,6 +99,7 @@ namespace APXRuntime.UI
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 parentRect, eventData.position, eventData.pressEventCamera, out _dragStartLocalPos);
             _dragStartFramePos = targetRect.anchoredPosition;
+            APXUIAssetService.LogUIRuntime("[UI_DRAG] Begin; Canvas=" + parentRect.rect.size + "; Frame=" + targetRect.rect.size);
         }
 
         public void OnBeginDrag(PointerEventData eventData)
@@ -101,6 +127,7 @@ namespace APXRuntime.UI
         {
             if (eventData.pointerId == _pointerId)
             {
+                APXUIAssetService.LogUIRuntime("[UI_DRAG] End; Position=" + (targetRect != null ? targetRect.anchoredPosition.ToString() : "<null>"));
                 _isDragging = false;
                 _dragAllowedForCurrentPointer = false;
                 _pointerId = int.MinValue;
@@ -137,8 +164,8 @@ namespace APXRuntime.UI
 
             float halfCanvasWidth = parentRect.rect.width * 0.5f;
             float halfCanvasHeight = parentRect.rect.height * 0.5f;
-            float halfWinWidth = targetRect.rect.width * 0.5f;
-            float halfWinHeight = targetRect.rect.height * 0.5f;
+            float halfWinWidth = targetRect.rect.width * Mathf.Abs(targetRect.localScale.x) * 0.5f;
+            float halfWinHeight = targetRect.rect.height * Mathf.Abs(targetRect.localScale.y) * 0.5f;
 
             // X 轴限制: 在宽屏下保证整窗在屏内；极端窄屏下保证至少 48px Header 在屏内
             float minX = (halfCanvasWidth > halfWinWidth) ? -(halfCanvasWidth - halfWinWidth) : -(halfWinWidth - 48f);

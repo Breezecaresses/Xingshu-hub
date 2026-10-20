@@ -72,6 +72,10 @@ internal static class MapTargetReader
 		bool fight = value2 != null && ((Window)value2).parent != null;
 		bool monster = value != null && ((Window)value).parent != null;
 		bool card = value3 != null && ((Window)value3).parent != null;
+		var action = SimpleSingletonProvider<GameLogicManager>.inst.action;
+		bool choosingTarget = action != null && (action.playerAction == PlayerActionEnum.CHOOSETARGET_CARD
+			|| action.playerAction == PlayerActionEnum.CHOOSETARGET_SKILL);
+		monster |= choosingTarget;
 		return CameraSelectionPolicy.Read(contract: true, fight, monster, card, null, null, (controller.freeObject == null) ? null : new int?((int)controller.freeObject.status));
 	}
 

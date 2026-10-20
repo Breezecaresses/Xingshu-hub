@@ -245,7 +245,8 @@ namespace APXRuntime.UI
                 "• 鼠标平移：鼠标左键按下并拖拽空白地块\n" +
                 "• 视角缩放：滑动鼠标滚轮 (触屏支持双指张合拉近/拉远)\n" +
                 "• 视角旋转：暂无 (视角锁定在地图俯仰角，不响应右键/中键)\n" +
-                "• 安全保护：选怪与战斗演出期间视角保留，仅暂停用户输入";
+                "• 选择突击/技能目标及战斗演出期间交还原版镜头，结束后自动恢复\n" +
+                "• 拉远时名字和指向线同步缩小，正常视角保持原版大小";
 
             Text guideTxt = APXUIFactory.CreateText(card3, "GuideContent", guideContent, 12, APXUITheme.SecondaryText, TextAnchor.UpperLeft);
             RectTransform gtRt = guideTxt.rectTransform;
@@ -318,19 +319,19 @@ namespace APXRuntime.UI
                     if (!requested)
                     {
                         _statusBadgeText.text = "已关闭";
-                        _statusBadgeText.color = APXUITheme.MutedText;
+                        _statusBadgeText.color = APXUITheme.BadgeMuted;
                         if (_statusBadgeBg != null) _statusBadgeBg.color = new Color(0.12f, 0.16f, 0.22f, 0.85f);
                     }
                     else if (!enabled)
                     {
                         _statusBadgeText.text = "已开启 · 等待进入对局";
-                        _statusBadgeText.color = APXUITheme.NumericAccent;
+                        _statusBadgeText.color = APXUITheme.Pink;
                         if (_statusBadgeBg != null) _statusBadgeBg.color = new Color(0.25f, 0.20f, 0.08f, 0.85f);
                     }
                     else
                     {
                         _statusBadgeText.text = "运行中";
-                        _statusBadgeText.color = APXUITheme.Positive;
+                        _statusBadgeText.color = APXUITheme.BadgeActive;
                         if (_statusBadgeBg != null) _statusBadgeBg.color = new Color(0.08f, 0.22f, 0.16f, 0.85f);
                     }
                 }

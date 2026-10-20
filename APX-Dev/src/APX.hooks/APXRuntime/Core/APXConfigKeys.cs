@@ -53,7 +53,7 @@ internal static class APXConfigKeys
 
 	internal const float NativeSpeedValueMin = 0.25f;
 
-	internal const float NativeSpeedValueMax = 5.0f;
+	internal const float NativeSpeedValueMax = 10.0f;
 
 	internal const string NativeSmartPauseEnabled = "APX_NATIVE_SMART_PAUSE_ENABLED";
 
@@ -180,6 +180,10 @@ internal static class APXConfigKeys
 	internal const string MatchKillEnabled = "APX_MATCH_KILL_ENABLED_V1";
 
 	internal const bool MatchKillEnabledDefault = true;
+
+	internal const string MonsterTargetEnabled = "APX_MONSTER_TARGET_ENABLED_V1";
+
+	internal const bool MonsterTargetEnabledDefault = true;
 
 	internal const string MatchKillFightSize = "APX_MATCH_KILL_FIGHT_SIZE";
 

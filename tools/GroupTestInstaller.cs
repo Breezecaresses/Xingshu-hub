@@ -67,16 +67,16 @@ internal static class GroupTest
     {
         var manifest = Within(PackageRoot, "release.json");
         if (Hash(manifest) != PackageIdentity.ManifestSha256)
-            throw new InvalidOperationException("测试包清单校验失败，请重新完整解压原始压缩包。");
+            throw new InvalidOperationException("发布包清单校验失败，请重新完整解压原始压缩包。");
         Release = Json.Deserialize<ReleaseInfo>(File.ReadAllText(manifest, Encoding.UTF8));
         if (Release == null || Release.FormatVersion != 1 || Release.Platforms == null || Release.Platforms.Length != 2)
-            throw new InvalidOperationException("不支持的测试包格式。");
+            throw new InvalidOperationException("不支持的发布包格式。");
     }
 
     internal static void VerifyPayload(PlatformInfo platform)
     {
         if (Hash(Within(PackageRoot, platform.Payload)) != platform.PayloadSha256)
-            throw new InvalidOperationException("插件文件校验失败，请重新完整解压测试包。");
+            throw new InvalidOperationException("插件文件校验失败，请重新完整解压发布包。");
     }
 
     internal static string GameRoot(PlatformInfo platform, string selection)
@@ -178,7 +178,7 @@ internal static class GroupTest
                 var current = Hash(target);
                 var accepted = platform.AcceptedHashes.Contains(current);
                 if (current != platform.PayloadSha256 && !accepted)
-                    throw new InvalidOperationException("当前资源与本测试包不匹配，未修改任何游戏文件。请先通过官方平台校验/修复游戏，完成更新后重试。");
+                    throw new InvalidOperationException("当前资源与本发布包不匹配，未修改任何游戏文件。请先通过官方平台校验/修复游戏，完成更新后重试。");
                 if (action == "check") return platform.Label + "：版本匹配，" + (current == platform.PayloadSha256 ? "已安装本版。" : "可以安装。");
                 EnsureGameClosed(platform, root);
                 if (action == "check-closed") return platform.Label + "：所选目录的游戏未运行。";
@@ -282,7 +282,7 @@ internal static class GroupTest
         catch (Exception ex)
         {
             if (args.Length > 0) Console.Error.WriteLine(ex.Message);
-            else MessageBox.Show(ex.Message, "星枢群测助手", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            else MessageBox.Show(ex.Message, "星枢安装助手", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return 1;
         }
     }
@@ -296,7 +296,7 @@ internal sealed class InstallerWindow : Form
 
     internal InstallerWindow(string initialPlatform = null, string initialPath = null)
     {
-        Text = "星枢群测助手 · " + GroupTest.Release.Version;
+        Text = "星枢安装助手 · " + GroupTest.Release.Version;
         ClientSize = new Size(660, 420);
         MinimumSize = MaximumSize = Size;
         Font = new Font("Microsoft YaHei UI", 9F);
@@ -336,7 +336,7 @@ internal sealed class InstallerWindow : Form
         status.Multiline = true;
         status.ReadOnly = true;
         status.ScrollBars = ScrollBars.Vertical;
-        status.Text = "此包为群内测试版。\r\n\r\n请先点“说明”。安装成功后通过 Steam / TapTap 官方启动器进入游戏。完整观战手牌仍需已登录的官方观战客户端。";
+        status.Text = "星枢群发测试版。\r\n\r\n请先点“说明”。安装成功后通过 Steam / TapTap 官方启动器进入游戏。完整观战手牌仍需已登录的官方观战客户端。";
         Controls.Add(status);
     }
 

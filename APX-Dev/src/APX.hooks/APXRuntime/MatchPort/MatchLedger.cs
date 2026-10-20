@@ -14,6 +14,11 @@ internal sealed class MatchLedger
 
 		internal long Damage;
 
+		internal long Deaths, Taken, Healing, Coins, Turns, Gold;
+		internal string Character;
+		internal string HeadUrl;
+		internal bool MetricsReady, HealingKnown = true, Settled;
+
 		internal long Movement;
 
 		internal long Transferred;
@@ -116,7 +121,20 @@ internal sealed class MatchLedger
 		{
 			_hpSeen.Remove(_hpOrder.Dequeue());
 		}
-		if (actualDelta >= 0 || killer == victim || !Rows.TryGetValue(killer, out var value))
+		Row target;
+		if (Rows.TryGetValue(victim, out target))
+		{
+			if (actualDelta < 0) target.Taken += -(long)actualDelta;
+			if (oldHp > 0 && currentHp == 0) target.Deaths++;
+		}
+		if (actualDelta > 0)
+		{
+			Row healer;
+			if (Rows.TryGetValue(killer, out healer)) healer.Healing += actualDelta;
+			else foreach (var row in Rows.Values) row.HealingKnown = false;
+			return;
+		}
+		if (actualDelta == 0 || killer == victim || !Rows.TryGetValue(killer, out var value))
 		{
 			return;
 		}

@@ -65,6 +65,8 @@ internal static class StatsWidgetPresenter
 			Details = (details ?? "")
 		};
 		StringBuilder stringBuilder = new StringBuilder();
+		var ratingInputs = new MatchRating.Input[4];
+		bool settled = false;
 		for (int i = 0; i < 4; i++)
 		{
 			MatchLedger.Row row = null;
@@ -86,6 +88,17 @@ internal static class StatsWidgetPresenter
 			statsWidgetFrame.Cells[i, 2] = ((row == null) ? "—" : Number(row.Damage, row.HpReady, row.DamageKnown));
 			statsWidgetFrame.Cells[i, 3] = ((row == null) ? "—" : Number(row.Movement, row.MovementReady, row.MovementKnown));
 			statsWidgetFrame.Cells[i, 4] = ((row == null) ? "—" : Number(row.Transferred, row.TransferReady, row.TransferKnown));
+			if (row != null)
+			{
+				settled |= row.Settled;
+				var player = new StatsWidgetFrame.Player { Name = row.Name, Character = row.Character, HeadUrl = row.HeadUrl, State = row.Settled ? "已结算" : "实时参考" };
+				long[] values = { row.Kills, row.Deaths, row.Damage, row.Taken, row.Healing, row.Coins, row.Transferred, row.Turns, row.Gold };
+				bool[] known = { row.KillsKnown, true, row.DamageKnown, true, row.HealingKnown, true, row.TransferKnown, true, row.Settled };
+				for (int c = 0; c < 9; c++) player.Metrics[c] = Number(values[c], row.MetricsReady, known[c]);
+				statsWidgetFrame.Players[i] = player;
+				if (row.MetricsReady && row.KillsKnown && row.DamageKnown && row.HealingKnown && row.TransferKnown)
+					ratingInputs[i] = new MatchRating.Input { Kills = row.Kills, Deaths = row.Deaths, Damage = row.Damage, Healing = row.Healing, Coins = row.Coins, Transfer = row.Transferred };
+			}
 			for (int j = 1; j < 5; j++)
 			{
 				if (statsWidgetFrame.Cells[i, j] == "—")
@@ -106,8 +119,16 @@ internal static class StatsWidgetPresenter
 					.Append("\n");
 			}
 		}
-		statsWidgetFrame.Status = ((!enabled) ? "已关闭" : ((ledger.Key == null) ? "等待对局" : (statsWidgetFrame.Partial ? "部分数据" : "观察中")));
-		statsWidgetFrame.Footer = ((!enabled) ? "采集已关闭 · 设置中可重新开启" : ((ledger.Key == null) ? "等待有效对局 · 仅观察公开事件" : (since.ToString("HH:mm") + " 起 · 观察累计，非服务器结算")));
+		var scores = MatchRating.Rate(ratingInputs);
+		double best = 0;
+		foreach (var score in scores) if (score.HasValue) best = Math.Max(best, score.Value);
+		for (int i = 0; i < scores.Length; i++) if (statsWidgetFrame.Players[i] != null && scores[i].HasValue)
+		{
+			statsWidgetFrame.Players[i].Score = scores[i].Value.ToString("0.00", CultureInfo.InvariantCulture);
+			statsWidgetFrame.Players[i].Mvp = best > 0 && scores[i].Value == best;
+		}
+		statsWidgetFrame.Status = !enabled ? "已关闭" : ledger.Key == null ? "等待对局" : settled ? "服务器结算 · 星枢评分 v2" : "实时参考 · 星枢评分 v2";
+		statsWidgetFrame.Footer = !enabled ? "采集已关闭 · 设置中可重新开启" : ledger.Key == null ? "等待有效对局 · 缺失项显示 —" : settled ? "已按服务器结算校准 · 结算金币不参与评分" : since.ToString("HH:mm") + " 起 · 局内观察累计，结算后校准";
 		statsWidgetFrame.Details = statsWidgetFrame.Details + "\n\n精确数值（击倒 / 伤害 / 步数 / 转出）\n" + stringBuilder;
 		return statsWidgetFrame;
 	}

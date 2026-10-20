@@ -78,7 +78,7 @@ namespace APXRuntime.Targeting
                     for (int i = 0; i < playerDatas.Count; i++)
                     {
                         var bpd = playerDatas[i];
-                        if (bpd == null) continue;
+                        if (bpd == null || bpd.player == null) continue;
 
                         if (bpd.characterType == CharacterType.Hero)
                         {
@@ -87,8 +87,10 @@ namespace APXRuntime.Targeting
                                 ? bpd.CharacterInst.standLand.Id 
                                 : (bpd.player != null ? bpd.player.NodeId : 0);
                             long pId = bpd.player != null ? bpd.player.Id : 0L;
-                            bool progressKnown = bpd.player != null;
-                            float progress = progressKnown ? bpd.player.Progress : 0f;
+                            // RoomPlayer.Progress is match/rank progress, not route order.
+                            // Keep FrontMost unresolved until a map profile establishes it.
+                            bool progressKnown = false;
+                            float progress = 0f;
                             bool slotKnown = bpd.player != null;
                             int slot = slotKnown ? bpd.player.Slot : -1;
                             bool isValid = isAlive && nodeId > 0;
@@ -102,9 +104,9 @@ namespace APXRuntime.Targeting
                                 : (bpd.player != null ? bpd.player.NodeId : 0);
 
                             // 如果尚未指定特定怪物，或匹配当前 monsterId
-                            if (input.CurrentNode == 0 || (monsterId > 0 && bpd.player != null && bpd.player.Id == monsterId))
+                            if ((monsterId == 0 && input.MonsterId == 0) || bpd.player.Id == monsterId)
                             {
-                                input.MonsterId = bpd.player != null ? bpd.player.Id : 1L;
+                                input.MonsterId = bpd.player.Id;
                                 input.CurrentNode = mNodeId;
                                 input.MonsterNodeKnown = mNodeId > 0;
                                 // 严禁将 PostMoveNode 默认等同于 CurrentNode！真实运行时来源未闭环前保持 PostMoveNodeKnown = false

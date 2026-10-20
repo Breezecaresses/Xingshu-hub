@@ -33,8 +33,8 @@ namespace APXRuntime.UI
         private readonly List<Button> _scalePresetButtons = new List<Button>();
         private readonly List<Image> _scalePresetImages = new List<Image>();
         private readonly List<Text> _scalePresetTexts = new List<Text>();
-        private static readonly float[] SCALE_PRESETS = new float[] { 0.8f, 1.0f, 1.6f, 2.0f };
-        private static readonly string[] SCALE_PRESET_LABELS = new string[] { "0.8x (紧凑)", "1.0x (推荐)", "1.6x (放大)", "2.0x (特大)" };
+        private static readonly float[] SCALE_PRESETS = new float[] { .4f, HandCardDock.DefaultScale, .8f, 1f, 1.2f };
+        private static readonly string[] SCALE_PRESET_LABELS = new string[] { "40%", "60% 默认", "80%", "100%", "120%" };
 
         // Play Button Size Card
         private Slider _btnSizeSlider;
@@ -106,7 +106,7 @@ namespace APXRuntime.UI
             BuildCardScaleCard(contentArea);
 
             // 3. 播放标识大小设置 (BtnSize Card: 148px)
-            BuildPlayBtnSizeCard(contentArea);
+            // Per-avatar play toggles were replaced by the floating detail dock.
 
             // 4. 同步与运行时状态卡片 (Status & Sync Card: 154px)
             BuildSyncStatusCard(contentArea);
@@ -154,7 +154,7 @@ namespace APXRuntime.UI
             titleRt.anchoredPosition = new Vector2(24f, 12f);
             titleRt.sizeDelta = new Vector2(360f, 28f);
 
-            Text descText = APXUIFactory.CreateText(headerGo, "Description", "服务端实时同步真实手牌，支持卡牌缩放、指示器尺寸调整与主动拉取", 13, APXUITheme.SecondaryText, TextAnchor.MiddleLeft);
+            Text descText = APXUIFactory.CreateText(headerGo, "Description", "手牌交错叠放，牌多自动压紧，悬停抬起查看完整信息", 13, APXUITheme.SecondaryText, TextAnchor.MiddleLeft);
             RectTransform descRt = descText.rectTransform;
             descRt.anchorMin = new Vector2(0f, 0.5f);
             descRt.anchorMax = new Vector2(0f, 0.5f);
@@ -170,13 +170,16 @@ namespace APXRuntime.UI
             badgeRt.anchoredPosition = new Vector2(-24f, 0f);
             badgeRt.sizeDelta = new Vector2(130f, 32f);
 
-            Sprite badgeSprite = APXUIAssetService.GetSprite("hotkey_badge.png");
+            Sprite badgeSprite = APXUIAssetService.GetSprite("button_selected.png");
             Image badgeImg = badgeGo.AddComponent<Image>();
             badgeImg.sprite = badgeSprite;
             badgeImg.type = Image.Type.Sliced;
             badgeImg.color = APXUIAssetService.IsFallbackSprite(badgeSprite) ? new Color(0.15f, 0.18f, 0.24f, 0.85f) : Color.white;
 
-            Text badgeText = APXUIFactory.CreateText(badgeGo, "Text", "Ctrl+Shift+H", 13, APXUITheme.CyanAccent, TextAnchor.MiddleCenter, FontStyle.Bold);
+            var openDock = badgeGo.AddComponent<Button>();
+            openDock.targetGraphic = badgeImg;
+            openDock.onClick.AddListener(() => HandCardDock.Toggle());
+            Text badgeText = APXUIFactory.CreateText(badgeGo, "Text", "开启 / 收起挂件", 13, APXUITheme.PrimaryText, TextAnchor.MiddleCenter, FontStyle.Bold);
             RectTransform btRt = badgeText.rectTransform;
             btRt.anchorMin = Vector2.zero;
             btRt.anchorMax = Vector2.one;
@@ -197,7 +200,7 @@ namespace APXRuntime.UI
             ctRt.anchoredPosition = new Vector2(24f, -16f);
             ctRt.sizeDelta = new Vector2(240f, 24f);
 
-            _enableHintText = APXUIFactory.CreateText(cardGo, "HintText", "开启后在局内玩家头像挂载悬浮展示栏；关闭仅隐藏浮窗，状态仓与 Hub 同步保持运行", 12, APXUITheme.SecondaryText, TextAnchor.MiddleLeft);
+            _enableHintText = APXUIFactory.CreateText(cardGo, "HintText", "通过悬浮球打开手牌详情挂件；可收起、拖动和切换玩家，关闭仅隐藏显示", 12, APXUITheme.SecondaryText, TextAnchor.MiddleLeft);
             RectTransform htRt = _enableHintText.rectTransform;
             htRt.anchorMin = new Vector2(0f, 1f);
             htRt.anchorMax = new Vector2(0f, 1f);
@@ -205,7 +208,7 @@ namespace APXRuntime.UI
             htRt.anchoredPosition = new Vector2(24f, -42f);
             htRt.sizeDelta = new Vector2(460f, 20f);
 
-            _enableToggle = APXUIFactory.CreateToggle(cardGo, "EnableToggle", "悬浮窗显示", HandCardDisplayManager.IsEnabled, OnEnableToggleChanged);
+            _enableToggle = APXUIFactory.CreateToggle(cardGo, "EnableToggle", "手牌同步", HandCardDisplayManager.IsEnabled, OnEnableToggleChanged);
             RectTransform etRt = _enableToggle.GetComponent<RectTransform>();
             etRt.anchorMin = new Vector2(1f, 1f);
             etRt.anchorMax = new Vector2(1f, 1f);
@@ -243,15 +246,15 @@ namespace APXRuntime.UI
         {
             GameObject cardGo = CreateCardContainer(parent, "CardScaleCard", 148f);
 
-            Text cardTitle = APXUIFactory.CreateText(cardGo, "CardTitle", "卡牌尺寸缩放 (Card Scale)", 16, APXUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
+            Text cardTitle = APXUIFactory.CreateText(cardGo, "CardTitle", "手牌挂件整体大小（40%–120%）", 16, APXUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
             RectTransform ctRt = cardTitle.rectTransform;
             ctRt.anchorMin = new Vector2(0f, 1f);
             ctRt.anchorMax = new Vector2(0f, 1f);
             ctRt.pivot = new Vector2(0f, 1f);
             ctRt.anchoredPosition = new Vector2(24f, -16f);
-            ctRt.sizeDelta = new Vector2(260f, 24f);
+            ctRt.sizeDelta = new Vector2(360f, 24f);
 
-            _scaleValueText = APXUIFactory.CreateText(cardGo, "ScaleValueText", $"{HandCardDisplayManager.CardScale:F2}x", 16, APXUITheme.NumericAccent, TextAnchor.MiddleRight, FontStyle.Bold);
+            _scaleValueText = APXUIFactory.CreateText(cardGo, "ScaleValueText", $"{HandCardDock.Scale:P0}", 16, APXUITheme.NumericAccent, TextAnchor.MiddleRight, FontStyle.Bold);
             RectTransform svtRt = _scaleValueText.rectTransform;
             svtRt.anchorMin = new Vector2(1f, 1f);
             svtRt.anchorMax = new Vector2(1f, 1f);
@@ -259,7 +262,7 @@ namespace APXRuntime.UI
             svtRt.anchoredPosition = new Vector2(-24f, -16f);
             svtRt.sizeDelta = new Vector2(100f, 24f);
 
-            _scaleSlider = APXUIFactory.CreateSlider(cardGo, "ScaleSlider", 0.6f, 3.0f, HandCardDisplayManager.CardScale, OnScaleSliderChanged);
+            _scaleSlider = APXUIFactory.CreateSlider(cardGo, "ScaleSlider", HandCardDock.MinScale, HandCardDock.MaxScale, HandCardDock.Scale, OnScaleSliderChanged);
             RectTransform ssRt = _scaleSlider.GetComponent<RectTransform>();
             ssRt.anchorMin = new Vector2(0f, 1f);
             ssRt.anchorMax = new Vector2(1f, 1f);
@@ -267,7 +270,7 @@ namespace APXRuntime.UI
             ssRt.anchoredPosition = new Vector2(0f, -50f);
             ssRt.sizeDelta = new Vector2(-48f, 28f);
 
-            // 预设按钮行 (0.8x, 1.0x, 1.6x, 2.0x)
+            // 整体缩放同步影响窗口、按钮和卡牌。
             GameObject presetsGo = APXUIFactory.CreateUIObject("ScalePresets", cardGo);
             RectTransform prt = presetsGo.GetComponent<RectTransform>();
             prt.anchorMin = new Vector2(0f, 0f);
@@ -296,7 +299,7 @@ namespace APXRuntime.UI
                     APXUITheme.SecondaryText,
                     delegate
                     {
-                        HandCardDisplayManager.CardScale = targetScale;
+                        HandCardDock.Scale = targetScale;
                     }, 14);
 
                 _scalePresetButtons.Add(btn);
@@ -461,7 +464,7 @@ namespace APXRuntime.UI
         private void OnScaleSliderChanged(float val)
         {
             if (_suppressCallbacks) return;
-            HandCardDisplayManager.CardScale = val;
+            HandCardDock.Scale = val;
         }
 
         private void OnBtnSizeSliderChanged(float val)
@@ -493,10 +496,10 @@ namespace APXRuntime.UI
         {
             bool curEnabled = HandCardDisplayManager.IsEnabled;
             bool curSpectatorAutoOpen = HandCardDisplayManager.SpectatorAutoOpen;
-            float curScale = HandCardDisplayManager.CardScale;
+            float curScale = HandCardDock.Scale;
             float curBtnSize = HandCardDisplayManager.PlayBtnSize;
             bool curNeedFetch = HandCardDisplayManager.NeedFetchFromServer;
-            bool curActiveDisplay = HandCardDisplayManager.HasAnyTeammateActiveDisplay();
+            bool curActiveDisplay = HandCardDock.IsOpen;
             bool curPveMode = HandCardDisplayManager.IsPVEMode();
             bool curSpectatorMode = XingShu.Spectator.SpectatorStateStore.IsInSpectatorSession();
             HandTruthSourceMode curTruthMode = HandTruthSource.CurrentMode;
@@ -573,7 +576,7 @@ namespace APXRuntime.UI
                 }
                 if (_scaleValueText != null)
                 {
-                    _scaleValueText.text = $"{curScale:F2}x";
+                    _scaleValueText.text = $"{curScale:P0}";
                 }
                 UpdateScalePresetHighlight(curScale);
                 _suppressCallbacks = false;
@@ -614,11 +617,11 @@ namespace APXRuntime.UI
 
                 if (_syncStatusText != null)
                 {
-                    string overlayTag = curEnabled 
-                        ? $"<color=#10b981>🟢 浮窗开启 ({HandCardDisplayManager.VisibleWidgetCount}/{HandCardDisplayManager.ExpectedVisibleWidgetCount})</color>" 
-                        : "<color=#94a3b8>⚪ 浮窗关闭</color>";
+                    string overlayTag = curEnabled
+                        ? "<color=#087059>同步已启用</color>"
+                        : "<color=#94a3b8>同步已关闭</color>";
                     string fetchTag = curNeedFetch ? "<color=#f59e0b>🟡 存在变动</color>" : "<color=#10b981>🟢 最新</color>";
-                    string displayTag = curActiveDisplay ? "<color=#00e5ff>▶ 激活显示中</color>" : "<color=#94a3b8>⏸ 全折叠</color>";
+                    string displayTag = curActiveDisplay ? "<color=#00e5ff>详情挂件已开启</color>" : "<color=#94a3b8>详情挂件已收起</color>";
                     string envTag;
                     if (curTruthMode == HandTruthSourceMode.LOCAL_SPECTATOR || curSpectatorMode)
                     {
@@ -638,7 +641,7 @@ namespace APXRuntime.UI
                     {
                         envTag = "<color=#64748b>⏸ 未在支持局内</color>";
                     }
-                    _syncStatusText.text = $"[显示: {overlayTag}]  [待拉取: {fetchTag}]  [播放标识: {displayTag}]  [环境: {envTag}]";
+                    _syncStatusText.text = $"[显示: {overlayTag}]  [待拉取: {fetchTag}]  [挂件: {displayTag}]  [环境: {envTag}]";
                 }
 
                 if (_serverResponseText != null)
@@ -813,7 +816,7 @@ namespace APXRuntime.UI
         private void UpdateScalePresetHighlight(float currentScale)
         {
             Sprite normalSp = APXUIAssetService.GetSprite("button_secondary.png");
-            Sprite selSp = APXUIAssetService.GetSprite("tab_selected.png");
+            Sprite selSp = APXUIAssetService.GetSprite("button_selected.png");
 
             for (int i = 0; i < _scalePresetButtons.Count; i++)
             {
@@ -839,7 +842,7 @@ namespace APXRuntime.UI
         private void UpdateBtnSizePresetHighlight(float currentSize)
         {
             Sprite normalSp = APXUIAssetService.GetSprite("button_secondary.png");
-            Sprite selSp = APXUIAssetService.GetSprite("tab_selected.png");
+            Sprite selSp = APXUIAssetService.GetSprite("button_selected.png");
 
             for (int i = 0; i < _btnSizePresetButtons.Count; i++)
             {

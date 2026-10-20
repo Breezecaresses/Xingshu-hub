@@ -1,0 +1,25 @@
+{
+  "Project": "Astral Party / 吉星派对",
+  "Attribution": "Official UI artwork belongs to its original game creators; XingShu is a community project.",
+  "SourceFile": "拖动条.png",
+  "SourceSHA256": "CC747190D7AF9FBB5D9936202AB78F3375BB89ED4CB2789B69E9819A4EB7BB67",
+  "SourceSize": [
+    1864,
+    748
+  ],
+  "CropsXYXY": {
+    "handle": [
+      682,
+      244,
+      786,
+      348
+    ],
+    "fill": [
+      1018,
+      13,
+      1642,
+      81
+    ]
+  },
+  "Processing": "Local atlas crop and background color-key only; no AI redraw"
+}

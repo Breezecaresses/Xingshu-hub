@@ -1,5 +1,6 @@
 using System;
 using APXRuntime.Utilities;
+using APXRuntime.Targeting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,6 +18,8 @@ namespace APXRuntime.UI
         // Card 1: Switch & Status
         private Toggle _enableToggle;
         private Text _statusText;
+        private Toggle _targetingToggle;
+        private Text _targetingSummary;
 
         // Card 2: Target & Preview
         private Button _previewBtn;
@@ -99,6 +102,8 @@ namespace APXRuntime.UI
 
             // 2. 目标与拖动卡预览 (Target & Preview Card: 180px)
             BuildTargetCard(contentArea);
+
+            BuildMonsterTargetCard(contentArea);
 
             // 3. 局内战斗浮字样式 (Style Card: 200px)
             BuildStyleCard(contentArea);
@@ -226,6 +231,35 @@ namespace APXRuntime.UI
             tgRt.sizeDelta = new Vector2(180f, 32f);
         }
 
+        private void BuildMonsterTargetCard(GameObject parent)
+        {
+            GameObject card = CreateCardContainer(parent, "MonsterTargetCard", 264f);
+            Text title = APXUIFactory.CreateText(card, "Title", "怪物索敌 · 最大10格", 16, APXUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
+            PlaceTargetControl(title.rectTransform, new Vector2(24f, -16f), new Vector2(360f, 28f));
+            _targetingToggle = APXUIFactory.CreateToggle(card, "TargetingToggle", "地图索敌", MonsterTargetRuntime.IsEnabled,
+                value => { if (!_suppressCallbacks) MonsterTargetRuntime.SetEnabled(value); });
+            RectTransform toggleRt = _targetingToggle.GetComponent<RectTransform>();
+            toggleRt.anchorMin = toggleRt.anchorMax = toggleRt.pivot = new Vector2(1f, 1f);
+            toggleRt.anchoredPosition = new Vector2(-24f, -16f);
+            toggleRt.sizeDelta = new Vector2(180f, 32f);
+            Text hint = APXUIFactory.CreateText(card, "Hint", "按未攻击状态和最大骰10格推演（先行1格＋剩余9格），技能加步暂不计入。", 12, APXUITheme.SecondaryText, TextAnchor.MiddleLeft);
+            PlaceTargetControl(hint.rectTransform, new Vector2(24f, -52f), new Vector2(820f, 24f));
+            _targetingSummary = APXUIFactory.CreateText(card, "Summary", "等待进入 PVE 对局", 13, APXUITheme.PrimaryText, TextAnchor.UpperLeft);
+            _targetingSummary.supportRichText = false;
+            PlaceTargetControl(_targetingSummary.rectTransform, new Vector2(24f, -86f), new Vector2(820f, 116f));
+            Button previous = CreateActionButton(card, "PreviousMonster", "◀ 上个怪物", () => MonsterTargetRuntime.Select(-1), 132f, 30f);
+            Button next = CreateActionButton(card, "NextMonster", "下个怪物 ▶", () => MonsterTargetRuntime.Select(1), 132f, 30f);
+            PlaceTargetControl(previous.GetComponent<RectTransform>(), new Vector2(24f, -218f), new Vector2(132f, 30f));
+            PlaceTargetControl(next.GetComponent<RectTransform>(), new Vector2(172f, -218f), new Vector2(132f, 30f));
+        }
+
+        private static void PlaceTargetControl(RectTransform rt, Vector2 position, Vector2 size)
+        {
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0f, 1f);
+            rt.anchoredPosition = position;
+            rt.sizeDelta = size;
+        }
+
         private void BuildTargetCard(GameObject parent)
         {
             GameObject cardGo = CreateCardContainer(parent, "TargetCard", 180f);
@@ -317,7 +351,7 @@ namespace APXRuntime.UI
             pbBg.type = (pbSprite != null && pbSprite.border != Vector4.zero) ? Image.Type.Sliced : Image.Type.Simple;
             pbBg.color = new Color(0.10f, 0.13f, 0.18f, 0.90f);
 
-            _previewLine1Text = APXUIFactory.CreateText(previewBox, "PreviewLine1", "", 13, APXUITheme.PrimaryText, TextAnchor.MiddleLeft);
+            _previewLine1Text = APXUIFactory.CreateText(previewBox, "PreviewLine1", "", 20, Color.white, TextAnchor.MiddleLeft, FontStyle.Bold, HorizontalWrapMode.Overflow, VerticalWrapMode.Overflow);
             _previewLine1Text.supportRichText = true;
             RectTransform l1Rt = _previewLine1Text.rectTransform;
             l1Rt.anchorMin = new Vector2(0f, 1f);
@@ -326,7 +360,7 @@ namespace APXRuntime.UI
             l1Rt.anchoredPosition = new Vector2(14f, -6f);
             l1Rt.sizeDelta = new Vector2(-28f, 22f);
 
-            _previewLine2Text = APXUIFactory.CreateText(previewBox, "PreviewLine2", "", 13, APXUITheme.PrimaryText, TextAnchor.MiddleLeft);
+            _previewLine2Text = APXUIFactory.CreateText(previewBox, "PreviewLine2", "", 20, Color.white, TextAnchor.MiddleLeft, FontStyle.Bold, HorizontalWrapMode.Overflow, VerticalWrapMode.Overflow);
             _previewLine2Text.supportRichText = true;
             RectTransform l2Rt = _previewLine2Text.rectTransform;
             l2Rt.anchorMin = new Vector2(0f, 1f);
@@ -622,7 +656,7 @@ namespace APXRuntime.UI
             ctRt.sizeDelta = new Vector2(200f, 20f);
 
             Text infoText = APXUIFactory.CreateText(cardGo, "InfoContent",
-                "• 一次攻击击飞，防御方按防御计算；双方普通 1–6 骰。\n• 显示当前战斗防御方（玩家/怪物）的风险，以及本人对其他怪物的战前估算。\n• 关闭功能中心不会停用后台功能，可通过悬浮球随时打开。",
+                "• 一次攻击击飞，防御方按防御计算；双方普通 1–6 骰。\n• 概率按高低分色；主动技能冷却仅在地图上显示，战斗浮字不显示冷却。\n• 原版名字与血量保留；关闭功能中心不会停用后台预测。",
                 12, APXUITheme.SecondaryText, TextAnchor.UpperLeft);
             RectTransform infoRt = infoText.rectTransform;
             infoRt.anchorMin = new Vector2(0f, 1f);
@@ -666,6 +700,15 @@ namespace APXRuntime.UI
 
         internal void UpdateSync(bool force = false)
         {
+            // This module is independent from the kill-probability switch and status.
+            if (_targetingSummary != null && _targetingSummary.text != MonsterTargetRuntime.Summary)
+                _targetingSummary.text = MonsterTargetRuntime.Summary;
+            if (_targetingToggle != null && _targetingToggle.isOn != MonsterTargetRuntime.IsEnabled)
+            {
+                _suppressCallbacks = true;
+                _targetingToggle.isOn = MonsterTargetRuntime.IsEnabled;
+                _suppressCallbacks = false;
+            }
             bool curEnabled = MonsterKillProbability.IsEnabled;
             bool curPreview = MonsterKillProbability.PreviewCards;
             int curFontSize = MonsterKillProbability.FightFontSize;
@@ -784,17 +827,17 @@ namespace APXRuntime.UI
                 int previewBase = Mathf.Clamp(curFontSize, 12, 20);
                 string targetCol = curTargetColor;
                 string p16Col = MonsterKillProbability.GetPreviewProbabilityColorHex(0.167f);
-                string p58Col = MonsterKillProbability.GetPreviewProbabilityColorHex(0.583f);
-                string p83Col = MonsterKillProbability.GetPreviewProbabilityColorHex(0.833f);
                 string p100Col = MonsterKillProbability.GetPreviewProbabilityColorHex(1.000f);
 
                 if (_previewLine1Text != null)
                 {
-                    _previewLine1Text.text = $"<b><size={previewBase}><color={p16Col}>[击飞 16.7%]</color></size> <size={previewBase}><color={targetCol}>典狱长</color></size>       <size={previewBase}><color={p58Col}>[击飞 58.3%]</color></size> <size={previewBase}><color={targetCol}>典狱长</color></size></b>";
+                    _previewLine1Text.fontSize = previewBase;
+                    _previewLine1Text.text = $"<b><size={previewBase}><color={p16Col}>击飞 16.7%</color>  <color={targetCol}>典狱长</color></size></b>";
                 }
                 if (_previewLine2Text != null)
                 {
-                    _previewLine2Text.text = $"<b><size={previewBase}><color={p83Col}>[击飞 83.3%]</color></size> <size={previewBase}><color={targetCol}>典狱长</color></size>       <size={previewBase}><color={p100Col}>[击飞 100%]</color></size> <size={previewBase}><color={targetCol}>典狱长</color></size></b>";
+                    _previewLine2Text.fontSize = previewBase;
+                    _previewLine2Text.text = $"<b><size={previewBase}><color={p100Col}>击飞 100%</color>  <color={targetCol}>闹钟猫头鹰</color></size></b>";
                 }
 
                 if (curStatus != _lastObservedStatus || force)

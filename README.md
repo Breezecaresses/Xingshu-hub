@@ -11,10 +11,16 @@
 <p align="center">
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" />
   <img src="https://img.shields.io/badge/Hub-Tauri%202%20%7C%20Rust-orange.svg" alt="Tauri Rust" />
-  <img src="https://img.shields.io/badge/Frontend-React%2018%20%7C%20TypeScript-blue.svg" alt="React TS" />
+  <img src="https://img.shields.io/badge/Frontend-React%2019%20%7C%20TypeScript-blue.svg" alt="React TS" />
   <img src="https://img.shields.io/badge/Runtime-C%23%20%7C%20.NET-purple.svg" alt="C# .NET" />
   <img src="https://img.shields.io/badge/Platform-Windows-lightgrey.svg" alt="Windows" />
 </p>
+
+---
+
+## Group distribution build
+
+The current [group distribution build](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261021.2) is a prerelease, not the first stable version. Extract the complete ZIP and run `星枢安装助手.exe`. Supports Steam CN and TapTap 3.3.0 / resource 026. The hand dock defaults to 60% overall size, adjustable from 40% to 120%. See [build notes](GROUP_DISTRIBUTION_20261021_2.md) for known limitations. The local-only native speed prototype is excluded.
 
 ---
 
@@ -23,7 +29,7 @@
 **XingShu (星枢)** is a local multi-process workstation and game enhancement runtime suite developed for *Astral Party* (吉星派对).
 
 The project consists of two core components:
-1. **AstralParty-Hub**: A modern desktop management hub built on Tauri 2 + Rust + React 18. It provides isolated account management, runtime lifecycle supervision, local loopback communication relay, and automated room following for spectating.
+1. **AstralParty-Hub**: A modern desktop management hub built on Tauri 2 + Rust + React 19. It provides isolated account management, runtime lifecycle supervision, local loopback communication relay, and automated room following for spectating.
 2. **APX Runtime**: A C# Unity enhancement module injected into the game client. It provides floating card status overlays, HUD widgets, match statistics, adaptive lifecycle reconciliation, and authoritative hand truth mirroring.
 
 ---
@@ -47,7 +53,8 @@ See [the local watcher notes](AstralParty-Hub/docs/local-managed-watcher.md) for
 - Match history and settlement details persist per account. PVE uses victory/defeat; PVP uses placement. Support transfers receive more rating weight; remaining gold stays visible and is excluded from ratings.
 - Runtime, packages, plugins, and mods use five channels and explicit installation directories, including multiple locations per channel. Externally installed files show detection status only.
 - Runtime management separates file verification, the actual game process, and the version reported by a confirmed connection. This bundle supplies verified runtime payloads for Steam CN and TapTap Windows; other channels still need runtime testing.
-- The Hub sidebar, settings, and plugin F1 center link to the project source. The current runtime version is `1.0.0-library-r3`.
+- The Hub sidebar, settings, and plugin F1 center link to the project source. The current desktop runtime version is `1.0.0-game-ui-r1`.
+- The in-game center now uses translucent surfaces without background stripes, the game's font, and official star-shaped sliders. Colored text previews are fixed. Target selection keeps native panning and the user's zoom; labels and leader lines shrink when zooming out. See the [UI and camera validation record](GAME_UI_R1.md) for tested behavior and pending checks.
 
 See [extension channel documentation](AstralParty-Hub/docs/specs/extension_channels.md) for manifests, destination mappings, and management boundaries. Game artwork, configuration, and resources remain the property of their respective owners and are not relicensed under the code's MIT license.
 
@@ -61,7 +68,7 @@ Touch interaction, physical Android devices, and desktop Hub pairing still need 
 
 ```mermaid
 flowchart TD
-    subgraph Hub["AstralParty-Hub (Tauri 2 / Rust + React 18)"]
+    subgraph Hub["AstralParty-Hub (Tauri 2 / Rust + React 19)"]
         UI["Frontend Console (React + TS + Vite)"]
         FSM["Auto-Follow State Machine (11 States)"]
         TCPServer["Bridge TCP Server (127.0.0.1:25890)"]
@@ -118,7 +125,7 @@ flowchart TD
 ```text
 XingShu/
 ├── AstralParty-Hub/            # Desktop management console
-│   ├── src/                    # Frontend source (React 18, TypeScript, TailwindCSS)
+│   ├── src/                    # Frontend source (React 19, TypeScript, TailwindCSS)
 │   │   ├── pages/              # UI pages (Spectator, Account Center, Runtime, Diagnostics, etc.)
 │   │   ├── services/           # Core services (Auto-follow, Truth Arbiter, Account Management)
 │   │   └── shared/             # Shared card registry and data models

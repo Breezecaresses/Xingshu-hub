@@ -12,6 +12,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 using APXRuntime.Core;
+using APXRuntime.UI;
 
 namespace APXRuntime.Utilities;
 
@@ -780,7 +781,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			LogAssist("已完成 uGUI 组件与交互事件绑定");
 			try
 			{
-				Font font = Font.CreateDynamicFontFromOSFont(new string[9] { "Noto Sans CJK SC", "Noto Sans SC", "Droid Sans Fallback", "Microsoft YaHei", "PingFang SC", "SimHei", "Roboto", "Segoe UI", "Arial" }, 14);
+				Font font = APXRuntime.UI.APXUITheme.GetMainFont();
 				Text[] componentsInChildren = _ballRootObj.GetComponentsInChildren<Text>(includeInactive: true);
 				foreach (Text text in componentsInChildren)
 				{
@@ -806,7 +807,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 						text2.alignByGeometry = false;
 					}
 				}
-				LogAssist("已应用系统高清字体替换");
+				LogAssist("已应用游戏设置字体与缺字回退");
 			}
 			catch (Exception ex2)
 			{
@@ -959,7 +960,10 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			_ballButtonRt = transform.GetComponent<RectTransform>();
 			_ballBtn = transform.GetComponent<Button>();
 
-			// R3.2 四节点通用入口资产覆盖 (UGUI 路径生效)
+			// The old prefab's blue decorative Dot must not overlay the new star artwork.
+			Transform legacyDot = transform.Find("Dot");
+			if (legacyDot != null) legacyDot.gameObject.SetActive(false);
+			// Replace the old entry artwork in the UGUI path.
 			UnityEngine.UI.Image ballImg = transform.GetComponent<UnityEngine.UI.Image>();
 			if (ballImg != null)
 			{
@@ -997,6 +1001,27 @@ internal sealed class AssistBallGUI : MonoBehaviour
 		}
 	}
 
+	private void ApplyMenuTheme()
+	{
+		if (_menuRootObj == null) return;
+		foreach (Text label in _menuRootObj.GetComponentsInChildren<Text>(true))
+		{
+			label.font = APXUITheme.GetFontForText(label.text);
+			label.color = label.transform.parent?.name == "Header" ? Color.white : APXUITheme.PrimaryText;
+		}
+		foreach (UnityEngine.UI.Image image in _menuRootObj.GetComponentsInChildren<UnityEngine.UI.Image>(true))
+		{
+			string name = image.name;
+			if (name == "WindowPanel" || name == "Header" || name.EndsWith("Setting"))
+			{
+				image.sprite = APXUIAssetService.GetSprite(name == "WindowPanel" ? "window_frame.png" : name == "Header" ? "header_bar.png" : "card_base.png");
+				image.type = UnityEngine.UI.Image.Type.Sliced;
+				image.color = new Color(1, 1, 1, name == "WindowPanel" ? .78f : 1);
+			}
+			if (name == "PlayBtnSizeSetting") image.gameObject.SetActive(false);
+		}
+	}
+
 	private void BindMenuReferences()
 	{
 		if (_menuRootObj == null)
@@ -1010,6 +1035,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			return;
 		}
 		_windowPanelRt = transform.GetComponent<RectTransform>();
+		ApplyMenuTheme();
 		Transform transform2 = transform.Find("Header");
 		if (transform2 != null)
 		{
@@ -1367,6 +1393,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			_toastText = transform19.Find("ToastText")?.GetComponent<Text>();
 			_toastBannerObj.SetActive(value: false);
 		}
+		ApplyMenuTheme();
 	}
 
 	private string FormatHotkeyName(KeyCode code)
@@ -1480,20 +1507,20 @@ internal sealed class AssistBallGUI : MonoBehaviour
 		}
 		if (_tab0Img != null)
 		{
-			_tab0Img.color = ((_currentTab == 0) ? new Color(0.16f, 0.175f, 0.24f, 0.98f) : new Color(0f, 0f, 0f, 0f));
+			_tab0Img.color = ((_currentTab == 0) ? APXUITheme.Yellow : new Color(0f, 0f, 0f, 0f));
 		}
 		if (_tab1Img != null)
 		{
-			_tab1Img.color = ((_currentTab == 1) ? new Color(0.16f, 0.175f, 0.24f, 0.98f) : new Color(0f, 0f, 0f, 0f));
+			_tab1Img.color = ((_currentTab == 1) ? APXUITheme.Yellow : new Color(0f, 0f, 0f, 0f));
 		}
 		if (_tab0Text != null)
 		{
-			_tab0Text.color = ((_currentTab == 0) ? new Color(0.98f, 0.98f, 1f) : new Color(0.55f, 0.58f, 0.68f));
+			_tab0Text.color = ((_currentTab == 0) ? APXUITheme.PrimaryText : APXUITheme.SecondaryText);
 			_tab0Text.fontStyle = FontStyle.Normal;
 		}
 		if (_tab1Text != null)
 		{
-			_tab1Text.color = ((_currentTab == 1) ? new Color(0.98f, 0.98f, 1f) : new Color(0.55f, 0.58f, 0.68f));
+			_tab1Text.color = ((_currentTab == 1) ? APXUITheme.PrimaryText : APXUITheme.SecondaryText);
 			_tab1Text.fontStyle = FontStyle.Normal;
 		}
 		ResizeMenu();
@@ -1636,15 +1663,17 @@ internal sealed class AssistBallGUI : MonoBehaviour
 		UnityEngine.UI.Image component = itemObj.GetComponent<UnityEngine.UI.Image>();
 		if (component != null)
 		{
-			component.color = (isEnabled ? new Color(0.1f, 0.28f, 0.18f, 0.96f) : new Color(0.1f, 0.11f, 0.15f, 0.92f));
+			component.sprite = APXUIAssetService.GetSprite("card_base.png");
+			component.type = UnityEngine.UI.Image.Type.Sliced;
+			component.color = isEnabled ? new Color(1f, .94f, .78f) : Color.white;
 		}
 		Button component2 = itemObj.GetComponent<Button>();
 		if (component2 != null)
 		{
 			ColorBlock colors = component2.colors;
 			colors.normalColor = Color.white;
-			colors.highlightedColor = (isEnabled ? new Color(0.14f, 0.38f, 0.24f, 1f) : new Color(0.16f, 0.18f, 0.25f, 1f));
-			colors.pressedColor = (isEnabled ? new Color(0.18f, 0.48f, 0.3f, 1f) : new Color(0.22f, 0.25f, 0.35f, 1f));
+			colors.highlightedColor = new Color(1f, .91f, .95f);
+			colors.pressedColor = new Color(1f, .80f, .87f);
 			component2.colors = colors;
 		}
 		Transform transform = itemObj.transform.Find("Border");
@@ -1653,23 +1682,25 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			UnityEngine.UI.Image component3 = transform.GetComponent<UnityEngine.UI.Image>();
 			if (component3 != null)
 			{
-				component3.color = (isEnabled ? new Color(0.25f, 0.85f, 0.45f, 0.4f) : new Color(1f, 1f, 1f, 0.05f));
+				component3.color = isEnabled ? APXUITheme.Pink : Color.clear;
 			}
 		}
 		Text text = itemObj.transform.Find("TitleText")?.GetComponent<Text>();
 		if (text != null)
 		{
-			text.color = (isEnabled ? new Color(0.96f, 1f, 0.97f) : new Color(0.85f, 0.88f, 0.92f));
+			text.color = APXUITheme.PrimaryText;
+			text.font = APXUITheme.GetFontForText(text.text);
 		}
 		Text text2 = itemObj.transform.Find("DescText")?.GetComponent<Text>();
 		if (text2 != null)
 		{
-			text2.color = (isEnabled ? new Color(0.68f, 0.9f, 0.75f) : new Color(0.55f, 0.58f, 0.68f));
+			text2.color = APXUITheme.SecondaryText;
+			text2.font = APXUITheme.GetFontForText(text2.text);
 		}
 		Text text3 = itemObj.transform.Find("ArrowText")?.GetComponent<Text>();
 		if (text3 != null)
 		{
-			text3.color = (isEnabled ? new Color(0.4f, 0.95f, 0.6f) : new Color(0.42f, 0.46f, 0.56f));
+			text3.color = APXUITheme.NumericAccent;
 		}
 	}
 
@@ -2050,8 +2081,10 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			ttRt.sizeDelta = new Vector2(120f, 44f);
 
 			UnityEngine.UI.Image bg = _uguiTooltipObj.AddComponent<UnityEngine.UI.Image>();
-			bg.sprite = APXRuntime.UI.APXUIAssetService.WhiteSprite;
-			bg.color = new Color(0.12f, 0.15f, 0.20f, 0.96f);
+			bg.sprite = APXRuntime.UI.APXUIAssetService.GetSprite("card_base.png");
+			bg.type = UnityEngine.UI.Image.Type.Sliced;
+			bg.color = Color.white;
+			bg.raycastTarget = false;
 
 			GameObject titleGo = new GameObject("Title", typeof(RectTransform));
 			titleGo.transform.SetParent(_uguiTooltipObj.transform, false);
@@ -2060,7 +2093,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			titleTxt.font = APXRuntime.UI.APXUITheme.GetMainFont();
 			titleTxt.fontSize = 13;
 			titleTxt.fontStyle = FontStyle.Bold;
-			titleTxt.color = new Color(0.957f, 0.969f, 0.980f, 1f);
+			titleTxt.color = APXRuntime.UI.APXUITheme.PrimaryText;
 			titleTxt.alignment = TextAnchor.UpperLeft;
 			RectTransform tRt = titleTxt.rectTransform;
 			tRt.anchorMin = Vector2.zero;
@@ -2074,7 +2107,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			subTxt.text = "左键打开 / 拖动移动";
 			subTxt.font = APXRuntime.UI.APXUITheme.GetMainFont();
 			subTxt.fontSize = 10;
-			subTxt.color = new Color(0.557f, 0.612f, 0.682f, 1f);
+			subTxt.color = APXRuntime.UI.APXUITheme.SecondaryText;
 			subTxt.alignment = TextAnchor.LowerLeft;
 			RectTransform sRt = subTxt.rectTransform;
 			sRt.anchorMin = Vector2.zero;
@@ -2385,22 +2418,22 @@ internal sealed class AssistBallGUI : MonoBehaviour
 		ttY = Mathf.Clamp(ttY, layoutBounds.yMin + 8f, layoutBounds.yMax - ttH - 8f);
 		Rect ttRect = new Rect(ttX, ttY, ttW, ttH);
 
-		DrawSolidRect(ttRect, new Color(0.12f, 0.15f, 0.20f, 0.96f));
-		DrawBorder(ttRect, new Color(0.165f, 0.200f, 0.267f, 1f));
+		DrawSolidRect(ttRect, APXRuntime.UI.APXUITheme.Card);
+		DrawBorder(ttRect, APXRuntime.UI.APXUITheme.Pink);
 
 		GUIStyle titleStyle = new GUIStyle(GUI.skin.label)
 		{
 			alignment = TextAnchor.UpperLeft,
 			fontSize = 13,
 			fontStyle = FontStyle.Bold,
-			normal = { textColor = new Color(0.957f, 0.969f, 0.980f, 1f) }
+			normal = { textColor = APXRuntime.UI.APXUITheme.PrimaryText }
 		};
 		GUIStyle subStyle = new GUIStyle(GUI.skin.label)
 		{
 			alignment = TextAnchor.LowerLeft,
 			fontSize = 11,
 			fontStyle = FontStyle.Normal,
-			normal = { textColor = new Color(0.498f, 0.537f, 0.596f, 1f) }
+			normal = { textColor = APXRuntime.UI.APXUITheme.SecondaryText }
 		};
 
 		GUI.Label(new Rect(ttRect.x + 10f, ttRect.y + 4f, ttRect.width - 20f, 20f), "星枢功能中心", titleStyle);

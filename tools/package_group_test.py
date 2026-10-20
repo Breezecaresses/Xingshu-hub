@@ -1,4 +1,4 @@
-"""Build a portable group-test ZIP from the checked local Hub and runtime candidates."""
+"""Build and verify a portable XingShu release from checked local candidates."""
 import argparse
 import hashlib
 import json
@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import uuid
 import zipfile
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -24,8 +25,26 @@ def invoke(exe, *args, ok=True):
     return result
 
 
+def compatible_previous_payloads(publish, platform):
+    """Allow upgrades only from completed, intact releases for the same game build."""
+    found = {}
+    manifests = [p for folder in (ROOT / '群测发布', publish) for p in folder.glob('XingShu_*/release.json')]
+    for manifest in manifests:
+        previous = json.loads(manifest.read_text('utf-8'))
+        for item in previous.get('Platforms', []):
+            if (item.get('Id') == platform['Id'] and
+                    item.get('GameAssemblySha256') == platform['GameAssemblySha256'] and
+                    item.get('BundleRelativePath') == platform['BundleRelativePath']):
+                payload = (manifest.parent / item['Payload']).resolve()
+                if manifest.parent.resolve() not in payload.parents:
+                    raise RuntimeError('Previous release payload escapes its package')
+                if payload.is_file() and sha(payload) == item['PayloadSha256']:
+                    found[item['PayloadSha256']] = payload
+    return found
+
+
 def verify_installer(package, profiles, release):
-    exe = package / '星枢群测助手.exe'
+    exe = package / '星枢安装助手.exe'
     invoke(exe, '--verify-package')
     temp_base = Path(tempfile.gettempdir()).resolve()
     temp = Path(tempfile.mkdtemp(prefix='xingshu-install-test-', dir=temp_base)).resolve()
@@ -71,7 +90,21 @@ def verify_installer(package, profiles, release):
                 assert sha(target) == platform['PayloadSha256']
             finally:
                 payload.write_bytes(saved)
+            for previous_index, (previous_hash, previous_payload) in enumerate(compatible_previous_payloads(ROOT / '发布包', platform).items()):
+                # Keep the nested fixture below .NET Framework's legacy path limit.
+                upgrade = temp / (platform['Id'] + '-' + str(previous_index))
+                upgrade.mkdir()
+                os.link(fixture / 'GameAssembly.dll', upgrade / 'GameAssembly.dll')
+                (upgrade / platform['ExeName']).write_bytes(b'installer fixture; not executable')
+                upgrade_target = upgrade / platform['BundleRelativePath']
+                upgrade_target.parent.mkdir(parents=True)
+                shutil.copy2(previous_payload, upgrade_target)
+                invoke(exe, '--install', platform['Id'], upgrade)
+                assert sha(upgrade_target) == platform['PayloadSha256']
+                invoke(exe, '--restore', platform['Id'], upgrade)
+                assert sha(upgrade_target) == previous_hash
             print(platform['Id'] + ': fresh install, repeat install, restore, reinstall, unknown version and corrupt payload PASS', flush=True)
+            print(platform['Id'] + ': compatible previous group-test upgrades and restores PASS', flush=True)
         print('Package integrity check PASS', flush=True)
     finally:
         assert temp.parent == temp_base and temp.name.startswith('xingshu-install-test-')
@@ -80,11 +113,17 @@ def verify_installer(package, profiles, release):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--version', default='0.1.0-test.20261020.3')
+    parser.add_argument('--version', default='0.1.0-test.20261021.2')
+    parser.add_argument('--source-commit', required=True)
     args = parser.parse_args()
     if not all(c.isascii() and (c.isalnum() or c in '.-') for c in args.version):
         raise SystemExit('Invalid version')
-    publish = ROOT / '群测发布'
+    if not re.fullmatch('[0-9a-f]{40}', args.source_commit):
+        raise SystemExit('Expected the full verified source commit SHA')
+    version_source = (ROOT / 'APX-Dev/src/APX.hooks/XingShu/Runtime/XingShuRuntimeHost.cs').read_text('utf-8')
+    runtime_version = re.search(r'#else\s+public const string RuntimeVersion = "([^"]+)"', version_source).group(1)
+    hub_version = json.loads((ROOT / 'AstralParty-Hub/package.json').read_text('utf-8'))['version']
+    publish = ROOT / '发布包'
     publish.mkdir(exist_ok=True)
     name = 'XingShu_' + args.version
     destination = publish / name
@@ -105,6 +144,7 @@ def main():
     profiles = json.loads((ROOT / 'AstralParty-Hub/src-tauri/src/xing_shu/platform/platform_profiles.json').read_text('utf-8'))
     deployment = json.loads((ROOT / 'APX-Dev/build/runtime-truth-fix/deployment.json').read_text('utf-8'))
     release = {'FormatVersion': 1, 'Version': args.version, 'HubSha256': sha(hub),
+               'SourceCommit': args.source_commit, 'RuntimeVersion': runtime_version, 'HubVersion': hub_version,
                'ExtensionManagementChannels': ['STEAM_CN', 'STEAM_GLOBAL', 'TAPTAP', 'BILIBILI', 'WEGAME'],
                'CharacterCatalogCount': 37, 'PreviewCharacterCount': 2, 'Platforms': []}
     for profile in profiles:
@@ -118,13 +158,16 @@ def main():
         target = stage / relative
         target.parent.mkdir(parents=True)
         shutil.copy2(source, target)
-        release['Platforms'].append({
+        platform_release = {
             'Id': platform, 'Label': {'STEAM_CN': 'Steam 国服', 'TAPTAP': 'TapTap Windows 版'}[platform],
             'ExeName': profile['processExecutable'], 'GameAssemblySha256': profile['gameRuntimeDllSha256'].lower(),
             'BundleRelativePath': profile['bundleRelativePath'], 'Payload': relative,
             'PayloadSha256': prepared['candidateSha256'],
             'AcceptedHashes': sorted({profile['containerSha256'].lower(), prepared['beforeSha256'].lower()}),
-        })
+        }
+        platform_release['AcceptedHashes'] = sorted(set(platform_release['AcceptedHashes']) |
+            set(compatible_previous_payloads(publish, platform_release)))
+        release['Platforms'].append(platform_release)
     manifest = stage / 'release.json'
     manifest.write_text(json.dumps(release, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     identity = stage / 'PackageIdentity.cs'
@@ -132,17 +175,17 @@ def main():
     compiler = Path(os.environ['WINDIR']) / 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
     subprocess.run([str(compiler), '/nologo', '/target:winexe', '/optimize+', '/platform:anycpu', '/nowarn:0649',
                     '/reference:System.Windows.Forms.dll', '/reference:System.Drawing.dll',
-                    '/reference:System.Web.Extensions.dll', '/out:' + str(stage / '星枢群测助手.exe'),
+                    '/reference:System.Web.Extensions.dll', '/out:' + str(stage / '星枢安装助手.exe'),
                     str(ROOT / 'tools/GroupTestInstaller.cs'), str(identity)], check=True)
     identity.unlink()
-    (stage / '先读我.txt').write_text(f'''星枢 XingShu 群测版 {args.version}
+    (stage / '先读我.txt').write_text(f'''星枢 XingShu 群发测试版 {args.version}
 适配：Windows 10/11 64 位，吉星派对 3.3.0 / 资源 026。
 运行时安装文件：Steam 国服和 TapTap Windows 版。
 Hub 扩展目录管理：Steam 国服、Steam 国际服、TapTap Windows、哔哩哔哩、WeGame；支持同渠道保存多个安装位置。后面三个渠道本版未附带经过验证的运行时安装文件。
 
 安装（不需要 Git、Python、Node.js 或 Rust）
 1. 将整个 ZIP 解压到固定文件夹。不要在压缩包里直接打开 exe，也不要单独移动助手。
-2. 正常退出游戏。双击“星枢群测助手.exe”。
+2. 正常退出游戏。双击“星枢安装助手.exe”。
 3. 选择平台，再选择实际游戏程序。Steam 国服通常位于游戏安装目录的 8vJXn6CN/AstralParty_CN.exe；TapTap 请选择吉星派对.exe，不能选择 TapTap 启动器。
 4. 点“安装 / 更新插件”。助手会校验渠道和资源版本，备份安装前文件再替换。若资源不匹配，会停止安装；请先用官方平台校验/修复游戏，再更新并进入一次大厅，退出后重试。
 5. 主端和观战端各安装一次。通过 Steam / TapTap 官方启动器正常启动游戏，不要从助手直接启动游戏 exe。
@@ -157,22 +200,26 @@ Hub 扩展目录管理：Steam 国服、Steam 国际服、TapTap Windows、哔�
 包管理器、运行时插件、游戏模组共用“渠道与安装位置”，导入时务必选中正确目录。支持声明渠道的 .xspkg / .zip 包；旧包未声明渠道时仅按 Steam 国服处理。
 星枢运行时页也按此渠道和目录显示实际游戏进程、文件指纹核验及当前连接上报版本；磁盘安装状态与正在运行的版本分开显示。
 运行时插件页会核验本版内置运行时；其他 DLL 和模组、modimg 卡面资源从实际目录扫描。手动安装项只展示文件，不假定已加载，也不提供删除按钮。
-完整解压后从 Hub 文件夹启动，可在插件页“打开群测助手”，自动带入选中的 Steam 国服或 TapTap 目录；打开助手不会自动安装。
+完整解压后从 Hub 文件夹启动，可在插件页“打开安装助手”，自动带入选中的 Steam 国服或 TapTap 目录；打开助手不会自动安装。
 独立扩展包格式与渠道声明见“扩展包格式说明.md”。安装、更新和卸载前请退出对应目录的游戏。
 
 插件与测试
 F1 / 悬浮球：功能中心。Ctrl+Shift+H：手牌面板。十倍思考时间与自动致谢请在功能设置中开启。
 本包包含启动修复、头像旁手牌挂件跨局清理、Hub 等待页清理、观战结束退房逻辑、选人/回合/筹码的本地十倍计时和自动致谢修复。
-运行时 1.0.0-library-r3：支持角色和历史战绩同步、旧观战会话清理；功能中心标明项目源码来源。此包同时更新 Hub 图鉴与扩展管理。
+运行时 1.0.0-game-ui-r5：粉黄功能中心、半透明框架、游戏字体与星形入口统一设计。手牌挂件采用交错叠放长卡，支持10张以上同排、悬停抬牌查看详情，默认整体60%，可在手牌监视页调节40%–120%，自动保存。挂件标题可拖动、收起、选择P1–P4，设置按钮直达调节页。
+对局统计挂件与功能中心共用详情布局，展示击杀、死亡、输出、承伤、治疗、累计金币、转账、行动回合及结算金币；无数据保留“—”，结算评分按星枢规则计算。
+地图上的击飞预测使用清晰分段颜色和底板；怪物技能冷却仅在地图显示，战斗中概率与名字横向显示。怪物索敌按最大10格估算候选目标，未知岔路保留候选，仅作提示，不修改游戏AI。
+十倍思考时间使用真实时钟，避免被倍速加快；底部进度条按当前操作归属更新，避免旧计时和转发显示反复覆盖。原生加速滑条0.25–10倍、快捷按钮最高5倍；原生接口保留，组件需另行提供。游戏内加速可直接使用。
+突击门、技能和指向牌选择时保留镜头移动及自定义缩放，拉远时名字和指向线缩小。不同技能和地图场景仍欢迎反馈。
 已经实测：双端插件启动及身份识别、首局 PVE 四人观战镜像；主端不重启连续进入两局，挂件换为新局手牌。
 请重点反馈：同房重开与换房时，观战端连续两局是否自动退房再跟房；自然结算弹窗是否自动退出；收卡/星币/治疗是否分别触发致谢；是否有旧牌残留、卡死、闪退。
-上述连续观战、自然结束与三种致谢仍待群测确认，不能视为全部实机通过。
+连续观战、自然结束与三种致谢尚未穷尽全部场景；若遇异常请附复现步骤反馈。
 
 当前边界
 完整观战手牌需要已登录的官方观战客户端，本包没有免登录读牌和远程账号池。一局中持续订阅、结束退房；读一次退出后不会继续获得手牌变化。
-十倍修改本地计时，服务端截止仍有效。测试包不替换原生变速 version.dll；需要变速时使用插件内的托管模式。
+十倍修改本地计时，服务端截止仍有效。本包不分发原生变速 version.dll：当前原型的上游授权未明确，项目限定其仅供本地验证；已有原生组件的用户可继续使用。
 未附带账号登录数据、密码、本机 Hub 数据库或个人运行日志。已有 Hub 用户设置仍保存在系统用户数据目录，切换包不会自动重置它们。
-此包为便携测试版本，没有数字签名；请核对发布者和 ZIP 的 SHA256，不需要关闭安全软件。
+此包为便携版本，没有数字签名；请核对发布者和 ZIP 的 SHA256，不需要关闭安全软件。
 
 还原
 正常退出对应渠道游戏，助手里选择相同平台和游戏，点“还原安装前版本”。备份保存在游戏目录 .xingshu-backup/{args.version}/，还原完成前请保留。
@@ -180,7 +227,7 @@ F1 / 悬浮球：功能中心。Ctrl+Shift+H：手牌面板。十倍思考时间
 若游戏又更新，助手会拒绝覆盖未知文件，请先使用官方平台修复。退出 Hub 并删除解压目录即可移除便携 Hub；这不会删除用户设置。
 
 反馈时请说明
-测试包版本、Windows 版本、游戏渠道/资源版本、单端或双端、操作步骤、预期与实际结果、首次还是下一局、发生时间，以及问题截图。
+版本、Windows 版本、游戏渠道/资源版本、单端或双端、操作步骤、预期与实际结果、首次还是下一局、发生时间，以及问题截图。
 日志可能包含账号和房间信息，请先隐藏个人信息；不要发密码、验证码或登录票据。
 ''', encoding='utf-8-sig')
     shutil.copy2(ROOT / 'AstralParty-Hub/docs/specs/extension_channels.md', stage / '扩展包格式说明.md')
@@ -199,24 +246,29 @@ F1 / 悬浮球：功能中心。Ctrl+Shift+H：手牌面板。十倍思考时间
         assert len(output.namelist()) == len(entries) + 1
     digest = sha(archive)
     (publish / (name + '.zip.sha256')).write_text(digest + '  ' + archive.name + '\n', encoding='utf-8')
-    (publish / '发群说明.txt').write_text(f'''星枢群测版 {args.version}
-适配吉星派对3.3.0／资源026，运行时支持Steam国服、TapTap Windows版。
+    group_note = f'''星枢群发测试版 {args.version}
+适配吉星派对3.3.0／资源026，含Steam国服、TapTap Windows运行时。
 
-安装：完整解压，先看“先读我.txt”。退出游戏后打开“星枢群测助手.exe”，选择实际游戏程序安装，再启动游戏与Hub；主端、观战端分别安装。助手支持备份和还原。
+安装：完整解压，先看“先读我.txt”。退出游戏，用“星枢安装助手.exe”选择实际游戏程序安装；主端、观战端分别安装。支持备份还原及旧群测版升级。
 
 更新：
-• 37条角色配置，含2个官方预更新角色。
-• 角色／皮肤／羁绊、完整卡牌与动态异画、筹码、地图详情。
-• 历史对局详情与评分；PVE显示胜负，提高辅助转账权重，结算金币保留展示且不计分。
-• 五渠道独立目录管理，插件、模组实际扫描；其他渠道暂未附带运行时。
-• 运行时升级至library-r3，Hub与插件标明项目来源。
+• 37条角色配置，含2个官方预更新角色；角色、卡牌、动态异画、筹码与地图详情。
+• 对局详情与评分：PVE显示胜负，辅助转账提高权重，结算金币保留且不计分。
+• 五渠道独立目录，插件和模组实际扫描；其他渠道未附带运行时。
+• 粉黄半透明界面与游戏字体，所有挂件统一设计。
+• 叠放长卡、悬停详情，默认60%，整体大小可调。
+• 地图击飞、怪物冷却与10格索敌提示。
+• 十倍思考不随加速变快，修复进度条旧计时覆盖。
+• 保留选目标时的镜头移动与缩放；原生接口最高10倍，本包不附原型组件。
 
-重点群测：同房重开、换房连续两局是否换牌；观战退房后能否再次跟房；自然结算退出；收牌／星币／治疗自动致谢。
-完整手牌仍需登录官方观战端；十倍计时受服务端截止限制。
-
-反馈请附版本、系统／渠道、操作步骤、发生时间、首次或下一局及截图。日志先隐藏个人信息，勿发密码或票据。
+使用反馈：同房／换房连续两局换牌、观战退房再跟房、自然结算退出、收牌／星币／治疗致谢。
+完整手牌需登录官方观战端；十倍计时受服务端限制。
+反馈附版本、渠道、步骤、时间及截图；日志隐藏个人信息。
 源码：https://github.com/Breezecaresses/Xingshu-hub
-''', encoding='utf-8-sig')
+'''
+    if len(group_note) > 600:
+        raise RuntimeError(f'Release announcement exceeds 600 characters: {len(group_note)}')
+    (publish / '发布说明.txt').write_text(group_note, encoding='utf-8-sig')
     print(f'READY: {archive}\nSIZE: {archive.stat().st_size / 1024 / 1024:.2f} MiB\nSHA256: {digest}', flush=True)
 
 

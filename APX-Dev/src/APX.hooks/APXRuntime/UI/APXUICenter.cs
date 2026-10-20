@@ -9,7 +9,7 @@ namespace APXRuntime.UI
 {
     /// <summary>
     /// 功能中心主控制器 (Phase 2B-R4 生产整合版)
-    /// 遵循 R3.2 原版二次元视觉设计规范，提供 100% 中性通用、平整克制的游戏原生 HUD 功能中心
+    /// 参照游戏设置页的独立导航、深色主框和白色设置卡片构建。
     /// </summary>
     [DefaultExecutionOrder(-9900)]
     internal sealed class APXUICenter : MonoBehaviour
@@ -22,6 +22,8 @@ namespace APXRuntime.UI
         private Canvas _canvas;
         private CanvasGroup _canvasGroup;
         private RectTransform _mainFrameRt;
+        private Text _pageTitle;
+        private float _preferredScale = 1f;
 
         private GameObject _contentArea;
         private APXGameSpeedView _gameSpeedView;
@@ -116,6 +118,7 @@ namespace APXRuntime.UI
                 {
                     _lastScreenWidth = Screen.width;
                     _lastScreenHeight = Screen.height;
+                    FitPanelToScreen();
                     if (_dragHandle != null)
                     {
                         _dragHandle.ClampPosition();
@@ -450,7 +453,8 @@ namespace APXRuntime.UI
                 {
                     scale = Mathf.Clamp(scale, APXConfigKeys.MobileUserScaleMin, APXConfigKeys.MobileUserScaleMax);
                 }
-                Instance._mainFrameRt.localScale = Vector3.one * scale;
+                Instance._preferredScale = scale;
+                Instance.FitPanelToScreen();
                 if (Instance._dragHandle != null)
                 {
                     Instance._dragHandle.ClampPosition();
@@ -503,6 +507,7 @@ namespace APXRuntime.UI
 
             if (open)
             {
+                APXUITheme.RefreshFonts(_canvas != null ? _canvas.gameObject : null);
                 APXCentralInputManager.EnsureEventSystemAvailable("APX.UICenter");
                 SelectTab(_currentTabIndex);
                 if (_dragHandle != null)
@@ -529,7 +534,7 @@ namespace APXRuntime.UI
             APXUIAssetService.ValidateCoreAssets();
 
             // 1. Root Canvas (1920x1080 标准缩放)
-            GameObject canvasGo = new GameObject("APX_UICenter_Canvas");
+            GameObject canvasGo = new GameObject("APX_UICenter_Canvas", typeof(RectTransform));
             canvasGo.transform.SetParent(transform, false);
 
             _canvas = canvasGo.AddComponent<Canvas>();
@@ -545,7 +550,7 @@ namespace APXRuntime.UI
             canvasGo.AddComponent<GraphicRaycaster>();
             _canvasGroup = canvasGo.AddComponent<CanvasGroup>();
 
-            // 2. 全屏深色遮罩 (Backdrop: 40% 透明度拟态磨砂玻璃暗化，点击背景关闭)
+            // 2. 轻量遮罩，点击空白处收起
             GameObject backdropGo = APXUIFactory.CreateUIObject("Backdrop", canvasGo);
             RectTransform backdropRt = backdropGo.GetComponent<RectTransform>();
             backdropRt.anchorMin = Vector2.zero;
@@ -562,14 +567,14 @@ namespace APXRuntime.UI
             backdropBtn.transition = Selectable.Transition.None;
             backdropBtn.onClick.AddListener(Close);
 
-            // 3. 居中主面板容器 (1180 × 700 px) - R3.2 / R4-R3 规范架构
+            // 3. 独立导航与设置主体组成的居中框架 (1440 × 860)
             GameObject mainFrame = APXUIFactory.CreateUIObject("MainFrame", canvasGo);
             _mainFrameRt = mainFrame.GetComponent<RectTransform>();
             _mainFrameRt.anchorMin = new Vector2(0.5f, 0.5f);
             _mainFrameRt.anchorMax = new Vector2(0.5f, 0.5f);
             _mainFrameRt.pivot = new Vector2(0.5f, 0.5f);
             _mainFrameRt.anchoredPosition = Vector2.zero;
-            _mainFrameRt.sizeDelta = new Vector2(1180f, 700f);
+            _mainFrameRt.sizeDelta = new Vector2(1440f, 860f);
             float userScale = APXConfigService.GetFloat(APXConfigKeys.MobileUserScale, APXConfigKeys.MobileUserScaleDefault);
             if (!APXMobileUIHelper.IsMobile)
             {
@@ -585,15 +590,22 @@ namespace APXRuntime.UI
             {
                 userScale = Mathf.Clamp(userScale, APXConfigKeys.MobileUserScaleMin, APXConfigKeys.MobileUserScaleMax);
             }
-            _mainFrameRt.localScale = Vector3.one * userScale;
+            _preferredScale = userScale;
+            FitPanelToScreen();
 
-            // Layer 1: MainFrame 外层拟态磨砂玻璃圆角切片 (window_frame.png, 9-slice: 36,36,36,36, 圆角 20px)
-            // 杜绝 90° 纯矩形保底层覆盖外轮廓圆角
+            // 深色圆角主体使用切片纹理，导航栏保持独立。
             Sprite frameSprite = APXUIAssetService.GetSprite("window_frame.png");
-            Image baseBg = mainFrame.AddComponent<Image>();
+            GameObject body = APXUIFactory.CreateUIObject("GameSettingsBody", mainFrame);
+            RectTransform bodyRt = body.GetComponent<RectTransform>();
+            bodyRt.anchorMin = Vector2.zero;
+            bodyRt.anchorMax = Vector2.one;
+            bodyRt.offsetMin = new Vector2(248f, 0f);
+            bodyRt.offsetMax = Vector2.zero;
+            Image baseBg = body.AddComponent<Image>();
             baseBg.sprite = frameSprite;
             baseBg.type = Image.Type.Sliced;
             baseBg.color = APXUIAssetService.IsFallbackSprite(frameSprite) ? APXUITheme.PanelBase : Color.white;
+            APXUIFactory.AddShadow(body, new Color(0f, 0f, 0f, 0.24f), new Vector2(0f, -7f));
 
             // 4. 顶部标题栏
             BuildTitleBar(mainFrame);
@@ -608,210 +620,116 @@ namespace APXRuntime.UI
             BuildContentArea(mainFrame);
         }
 
+        private void FitPanelToScreen()
+        {
+            if (_mainFrameRt == null || Screen.width <= 0 || Screen.height <= 0) return;
+            // Match the CanvasScaler, then fit the entire frame with a small screen margin.
+            float canvasScale = Mathf.Sqrt((Screen.width / 1920f) * (Screen.height / 1080f));
+            float fit = Mathf.Min((Screen.width / canvasScale - 48f) / 1440f,
+                                  (Screen.height / canvasScale - 48f) / 860f);
+            _mainFrameRt.localScale = Vector3.one * Mathf.Min(_preferredScale, fit);
+        }
+
+        private static RectTransform Place(GameObject go, Vector2 min, Vector2 max, Vector2 pivot, Vector2 pos, Vector2 size)
+        {
+            RectTransform rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = min; rt.anchorMax = max; rt.pivot = pivot;
+            rt.anchoredPosition = pos; rt.sizeDelta = size;
+            return rt;
+        }
+
         private void BuildTitleBar(GameObject parent)
         {
-            GameObject titleBarGo = APXUIFactory.CreateUIObject("TitleBar", parent);
-            RectTransform tbRt = titleBarGo.GetComponent<RectTransform>();
-            tbRt.anchorMin = new Vector2(0f, 1f);
-            tbRt.anchorMax = new Vector2(1f, 1f);
-            tbRt.pivot = new Vector2(0.5f, 1f);
-            tbRt.anchoredPosition = Vector2.zero;
-            tbRt.sizeDelta = new Vector2(0f, 64f);
+            // A separate return tab and content header follow the game's settings layout.
+            Button back = APXUIFactory.CreateButton(parent, "ReturnToGame", "‹  返回", APXUIAssetService.GetSprite("button_primary.png"),
+                Color.white, Color.white, Close, 26);
+            RectTransform backRt = Place(back.gameObject, Vector2.up, Vector2.up, Vector2.up, new Vector2(12f, -12f), new Vector2(206f, 68f));
+            APXUIFactory.AddOutline(back.GetComponentInChildren<Text>().gameObject, new Color(0.12f,0.08f,0.18f,1f), new Vector2(2f,-2f));
 
-            // 标题栏基底: header_bar.png 切片 (顶部左/右圆角 20px 与主窗体曲率严格一致，底部平整)
-            // 杜绝 90° 矩形图层盖住窗体圆角
-            Sprite headerSprite = APXUIAssetService.GetSprite("header_bar.png");
-            Image tbBase = titleBarGo.AddComponent<Image>();
-            tbBase.sprite = headerSprite;
-            tbBase.type = Image.Type.Sliced;
-            tbBase.color = APXUIAssetService.IsFallbackSprite(headerSprite) ? APXUITheme.Header : Color.white;
-            tbBase.raycastTarget = true; // 作为 Header 拖拽手柄的主要受体
+            GameObject titleBar = APXUIFactory.CreateUIObject("TitleBar", parent);
+            RectTransform titleRt = Place(titleBar, Vector2.up, Vector2.one, Vector2.up, new Vector2(272f, -20f), new Vector2(-296f, 68f));
+            Image hitArea = titleBar.AddComponent<Image>();
+            hitArea.sprite = APXUIAssetService.WhiteSprite;
+            // A zero-alpha Graphic is culled by Unity and cannot receive the drag gesture.
+            hitArea.color = new Color(0f, 0f, 0f, 0.01f);
+            hitArea.raycastTarget = true;
+            _dragHandle = titleBar.AddComponent<APXUIDragHandle>();
+            _dragHandle.targetRect = _mainFrameRt;
+            _dragHandle.parentRect = _canvas.transform as RectTransform;
 
-            // 挂载标题栏拖动手柄 (Header-only Drag Handle, 自动 Clamp)
-            APXUIDragHandle dragHandle = titleBarGo.AddComponent<APXUIDragHandle>();
-            dragHandle.targetRect = _mainFrameRt;
-            dragHandle.parentRect = _canvas.transform as RectTransform;
-            _dragHandle = dragHandle;
+            Image chip = APXUIFactory.CreateImage(titleBar, "PageTitleChip", APXUIAssetService.GetSprite("button_selected.png"), Color.white, Image.Type.Sliced);
+            Place(chip.gameObject, Vector2.zero, Vector2.up, new Vector2(0f,0.5f), new Vector2(0f,0f), new Vector2(288f,0f));
+            chip.raycastTarget = false;
+            _pageTitle = APXUIFactory.CreateText(chip.gameObject, "PageTitle", TAB_NAMES[0], 28, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            RectTransform pt = _pageTitle.rectTransform;
+            pt.anchorMin = Vector2.zero; pt.anchorMax = Vector2.one; pt.offsetMin = Vector2.zero; pt.offsetMax = Vector2.zero;
+            _pageTitle.raycastTarget = false;
+            APXUIFactory.AddOutline(_pageTitle.gameObject, new Color(0.10f,0.08f,0.13f,1f), new Vector2(2f,-2f));
 
-            // 主标题: 星枢 · 功能中心 (22px Bold, #F4F7FA, raycastTarget=false 允许穿透拖动)
-            Text titleText = APXUIFactory.CreateText(titleBarGo, "TitleText", "星枢 · 功能中心", 22, APXUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
-            titleText.raycastTarget = false;
-            RectTransform ttRt = titleText.rectTransform;
-            ttRt.anchorMin = new Vector2(0f, 0.5f);
-            ttRt.anchorMax = new Vector2(0f, 0.5f);
-            ttRt.pivot = new Vector2(0f, 0.5f);
-            ttRt.anchoredPosition = new Vector2(32f, 0f);
-            ttRt.sizeDelta = new Vector2(160f, 32f);
+            Text brand = APXUIFactory.CreateText(titleBar, "Brand", "星枢 · 功能中心", 19, Color.white, TextAnchor.MiddleLeft, FontStyle.Bold);
+            Place(brand.gameObject, Vector2.zero, Vector2.up, new Vector2(0f,0.5f), new Vector2(312f,0f), new Vector2(230f,0f));
+            brand.raycastTarget = false;
+            Text hotkey = APXUIFactory.CreateText(titleBar, "Hotkey", APXMobileUIHelper.IsMobile ? "拖动顶部移动面板" : "F1 打开 / 收起", 14, new Color(0.82f,0.80f,0.87f), TextAnchor.MiddleRight);
+            Place(hotkey.gameObject, Vector2.right, Vector2.one, new Vector2(1f,0.5f), new Vector2(-72f,0f), new Vector2(220f,0f));
+            hotkey.raycastTarget = false;
+            Button close = APXUIFactory.CreateButton(titleBar, "Close", "×", APXUIAssetService.GetSprite("close_normal.png"), Color.white, Color.white, Close, 30);
+            RectTransform closeRt = Place(close.gameObject, new Vector2(1f,0.5f), new Vector2(1f,0.5f), new Vector2(1f,0.5f), Vector2.zero, new Vector2(52f,52f));
+            _dragHandle.SetExcludedRects(closeRt, backRt);
+            _dragHandle.BindEvents();
 
-            // 副标题: 星枢实用功能与对局辅助 (13px, MutedText #7F8998, raycastTarget=false 允许穿透拖动)
-            Text subText = APXUIFactory.CreateText(titleBarGo, "SubtitleText", "项目来源：github.com/Breezecaresses/Xingshu-hub", 13, APXUITheme.MutedText, TextAnchor.MiddleLeft);
-            subText.raycastTarget = false;
-            RectTransform subRt = subText.rectTransform;
-            subRt.anchorMin = new Vector2(0f, 0.5f);
-            subRt.anchorMax = new Vector2(0f, 0.5f);
-            subRt.pivot = new Vector2(0f, 0.5f);
-            subRt.anchoredPosition = new Vector2(202f, -1f);
-            subRt.sizeDelta = new Vector2(480f, 24f);
-
-            // 右侧信息: 星枢 v3.3.0 (弱化标签, raycastTarget=false, 与 [F1] 严格共轴)
-            Text verText = APXUIFactory.CreateText(titleBarGo, "VersionText", "Runtime library-r3", 13, new Color(0.435f, 0.482f, 0.549f, 1f), TextAnchor.MiddleRight);
-            verText.raycastTarget = false;
-            RectTransform vtRt = verText.rectTransform;
-            vtRt.anchorMin = new Vector2(1f, 0.5f);
-            vtRt.anchorMax = new Vector2(1f, 0.5f);
-            vtRt.pivot = new Vector2(1f, 0.5f);
-            vtRt.anchoredPosition = new Vector2(-156f, 0f);
-            vtRt.sizeDelta = new Vector2(200f, 26f);
-
-            // 右侧快捷键徽章: [F1] (排他区: 徽章拦截点击，不触发窗口拖动)
-            GameObject badgeGo = APXUIFactory.CreateUIObject("HotkeyBadge_F1", titleBarGo);
-            RectTransform badgeRt = badgeGo.GetComponent<RectTransform>();
-            badgeRt.anchorMin = new Vector2(1f, 0.5f);
-            badgeRt.anchorMax = new Vector2(1f, 0.5f);
-            badgeRt.pivot = new Vector2(1f, 0.5f);
-            badgeRt.anchoredPosition = new Vector2(-96f, 0f);
-            badgeRt.sizeDelta = new Vector2(50f, 26f);
-
-            Image badgeImg = badgeGo.AddComponent<Image>();
-            badgeImg.sprite = APXUIAssetService.GetSprite("hotkey_badge.png");
-            badgeImg.type = Image.Type.Sliced;
-            badgeImg.color = APXUIAssetService.IsFallbackSprite(badgeImg.sprite) ? new Color(0.15f, 0.18f, 0.24f, 0.85f) : Color.white;
-            badgeImg.raycastTarget = true;
-
-            Text badgeTxt = APXUIFactory.CreateText(badgeGo, "BadgeText", "[F1]", 12, new Color(0.557f, 0.612f, 0.682f, 1f), TextAnchor.MiddleCenter, FontStyle.Bold);
-            badgeTxt.raycastTarget = false;
-            RectTransform btRt = badgeTxt.rectTransform;
-            btRt.anchorMin = Vector2.zero;
-            btRt.anchorMax = Vector2.one;
-            btRt.pivot = new Vector2(0.5f, 0.5f);
-            btRt.offsetMin = Vector2.zero;
-            btRt.offsetMax = Vector2.zero;
-
-            // 右侧关闭按钮 (40x40 实际可点击区域, 彻底消除拖拽冲突并确保 × 永远独立渲染)
-            GameObject closeGo = APXUIFactory.CreateUIObject("Btn_Close", titleBarGo);
-            RectTransform closeRt = closeGo.GetComponent<RectTransform>();
-            closeRt.anchorMin = new Vector2(1f, 0.5f);
-            closeRt.anchorMax = new Vector2(1f, 0.5f);
-            closeRt.pivot = new Vector2(1f, 0.5f);
-            closeRt.anchoredPosition = new Vector2(-20f, 0f);
-            closeRt.sizeDelta = new Vector2(40f, 40f);
-
-            // 关闭按钮背景视觉 (34x34 居中圆角框)
-            GameObject closeBgGo = APXUIFactory.CreateUIObject("Background", closeGo);
-            RectTransform cbRt = closeBgGo.GetComponent<RectTransform>();
-            cbRt.anchorMin = new Vector2(0.5f, 0.5f);
-            cbRt.anchorMax = new Vector2(0.5f, 0.5f);
-            cbRt.pivot = new Vector2(0.5f, 0.5f);
-            cbRt.anchoredPosition = Vector2.zero;
-            cbRt.sizeDelta = new Vector2(34f, 34f);
-
-            Image closeImg = closeBgGo.AddComponent<Image>();
-            closeImg.sprite = APXUIAssetService.GetSprite("close_normal.png");
-            closeImg.type = Image.Type.Sliced;
-            closeImg.color = APXUIAssetService.IsFallbackSprite(closeImg.sprite) ? new Color(0.12f, 0.15f, 0.20f, 0.85f) : Color.white;
-
-            // 独立 X Glyph 子对象 (UGUI Text 显示 ×，几何与光学死中居中于 34x34 视觉框)
-            Text closeTxt = APXUIFactory.CreateText(closeBgGo, "Glyph", "×", 22, APXUITheme.CloseGlyph, TextAnchor.MiddleCenter, FontStyle.Normal);
-            closeTxt.raycastTarget = false;
-            RectTransform ctRt = closeTxt.rectTransform;
-            ctRt.anchorMin = Vector2.zero;
-            ctRt.anchorMax = Vector2.one;
-            ctRt.pivot = new Vector2(0.5f, 0.5f);
-            ctRt.offsetMin = Vector2.zero;
-            ctRt.offsetMax = Vector2.zero;
-
-            Button closeBtn = closeGo.AddComponent<Button>();
-            closeBtn.targetGraphic = closeImg;
-            closeBtn.transition = Selectable.Transition.SpriteSwap;
-            SpriteState ss = new SpriteState();
-            ss.highlightedSprite = APXUIAssetService.GetSprite("close_hover.png");
-            ss.pressedSprite = APXUIAssetService.GetSprite("close_hover.png");
-            closeBtn.spriteState = ss;
-            closeBtn.onClick.AddListener(Close);
-
-            // 显式排他区注册 (F1 快捷键徽章与关闭按钮严格禁止拖拽窗口)
-            _dragHandle.SetExcludedRects(badgeRt, closeRt);
+            Text footer = APXUIFactory.CreateText(parent, "ProjectSource", "项目来源  github.com/Breezecaresses/Xingshu-hub", 13, new Color(0.82f,0.80f,0.87f), TextAnchor.MiddleLeft);
+            Place(footer.gameObject, Vector2.zero, Vector2.right, Vector2.zero, new Vector2(282f,12f), new Vector2(-540f,24f));
+            footer.raycastTarget = false;
+            Text version = APXUIFactory.CreateText(parent, "RuntimeVersion", XingShu.Runtime.XingShuRuntimeHost.RuntimeVersion, 12, new Color(0.82f,0.80f,0.87f), TextAnchor.MiddleRight);
+            Place(version.gameObject, Vector2.right, Vector2.right, Vector2.right, new Vector2(-30f,12f), new Vector2(260f,24f));
+            version.raycastTarget = false;
         }
 
         private void BuildSidebar(GameObject parent)
         {
-            GameObject sidebarGo = APXUIFactory.CreateUIObject("Sidebar", parent);
-            RectTransform sbRt = sidebarGo.GetComponent<RectTransform>();
-            sbRt.anchorMin = new Vector2(0f, 0f);
-            sbRt.anchorMax = new Vector2(0f, 1f);
-            sbRt.pivot = new Vector2(0f, 0.5f);
-            sbRt.anchoredPosition = new Vector2(20f, -32f);
-            sbRt.sizeDelta = new Vector2(225f, -96f);
+            Image rail = APXUIFactory.CreateImage(parent, "NavigationRail", APXUIAssetService.GetSprite("card_base.png"), Color.white, Image.Type.Sliced);
+            RectTransform railRt = Place(rail.gameObject, Vector2.zero, Vector2.up, Vector2.zero, new Vector2(10f,42f), new Vector2(204f,-146f));
+            rail.raycastTarget = false;
+            Image line = APXUIFactory.CreateImage(rail.gameObject, "YellowRail", null, APXUITheme.Yellow);
+            RectTransform lineRt = line.rectTransform;
+            lineRt.anchorMin = new Vector2(0.19f,0f); lineRt.anchorMax = new Vector2(0.19f,1f);
+            lineRt.offsetMin = new Vector2(-4f,20f); lineRt.offsetMax = new Vector2(4f,-20f);
+            line.raycastTarget = false;
 
-            VerticalLayoutGroup vlg = sidebarGo.AddComponent<VerticalLayoutGroup>();
-            vlg.padding = new RectOffset(0, 0, 4, 4);
-            vlg.spacing = 6f;
-            vlg.childAlignment = TextAnchor.UpperCenter;
-            vlg.childControlWidth = true;
-            vlg.childControlHeight = true;
-            vlg.childForceExpandWidth = true;
-            vlg.childForceExpandHeight = false;
-
-            Sprite normalTabSprite = APXUIAssetService.GetSprite("sidebar_tab_normal.png");
-            Sprite selectedTabSprite = APXUIAssetService.GetSprite("sidebar_tab_selected.png");
-            Sprite hoverTabSprite = APXUIAssetService.GetSprite("sidebar_tab_hover.png");
-
-            for (int i = 0; i < TAB_NAMES.Length; i++)
+            GameObject sidebar = APXUIFactory.CreateUIObject("Sidebar", parent);
+            Place(sidebar, Vector2.zero, Vector2.up, Vector2.zero, new Vector2(0f,58f), new Vector2(230f,-170f));
+            VerticalLayoutGroup layout = sidebar.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(0,0,8,8);
+            layout.spacing = 12f; layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlWidth = true; layout.childControlHeight = true;
+            layout.childForceExpandWidth = true; layout.childForceExpandHeight = false;
+            Sprite normal = APXUIAssetService.GetSprite("sidebar_tab_normal.png");
+            Sprite selected = APXUIAssetService.GetSprite("sidebar_tab_selected.png");
+            Sprite hover = APXUIAssetService.GetSprite("sidebar_tab_hover.png");
+            for (int i=0;i<TAB_NAMES.Length;i++)
             {
-                int tabIndex = i;
-                string tabName = TAB_NAMES[i];
-                bool isSelected = (tabIndex == 0);
-
-                GameObject tabGo = APXUIFactory.CreateUIObject("Tab_" + tabIndex, sidebarGo);
-                LayoutElement le = tabGo.AddComponent<LayoutElement>();
-                le.minHeight = 50f;
-                le.preferredHeight = 50f;
-                le.flexibleHeight = 0f;
-
-                Image tabImg = tabGo.AddComponent<Image>();
-                tabImg.sprite = isSelected ? selectedTabSprite : normalTabSprite;
-                tabImg.type = Image.Type.Sliced;
-                tabImg.color = APXUIAssetService.IsFallbackSprite(tabImg.sprite) ? (isSelected ? new Color(0.12f, 0.22f, 0.20f, 0.85f) : new Color(0.08f, 0.10f, 0.14f, 0.5f)) : Color.white;
-
-                Text tabTxt = APXUIFactory.CreateText(tabGo, "Text", tabName, isSelected ? 16 : 15,
-                    isSelected ? APXUITheme.PrimaryText : APXUITheme.SecondaryText,
-                    TextAnchor.MiddleLeft,
-                    isSelected ? FontStyle.Bold : FontStyle.Normal);
-
-                RectTransform txtRt = tabTxt.rectTransform;
-                txtRt.anchorMin = Vector2.zero;
-                txtRt.anchorMax = Vector2.one;
-                txtRt.offsetMin = new Vector2(24f, 0f);
-                txtRt.offsetMax = new Vector2(-12f, 0f);
-
-                Button btn = tabGo.AddComponent<Button>();
-                btn.targetGraphic = tabImg;
-                btn.transition = Selectable.Transition.SpriteSwap;
-                SpriteState tabSs = new SpriteState();
-                tabSs.highlightedSprite = isSelected ? selectedTabSprite : hoverTabSprite;
-                tabSs.pressedSprite = isSelected ? selectedTabSprite : hoverTabSprite;
-                btn.spriteState = tabSs;
-                btn.onClick.AddListener(delegate { SelectTab(tabIndex); });
-
-                _tabButtons.Add(btn);
-                _tabImages.Add(tabImg);
-                _tabTexts.Add(tabTxt);
+                int index = i;
+                GameObject tab = APXUIFactory.CreateUIObject("Tab_"+index, sidebar);
+                LayoutElement le = tab.AddComponent<LayoutElement>();
+                le.minHeight = 62f; le.preferredHeight = 62f; le.flexibleHeight = 0f;
+                Image image = tab.AddComponent<Image>();
+                image.sprite = i==0 ? selected : normal; image.type = Image.Type.Sliced; image.color = Color.white;
+                Text text = APXUIFactory.CreateText(tab,"Text",TAB_NAMES[i],21,Color.white,TextAnchor.MiddleLeft,FontStyle.Bold);
+                text.rectTransform.anchorMin = Vector2.zero; text.rectTransform.anchorMax = Vector2.one;
+                text.rectTransform.offsetMin = new Vector2(54f,0f); text.rectTransform.offsetMax = new Vector2(-8f,0f);
+                text.raycastTarget = false;
+                APXUIFactory.AddOutline(text.gameObject,new Color(0.10f,0.08f,0.13f,1f),new Vector2(1.8f,-1.8f));
+                Button button = tab.AddComponent<Button>(); button.targetGraphic = image;
+                button.transition = Selectable.Transition.SpriteSwap;
+                button.spriteState = new SpriteState { highlightedSprite=hover, pressedSprite=selected };
+                button.onClick.AddListener(delegate { SelectTab(index); });
+                _tabButtons.Add(button); _tabImages.Add(image); _tabTexts.Add(text);
             }
         }
 
         private void BuildVerticalDivider(GameObject parent)
         {
-            GameObject divGo = APXUIFactory.CreateUIObject("VerticalDivider", parent);
-            RectTransform divRt = divGo.GetComponent<RectTransform>();
-            divRt.anchorMin = new Vector2(0f, 0f);
-            divRt.anchorMax = new Vector2(0f, 1f);
-            divRt.pivot = new Vector2(0.5f, 0.5f);
-            divRt.anchoredPosition = new Vector2(260f, -40f);
-            divRt.sizeDelta = new Vector2(1f, -120f); // 上下各留 18~20px Inset，不顶到外框圆角
-
-            Image divImg = divGo.AddComponent<Image>();
-            divImg.sprite = APXUIAssetService.WhiteSprite;
-            divImg.color = APXUITheme.DividerColor;
+            // The detached navigation rail replaces the old glass divider.
         }
 
         private void BuildContentArea(GameObject parent)
@@ -821,8 +739,8 @@ namespace APXRuntime.UI
             caRt.anchorMin = new Vector2(0f, 0f);
             caRt.anchorMax = new Vector2(1f, 1f);
             caRt.pivot = new Vector2(0f, 1f);
-            caRt.anchoredPosition = new Vector2(275f, -80f);
-            caRt.sizeDelta = new Vector2(-300f, -104f);
+            caRt.anchoredPosition = new Vector2(280f, -112f);
+            caRt.sizeDelta = new Vector2(-312f, -158f);
 
             // 1. 游戏加速页面 (Active Feature - Tab 0)
             _gameSpeedView = new APXGameSpeedView(_contentArea.transform);
@@ -887,6 +805,7 @@ namespace APXRuntime.UI
         private void SelectTab(int index)
         {
             _currentTabIndex = index;
+            if (_pageTitle != null) _pageTitle.text = TAB_NAMES[index];
             Sprite normalTabSprite = APXUIAssetService.GetSprite("sidebar_tab_normal.png");
             Sprite selectedTabSprite = APXUIAssetService.GetSprite("sidebar_tab_selected.png");
             Sprite hoverTabSprite = APXUIAssetService.GetSprite("sidebar_tab_hover.png");
@@ -897,7 +816,7 @@ namespace APXRuntime.UI
                 if (i < _tabImages.Count && _tabImages[i] != null)
                 {
                     _tabImages[i].sprite = isSelected ? selectedTabSprite : normalTabSprite;
-                    _tabImages[i].color = APXUIAssetService.IsFallbackSprite(_tabImages[i].sprite) ? (isSelected ? new Color(0.12f, 0.22f, 0.20f, 0.85f) : new Color(0.08f, 0.10f, 0.14f, 0.5f)) : Color.white;
+                    _tabImages[i].color = APXUIAssetService.IsFallbackSprite(_tabImages[i].sprite) ? (isSelected ? APXUITheme.Yellow : APXUITheme.Pink) : Color.white;
                 }
                 if (i < _tabButtons.Count && _tabButtons[i] != null)
                 {
@@ -908,9 +827,9 @@ namespace APXRuntime.UI
                 }
                 if (i < _tabTexts.Count && _tabTexts[i] != null)
                 {
-                    _tabTexts[i].color = isSelected ? APXUITheme.PrimaryText : APXUITheme.SecondaryText;
-                    _tabTexts[i].fontSize = isSelected ? 16 : 15;
-                    _tabTexts[i].fontStyle = isSelected ? FontStyle.Bold : FontStyle.Normal;
+                    _tabTexts[i].color = Color.white;
+                    _tabTexts[i].fontSize = 21;
+                    _tabTexts[i].fontStyle = FontStyle.Bold;
                 }
             }
 

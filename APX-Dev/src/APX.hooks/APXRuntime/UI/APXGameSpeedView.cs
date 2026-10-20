@@ -316,6 +316,8 @@ namespace APXRuntime.UI
 
             // 大号黄色倍率数字
             _speedValueText = APXUIFactory.CreateText(speedCard, "SpeedValue", "1.00x", 32, APXUITheme.NumericAccent, TextAnchor.MiddleRight, FontStyle.Bold);
+            // The game's display font has taller line metrics than the system fallback.
+            _speedValueText.verticalOverflow = VerticalWrapMode.Overflow;
             RectTransform svtRt = _speedValueText.rectTransform;
             svtRt.anchorMin = new Vector2(1f, 1f);
             svtRt.anchorMax = new Vector2(1f, 1f);
@@ -323,7 +325,7 @@ namespace APXRuntime.UI
             svtRt.anchoredPosition = new Vector2(-24f, -14f);
             svtRt.sizeDelta = new Vector2(160f, 38f);
 
-            // 滑块 (Slider: 胶囊轨道 + 28px 真圆手柄)
+            // 滑块：白色轨道、粉色进度与官方星形滑块。
             _speedSlider = APXUIFactory.CreateSlider(speedCard, "SpeedSlider", 0.1f, 10f, 1.0f, delegate(float val)
             {
                 if (_suppressCallbacks) return;
@@ -334,7 +336,7 @@ namespace APXRuntime.UI
                 }
                 else
                 {
-                    clamped = Mathf.Clamp(clamped, 0.25f, 5.0f);
+                    clamped = Mathf.Clamp(clamped, APXConfigKeys.NativeSpeedValueMin, APXConfigKeys.NativeSpeedValueMax);
                     APXSpeedEngineCoordinator.SetNativeSpeed(clamped);
                 }
                 _speedValueText.text = $"{clamped:F2}x";
@@ -364,7 +366,7 @@ namespace APXRuntime.UI
             Image tipBg = tipCard.AddComponent<Image>();
             tipBg.sprite = cardBaseSprite;
             tipBg.type = Image.Type.Sliced;
-            tipBg.color = APXUIAssetService.IsFallbackSprite(cardBaseSprite) ? new Color(0.12f, 0.15f, 0.20f, 0.50f) : new Color(1f, 1f, 1f, 0.65f);
+            tipBg.color = APXUIAssetService.IsFallbackSprite(cardBaseSprite) ? APXUITheme.Card : Color.white;
 
             _tipText = APXUIFactory.CreateText(tipCard, "TipText", "[F7] 呼出控制面板  ·  [左Ctrl] 快速开关加速", 13, APXUITheme.SecondaryText, TextAnchor.MiddleLeft);
             RectTransform tipTxtRt = _tipText.rectTransform;
@@ -449,7 +451,7 @@ namespace APXRuntime.UI
             }
             else
             {
-                float clamped = Mathf.Clamp(targetSpeed, 0.25f, 5.0f);
+                float clamped = Mathf.Clamp(targetSpeed, APXConfigKeys.NativeSpeedValueMin, APXConfigKeys.NativeSpeedValueMax);
                 APXSpeedEngineCoordinator.SetNativeSpeed(clamped);
             }
 
@@ -564,8 +566,8 @@ namespace APXRuntime.UI
                 }
                 else
                 {
-                    _speedSlider.minValue = 0.25f;
-                    _speedSlider.maxValue = 5.0f;
+                    _speedSlider.minValue = APXConfigKeys.NativeSpeedValueMin;
+                    _speedSlider.maxValue = APXConfigKeys.NativeSpeedValueMax;
                     float nativeSpeed = APXConfigService.GetFloat(
                         APXConfigKeys.NativeSpeedValue,
                         APXConfigKeys.NativeSpeedValueDefault,
@@ -575,7 +577,7 @@ namespace APXRuntime.UI
                     _speedValueText.text = $"{nativeSpeed:F2}x";
                     if (_speedCardTitle != null)
                     {
-                        _speedCardTitle.text = "倍率参数微调 (0.25x ~ 5.0x)";
+                        _speedCardTitle.text = "倍率参数微调 (0.25x ~ 10.0x)";
                     }
 
                     bool nativeAvail = APXSpeedEngineCoordinator.IsNativeAvailable;
