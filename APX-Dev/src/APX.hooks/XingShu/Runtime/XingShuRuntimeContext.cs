@@ -32,7 +32,7 @@ namespace XingShu.Runtime
             int pid = 0;
             try
             {
-                pid = Process.GetCurrentProcess().Id;
+                pid = XingShu.Runtime.RuntimeProcessIdentity.CurrentId;
             }
             catch
             {

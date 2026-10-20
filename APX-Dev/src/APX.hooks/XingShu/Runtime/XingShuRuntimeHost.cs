@@ -24,7 +24,11 @@ namespace XingShu.Runtime
         public const string LegacyHostName = "[APX] Utility Runtime";
         public const string LogFileName = "xingshu_runtime_lifecycle.log";
         public const string LegacyLogFileName = "apx_runtime_lifecycle.log";
+#if XINGSHU_ANDROID_PREVIEW
+        public const string RuntimeVersion = "1.0.0-android-preview1";
+#else
         public const string RuntimeVersion = "1.0.0-library-r3";
+#endif
 
         private static string _logPath;
         private static string _legacyLogPath;
@@ -242,6 +246,7 @@ namespace XingShu.Runtime
         }
 
         private long _lastReportedPlayerId = 0;
+        private long _lastObservedPlayerId = 0;
         public long LastReportedPlayerId => _lastReportedPlayerId;
         private float _lastIdentityCheckTime = 0f;
 
@@ -275,8 +280,8 @@ namespace XingShu.Runtime
             CheckSceneTransition();
             GameLibraryExporter.Tick();
 
-            // 2. 本地权威身份轮询上报 (每 1.0s 或未成功上报时重试)
-            if (Time.unscaledTime - _lastIdentityCheckTime >= 1.0f || _lastReportedPlayerId <= 0)
+            // Retry at a bounded rate even when the desktop bridge is unavailable.
+            if (Time.unscaledTime - _lastIdentityCheckTime >= 1.0f)
             {
                 _lastIdentityCheckTime = Time.unscaledTime;
                 CheckAndEmitIdentityUpdate(force: false);
@@ -395,11 +400,16 @@ namespace XingShu.Runtime
                 }
 
                 CurrentLocalPlayerId = currentPid;
-                if (currentPid > 0 && (force || currentPid != _lastReportedPlayerId))
+                if (currentPid > 0 && (force || currentPid != _lastObservedPlayerId))
                 {
                     string platform = XingShuBridgeClient.DetectPlatform();
                     LogLifecycle($"[XingShuRuntimeHost] RuntimeIdentity: gamePid={Context.ProcessId}, playerId={currentPid}, Name='{displayName}', platformId={platform}, identitySource={identitySource}");
+                    _lastObservedPlayerId = currentPid;
+                }
 
+                if (currentPid > 0 && (force || currentPid != _lastReportedPlayerId))
+                {
+                    string platform = XingShuBridgeClient.DetectPlatform();
                     var client = XingShuBridgeClient.Instance;
                     if (client != null && client.IsConnected)
                     {

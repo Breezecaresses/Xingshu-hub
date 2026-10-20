@@ -72,7 +72,7 @@ namespace APXRuntime.Features
         {
             try
             {
-                int pid = Process.GetCurrentProcess().Id;
+                int pid = XingShu.Runtime.RuntimeProcessIdentity.CurrentId;
                 return Path.Combine(Path.GetTempPath(), "APXNativeSpeed", pid.ToString());
             }
             catch

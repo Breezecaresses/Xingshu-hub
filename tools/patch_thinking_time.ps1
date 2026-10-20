@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][string]$InputDll, [Parameter(Mandatory)][string]$OutputDll)
+param([Parameter(Mandatory)][string]$InputDll, [Parameter(Mandatory)][string]$OutputDll, [string]$HooksDll)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
 Add-Type -Path (Join-Path $taskRoot 'APX-Dev/tools/lib/Mono.Cecil.dll')
@@ -10,7 +10,8 @@ foreach($taskDir in @('references/updated_20261015_verified','references/unity',
 $taskReadParams = [Mono.Cecil.ReaderParameters]::new()
 $taskReadParams.AssemblyResolver = $taskResolver
 $taskAssembly = [Mono.Cecil.AssemblyDefinition]::ReadAssembly((Resolve-Path -LiteralPath $InputDll).Path, $taskReadParams)
-$taskHooks = [Mono.Cecil.AssemblyDefinition]::ReadAssembly((Join-Path $taskRoot 'APX-Dev/build/bin/Release/APX.hooks.dll'))
+if (!$HooksDll) { $HooksDll = Join-Path $taskRoot 'APX-Dev/build/bin/Release/APX.hooks.dll' }
+$taskHooks = [Mono.Cecil.AssemblyDefinition]::ReadAssembly((Resolve-Path -LiteralPath $HooksDll).Path)
 $taskScaler = $taskHooks.MainModule.Types | Where-Object FullName -eq 'APXRuntime.Utilities.ThinkingTime'
 $taskIntMethod = $taskScaler.Methods | Where-Object { $_.Name -eq 'ScaleSeconds' -and $_.ReturnType.FullName -eq 'System.Int32' }
 $taskFloatMethod = $taskScaler.Methods | Where-Object { $_.Name -eq 'ScaleSeconds' -and $_.ReturnType.FullName -eq 'System.Single' }

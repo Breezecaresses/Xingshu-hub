@@ -357,7 +357,7 @@ namespace APXRuntime.UI
             slRt.anchoredPosition = new Vector2(24f, -126f);
             slRt.sizeDelta = new Vector2(160f, 20f);
 
-            float initSize = APXConfigService.GetFloat(APXConfigKeys.AssistSize, APXConfigKeys.AssistSizeDesktopDefault);
+            float initSize = APXConfigService.GetFloat(APXConfigKeys.AssistSize, APXMobileUIHelper.IsMobile ? APXConfigKeys.AssistSizeMobileDefault : APXConfigKeys.AssistSizeDesktopDefault);
             _assistSizeValueText = APXUIFactory.CreateText(cardGo, "SizeValue", $"{Mathf.RoundToInt(initSize)} px", 13, APXUITheme.CyanAccent, TextAnchor.MiddleRight, FontStyle.Bold);
             RectTransform svRt = _assistSizeValueText.rectTransform;
             svRt.anchorMin = new Vector2(1f, 1f);
@@ -594,7 +594,7 @@ namespace APXRuntime.UI
                     if (_hotkeyDisplayText != null) _hotkeyDisplayText.text = $"{hotkey}";
                 }
 
-                float size = APXConfigService.GetFloat(APXConfigKeys.AssistSize, APXConfigKeys.AssistSizeDesktopDefault);
+                float size = APXConfigService.GetFloat(APXConfigKeys.AssistSize, APXMobileUIHelper.IsMobile ? APXConfigKeys.AssistSizeMobileDefault : APXConfigKeys.AssistSizeDesktopDefault);
                 if (!Mathf.Approximately(_lastObservedSize, size))
                 {
                     _lastObservedSize = size;

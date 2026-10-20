@@ -32,6 +32,8 @@ FILES = [
     'tools/prepare_runtime_truth_fix.py', 'tools/install_runtime_truth_fix.ps1',
     'tools/patch_taptap_runtime.cs',
     'tools/check_runtime_compatibility.ps1',
+    'tools/prepare_android_runtime.py', 'tools/android_runtime_device.py',
+    'tools/check_android_runtime.ps1', 'ANDROID_COMPATIBILITY.md',
     'tools/install_hub_watch_join_fix.ps1', 'tools/export_source_repo.py',
     'tools/GroupTestInstaller.cs', 'tools/package_group_test.py',
 ]

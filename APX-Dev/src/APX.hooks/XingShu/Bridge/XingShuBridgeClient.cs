@@ -135,8 +135,10 @@ namespace XingShu.Bridge
         public static void InitializeRuntimeEnvironment()
         {
             string processName = null;
-            try { processName = Process.GetCurrentProcess().ProcessName; } catch { }
-            _runtimePlatform = ClassifyPlatform(processName, Application.dataPath);
+            try { processName = RuntimeProcessIdentity.CurrentName; } catch { }
+            _runtimePlatform = Application.platform == RuntimePlatform.Android
+                ? (processName == "com.feimo.astralparty" ? "ANDROID_CN" : "ANDROID")
+                : ClassifyPlatform(processName, Application.dataPath);
             _runtimeGameVersion = Application.version;
         }
 
@@ -190,7 +192,11 @@ namespace XingShu.Bridge
             }
             catch { }
 
+#if XINGSHU_ANDROID_PREVIEW
+            UnityEngine.Debug.Log(message);
+#else
             Console.WriteLine("{0}", message);
+#endif
         }
 
         /// <summary>
@@ -535,7 +541,7 @@ namespace XingShu.Bridge
             int pid = CustomGamePid ?? 0;
             if (pid == 0)
             {
-                try { pid = Process.GetCurrentProcess().Id; } catch { }
+                try { pid = XingShu.Runtime.RuntimeProcessIdentity.CurrentId; } catch { }
             }
 
             string gv = CustomGameVersion ?? _runtimeGameVersion;
@@ -993,7 +999,7 @@ namespace XingShu.Bridge
             int pid = CustomGamePid ?? 0;
             if (pid == 0)
             {
-                try { pid = Process.GetCurrentProcess().Id; } catch { }
+                try { pid = XingShu.Runtime.RuntimeProcessIdentity.CurrentId; } catch { }
             }
 
             string gv = CustomGameVersion ?? "1.3.8";
@@ -1061,7 +1067,7 @@ namespace XingShu.Bridge
             int pid = CustomGamePid ?? 0;
             if (pid == 0)
             {
-                try { pid = Process.GetCurrentProcess().Id; } catch { }
+                try { pid = XingShu.Runtime.RuntimeProcessIdentity.CurrentId; } catch { }
             }
 
             string plat = !string.IsNullOrEmpty(platformId) ? platformId : DetectPlatform();
@@ -1128,7 +1134,7 @@ namespace XingShu.Bridge
             int pid = CustomGamePid ?? 0;
             if (pid == 0)
             {
-                try { pid = Process.GetCurrentProcess().Id; } catch { }
+                try { pid = XingShu.Runtime.RuntimeProcessIdentity.CurrentId; } catch { }
             }
 
             string plat = !string.IsNullOrEmpty(platformId) ? platformId : DetectPlatform();

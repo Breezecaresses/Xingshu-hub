@@ -136,7 +136,9 @@ internal static class APXConfigKeys
 
 	internal const float AssistSizeDesktopDefault = 64.0f;
 
-	internal const float AssistSizeMobileDefault = 64.0f;
+	internal const float AssistSizeMobileDefault = 44.0f;
+
+	internal const string AssistMobileCompactDefaultApplied = "APX_ASSIST_MOBILE_COMPACT_DEFAULT_APPLIED";
 
 	internal const float AssistSizeMin = 36.0f;
 

@@ -51,6 +51,12 @@ See [the local watcher notes](AstralParty-Hub/docs/local-managed-watcher.md) for
 
 See [extension channel documentation](AstralParty-Hub/docs/specs/extension_channels.md) for manifests, destination mappings, and management boundaries. Game artwork, configuration, and resources remain the property of their respective owners and are not relicensed under the code's MIT license.
 
+## Android Runtime Preview
+
+`1.0.0-android-preview1` loads the managed runtime and floating button in the tested TapTap MuMu Android 12 game client (3.3.0, resource 026). The mobile button default is reduced from 64 to 44 UI units while menu and text scaling stay unchanged. Desktop builds retain their original button default.
+
+Touch interaction, physical Android devices, and desktop Hub pairing still need verification or implementation. This preview is not an Android Hub APK. See [Android compatibility and device deployment](ANDROID_COMPATIBILITY.md) for the verified baseline, build/restore commands, and reference attribution.
+
 ## 🏗️ Architecture Overview
 
 ```mermaid

@@ -577,6 +577,15 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			float defaultSize = APXMobileUIHelper.IsMobile ? APXConfigKeys.AssistSizeMobileDefault : APXConfigKeys.AssistSizeDesktopDefault;
 			_ballSize = APXConfigService.GetFloat(APXConfigKeys.AssistSize, defaultSize);
 			_ballSize = APXMobileUIHelper.FiniteClamp(_ballSize, APXConfigKeys.AssistSizeMin, APXConfigKeys.AssistSizeMax, defaultSize);
+			if (APXMobileUIHelper.IsMobile && !APXConfigService.HasKey(APXConfigKeys.AssistMobileCompactDefaultApplied))
+			{
+				// Migrate the old 64-unit default once; preserve custom sizes and later edits.
+				if (Mathf.Approximately(_ballSize, APXConfigKeys.AssistSizeDesktopDefault))
+					_ballSize = defaultSize;
+				APXConfigService.SetFloat(APXConfigKeys.AssistSize, _ballSize);
+				APXConfigService.SetBool(APXConfigKeys.AssistMobileCompactDefaultApplied, true);
+				APXConfigService.Save();
+			}
 			_ballAlpha = APXConfigService.GetFloat(APXConfigKeys.AssistAlpha, APXConfigKeys.AssistAlphaDefault);
 			_ballAlpha = APXMobileUIHelper.FiniteClamp(_ballAlpha, APXConfigKeys.AssistAlphaMin, APXConfigKeys.AssistAlphaMax, APXConfigKeys.AssistAlphaDefault);
 			_playBtnSize = HandCardDisplayManager.GetEffectivePlayBtnSize();

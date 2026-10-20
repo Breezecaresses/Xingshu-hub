@@ -186,7 +186,7 @@ namespace XingShu.Transport
                     currentStep = "4_WRITE_HELLO";
                     LogMessage("[TCP_POC_STEP_4_WRITE_HELLO] Write HELLO JSON + \\n to stream");
                     int pid = 0;
-                    try { pid = Process.GetCurrentProcess().Id; } catch { }
+                    try { pid = XingShu.Runtime.RuntimeProcessIdentity.CurrentId; } catch { }
                     string gv = "1.3.8";
                     try { if (!string.IsNullOrEmpty(Application.version)) gv = Application.version; } catch { }
 

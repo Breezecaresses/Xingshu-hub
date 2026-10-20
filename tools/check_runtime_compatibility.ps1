@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][string]$RuntimeDll)
+param([Parameter(Mandatory)][string]$RuntimeDll, [string]$HooksDll)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
 Add-Type -Path (Join-Path $taskRoot 'APX-Dev/tools/lib/Mono.Cecil.dll')
@@ -14,7 +14,8 @@ $taskRuntime = [Mono.Cecil.AssemblyDefinition]::ReadAssembly((Resolve-Path -Lite
 # Resolve hooks against this exact input rather than whichever same-name DLL is found first.
 $taskRegister = [Mono.Cecil.DefaultAssemblyResolver].GetMethod('RegisterAssembly', [Reflection.BindingFlags]'Instance,NonPublic')
 $null = $taskRegister.Invoke($taskResolver, @($taskRuntime))
-$taskHooks = [Mono.Cecil.AssemblyDefinition]::ReadAssembly((Join-Path $taskRoot 'APX-Dev/build/bin/Release/APX.hooks.dll'), $taskParameters)
+if (!$HooksDll) { $HooksDll = Join-Path $taskRoot 'APX-Dev/build/bin/Release/APX.hooks.dll' }
+$taskHooks = [Mono.Cecil.AssemblyDefinition]::ReadAssembly((Resolve-Path -LiteralPath $HooksDll).Path, $taskParameters)
 $taskCount = 0
 foreach ($taskMember in $taskHooks.MainModule.GetMemberReferences()) {
     if ($taskMember.DeclaringType.Scope.Name -ne 'AstralParty.Runtime') { continue }

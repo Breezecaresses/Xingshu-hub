@@ -147,7 +147,7 @@ namespace XingShu.Runtime
                 if (roomId > 0 && _stopRoom == roomId) return;
 
                 XingShuRuntimeHost.LogLifecycle(string.Format("[NativeSpectatorFollow] RequestWatchJoinRoomC2S: gamePid={0}, playerId={1}, watchCode='{2}', targetRoomId={3}, requestId={4}",
-                    System.Diagnostics.Process.GetCurrentProcess().Id, actual, code, roomId, envelope.requestId));
+                    XingShu.Runtime.RuntimeProcessIdentity.CurrentId, actual, code, roomId, envelope.requestId));
                 var join = manager.watch.RequestWatchJoinRoomC2S(code);
                 float joinDeadline = Time.realtimeSinceStartup + 20f;
                 await UniTask.WaitUntil(() => !join.keepWaiting || Time.realtimeSinceStartup >= joinDeadline);
