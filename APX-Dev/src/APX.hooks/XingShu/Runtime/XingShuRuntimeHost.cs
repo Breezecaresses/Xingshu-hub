@@ -24,7 +24,7 @@ namespace XingShu.Runtime
         public const string LegacyHostName = "[APX] Utility Runtime";
         public const string LogFileName = "xingshu_runtime_lifecycle.log";
         public const string LegacyLogFileName = "apx_runtime_lifecycle.log";
-        public const string RuntimeVersion = "1.0.0-runtime-truth-r3.1";
+        public const string RuntimeVersion = "1.0.0-library-r3";
 
         private static string _logPath;
         private static string _legacyLogPath;
@@ -249,6 +249,7 @@ namespace XingShu.Runtime
         private string _lastReportedContextFingerprint;
         private int _handshakePending;
         private float _lastMatchContextCheckTime = 0f;
+        private bool _libraryWasPlaying;
 
         private void Update()
         {
@@ -259,6 +260,7 @@ namespace XingShu.Runtime
                 _lastReportedContextFingerprint = null;
                 CheckAndEmitIdentityUpdate(force: true);
                 EvaluateAndPublishMatchContext(force: true);
+                GameLibraryExporter.Request();
             }
             BridgeEnvelope message;
             for (int i = 0; i < 8 && XingShuBridgeClient.Instance.TryTakeMainThreadMessage(out message); i++)
@@ -266,9 +268,12 @@ namespace XingShu.Runtime
                 if (message.messageType == "WATCH_STOP") NativeSpectatorFollow.Stop(message);
                 else if (message.messageType == BridgeProtocol.TypeWatchTarget) NativeSpectatorFollow.Execute(message);
                 else if (message.messageType == BridgeProtocol.TypeHandTruthMirror) XingShuBridgeClient.Instance.HandleHandTruthMirror(message);
+                else if (message.messageType == "GAME_LIBRARY_REQUEST") GameLibraryExporter.Request();
+                else if (message.messageType == "GAME_LIBRARY_MATCH_REQUEST") GameLibraryExporter.RequestMatch(message);
             }
             // 1. 场景切换即时感知与事件驱动
             CheckSceneTransition();
+            GameLibraryExporter.Tick();
 
             // 2. 本地权威身份轮询上报 (每 1.0s 或未成功上报时重试)
             if (Time.unscaledTime - _lastIdentityCheckTime >= 1.0f || _lastReportedPlayerId <= 0)
@@ -496,6 +501,9 @@ namespace XingShu.Runtime
                 {
                     matchState = "LOBBY";
                 }
+
+                if (_libraryWasPlaying && matchState != "MAIN_IN_MATCH") GameLibraryExporter.Request(5f);
+                _libraryWasPlaying = matchState == "MAIN_IN_MATCH";
 
                 // 提取房间权威信息
                 if (roomInfo != null && roomInfo.Id > 0)

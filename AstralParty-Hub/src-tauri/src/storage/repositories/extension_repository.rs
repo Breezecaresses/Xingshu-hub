@@ -117,6 +117,14 @@ impl ExtensionRepository {
         })
     }
 
+    pub fn delete_mod(&self, mod_id: &str) -> HubResult<()> {
+        self.db.with_conn(|conn| {
+            conn.execute("DELETE FROM mod_packages WHERE mod_id = ?1", [mod_id])
+                .map_err(|e| HubError::storage_error(e.to_string()))?;
+            Ok(())
+        })
+    }
+
     pub fn list_mods(&self) -> HubResult<Vec<ModPackage>> {
         self.db.with_conn(|conn| {
             let mut stmt = conn

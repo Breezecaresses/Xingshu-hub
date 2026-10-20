@@ -4,6 +4,7 @@ pub const ASTRAL_PARTY_PROCESS_NAMES: &[&str] = &[
     "AstralParty_CN.exe",
     "AstralParty_INT.exe",
     "AstralParty.exe",
+    "吉星派对.exe",
     "astral-mod-manager.exe",
     "astral-updater.exe",
 ];

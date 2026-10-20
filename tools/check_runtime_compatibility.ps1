@@ -28,11 +28,13 @@ foreach ($taskRequirement in @(
     @('UI.ExpressionWindow', 'quickReplyCts'),
     @('UI.ExpressionWindow', '_showQuickReply'),
     @('FairyGUI.EventListener', '_bridge'),
-    @('FairyGUI.EventBridge', '_isLocking')
+    @('FairyGUI.EventBridge', '_isLocking'),
+    @('GameLogic.AccountLogic', 'playerCareer'),
+    @('GameLogic.ReplayLogic', '_cdnBaseUrl')
 )) {
     $taskType = $taskRuntime.MainModule.Types | Where-Object FullName -eq $taskRequirement[0]
     if (!$taskType -or !($taskType.Fields | Where-Object Name -eq $taskRequirement[1])) {
         throw "Missing reflected field: $($taskRequirement -join '::')"
     }
 }
-Write-Output "PASS: $taskCount game member references resolve; 5 native quick-reply fields exist"
+Write-Output "PASS: $taskCount game member references resolve; 7 reflected quick-reply, career and replay fields exist"

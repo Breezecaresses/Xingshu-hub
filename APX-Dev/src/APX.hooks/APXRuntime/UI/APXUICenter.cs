@@ -644,24 +644,24 @@ namespace APXRuntime.UI
             ttRt.sizeDelta = new Vector2(160f, 32f);
 
             // 副标题: 星枢实用功能与对局辅助 (13px, MutedText #7F8998, raycastTarget=false 允许穿透拖动)
-            Text subText = APXUIFactory.CreateText(titleBarGo, "SubtitleText", "星枢实用功能与对局辅助", 13, APXUITheme.MutedText, TextAnchor.MiddleLeft);
+            Text subText = APXUIFactory.CreateText(titleBarGo, "SubtitleText", "项目来源：github.com/Breezecaresses/Xingshu-hub", 13, APXUITheme.MutedText, TextAnchor.MiddleLeft);
             subText.raycastTarget = false;
             RectTransform subRt = subText.rectTransform;
             subRt.anchorMin = new Vector2(0f, 0.5f);
             subRt.anchorMax = new Vector2(0f, 0.5f);
             subRt.pivot = new Vector2(0f, 0.5f);
             subRt.anchoredPosition = new Vector2(202f, -1f);
-            subRt.sizeDelta = new Vector2(240f, 24f);
+            subRt.sizeDelta = new Vector2(480f, 24f);
 
             // 右侧信息: 星枢 v3.3.0 (弱化标签, raycastTarget=false, 与 [F1] 严格共轴)
-            Text verText = APXUIFactory.CreateText(titleBarGo, "VersionText", "星枢 v3.3.0", 13, new Color(0.435f, 0.482f, 0.549f, 1f), TextAnchor.MiddleRight);
+            Text verText = APXUIFactory.CreateText(titleBarGo, "VersionText", "Runtime library-r3", 13, new Color(0.435f, 0.482f, 0.549f, 1f), TextAnchor.MiddleRight);
             verText.raycastTarget = false;
             RectTransform vtRt = verText.rectTransform;
             vtRt.anchorMin = new Vector2(1f, 0.5f);
             vtRt.anchorMax = new Vector2(1f, 0.5f);
             vtRt.pivot = new Vector2(1f, 0.5f);
             vtRt.anchoredPosition = new Vector2(-156f, 0f);
-            vtRt.sizeDelta = new Vector2(100f, 26f);
+            vtRt.sizeDelta = new Vector2(200f, 26f);
 
             // 右侧快捷键徽章: [F1] (排他区: 徽章拦截点击，不触发窗口拖动)
             GameObject badgeGo = APXUIFactory.CreateUIObject("HotkeyBadge_F1", titleBarGo);

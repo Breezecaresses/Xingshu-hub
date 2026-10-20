@@ -4,9 +4,11 @@ import type { HubPackageManifestV1, InstallTransaction } from '../../shared/type
 import { Upload, CheckCircle2, ShieldCheck, AlertTriangle, FileArchive, ArrowRight, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from '../../i18n';
+import { ExtensionTargetPicker, useExtensionTarget, extensionChannels } from './ExtensionWorkspace';
 
 export const ImportPackagePage: React.FC = () => {
   const { locale, t } = useTranslation();
+  const target = useExtensionTarget();
   const [zipPath, setZipPath] = useState('');
   const [manifest, setManifest] = useState<HubPackageManifestV1 | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,12 +34,12 @@ export const ImportPackagePage: React.FC = () => {
   };
 
   const handleInstall = async () => {
-    if (!zipPath.trim()) return;
+    if (!zipPath.trim() || !target.selected || !compatible) return;
     setInstalling(true);
     setError(null);
 
     try {
-      const tx = await api.installPackage(zipPath.trim());
+      const tx = await api.installPackage(zipPath.trim(), target.selected!.id);
       setTransaction(tx);
     } catch (e: any) {
       setError(e.message || String(e));
@@ -47,6 +49,8 @@ export const ImportPackagePage: React.FC = () => {
   };
 
   const isZh = locale === 'zh-CN';
+  const platforms = manifest?.compatibility.game.platforms?.length ? manifest.compatibility.game.platforms : ['STEAM_CN'];
+  const compatible = !!manifest && platforms.includes(target.channel);
 
   return (
     <div>
@@ -57,6 +61,7 @@ export const ImportPackagePage: React.FC = () => {
         </p>
       </div>
 
+      <ExtensionTargetPicker target={target} disabled={installing} />
       <div className="panel">
         <h2 className="panel-title" style={{ marginBottom: 12 }}>
           <FileArchive size={18} color="var(--primary)" />
@@ -69,7 +74,7 @@ export const ImportPackagePage: React.FC = () => {
             style={{ flex: 1 }}
             placeholder={isZh ? '输入扩展包绝对路径 (支持 .xspkg, .zip, .apx 等)' : 'Enter absolute path to .xspkg or .zip package'}
             value={zipPath}
-            onChange={(e) => setZipPath(e.target.value)}
+            onChange={(e) => { setZipPath(e.target.value); setManifest(null); setTransaction(null); }}
             onKeyDown={(e) => e.key === 'Enter' && handleInspect()}
           />
           <button className="btn btn-primary" onClick={handleInspect} disabled={loading || !zipPath}>
@@ -100,7 +105,7 @@ export const ImportPackagePage: React.FC = () => {
               </div>
             </div>
             {!transaction && (
-              <button className="btn btn-primary" onClick={handleInstall} disabled={installing}>
+              <button className="btn btn-primary" onClick={handleInstall} disabled={installing || !target.selected || !compatible}>
                 {installing ? (
                   <>
                     <RefreshCw size={14} className="spin" />
@@ -141,6 +146,7 @@ export const ImportPackagePage: React.FC = () => {
             </div>
           </div>
 
+          <div className="extension-hint">支持渠道：{platforms.map(id => extensionChannels.find(c => c[0] === id)?.[1] || id).join('、')}。{!manifest.compatibility.game.platforms?.length && '旧包未声明渠道，按 Steam 国服处理。'}<br />安装到：{target.selected?.install_path || '尚未选择'}{!compatible && <strong className="extension-error"> · 此包不支持所选渠道</strong>}</div>
           <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{isZh ? '目标文件映射清单' : 'Target File Mappings'}</h3>
           <table className="data-table">
             <thead>

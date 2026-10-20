@@ -5,6 +5,7 @@ import { ProfilePage } from '../pages/player/ProfilePage';
 import { GameAccountCenter } from '../pages/account/GameAccountCenter';
 import { CharactersPage } from '../pages/player/CharactersPage';
 import { CardsPage } from '../pages/player/CardsPage';
+import { ChipsPage, MapsPage } from '../pages/player/EncyclopediaPage';
 import { MatchesPage } from '../pages/player/MatchesPage';
 import { PluginsPage } from '../pages/extensions/PluginsPage';
 import { ModsPage } from '../pages/extensions/ModsPage';
@@ -34,7 +35,7 @@ export const router = createBrowserRouter([
                 : typeof window !== 'undefined' &&
                   (window.location.search.includes('diagnostics') || window.location.hash.includes('diagnostics'))
                 ? '/diagnostics'
-                : '/spectator'
+                : '/dashboard'
             }
             replace
           />
@@ -68,6 +69,14 @@ export const router = createBrowserRouter([
       {
         path: 'player/cards',
         element: <CardsPage />,
+      },
+      {
+        path: 'player/chips',
+        element: <ChipsPage />,
+      },
+      {
+        path: 'player/maps',
+        element: <MapsPage />,
       },
       {
         path: 'player/matches',

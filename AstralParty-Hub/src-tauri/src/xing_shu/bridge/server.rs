@@ -622,6 +622,7 @@ pub struct BridgeServer {
     connection_manager: super::connection::ConnectionManager,
     app_handle: Arc<Mutex<Option<tauri::AppHandle>>>,
     session_events_tx: tokio::sync::broadcast::Sender<SessionEvent>,
+    game_library: Arc<Mutex<Option<crate::game_library::GameLibraryStore>>>,
 }
 
 impl Default for BridgeServer {
@@ -656,11 +657,16 @@ impl BridgeServer {
             connection_manager: super::connection::ConnectionManager::new(),
             app_handle: Arc::new(Mutex::new(None)),
             session_events_tx,
+            game_library: Arc::new(Mutex::new(None)),
         }
     }
 
     pub fn session_manager(&self) -> &super::session::SessionManager {
         &self.session_manager
+    }
+
+    pub fn set_game_library_store(&self, store: crate::game_library::GameLibraryStore) {
+        *self.game_library.lock().unwrap() = Some(store);
     }
 
     pub fn connection_manager(&self) -> &super::connection::ConnectionManager {
@@ -1990,6 +1996,31 @@ impl BridgeServer {
         }
 
         match envelope.message_type.as_str() {
+            "GAME_LIBRARY_MATCH_DETAIL" => {
+                if self.connection_manager.get_generation(connection_id) != Some(generation) { return; }
+                let Some(session) = self.get_runtime_session(connection_id) else { return; };
+                if session.generation != generation || session.platform_id != platform_id { return; }
+                let data = match serde_json::from_value::<crate::game_library::MatchDetail>(envelope.payload) {
+                    Ok(data) => data,
+                    Err(e) => { warn!("Invalid game match detail: {}", e); return; }
+                };
+                if let Some(store) = self.game_library.lock().unwrap().as_ref() {
+                    if let Err(e) = store.save_detail(&session, data) { warn!("Game match detail rejected: {}", e); }
+                }
+            }
+            "GAME_LIBRARY_SNAPSHOT" => {
+                // Only a live, authenticated connection can attribute account snapshots.
+                if self.connection_manager.get_generation(connection_id) != Some(generation) { return; }
+                let Some(session) = self.get_runtime_session(connection_id) else { return; };
+                if session.generation != generation || session.platform_id != platform_id { return; }
+                let data = match serde_json::from_value::<crate::game_library::AccountSnapshot>(envelope.payload) {
+                    Ok(data) => data,
+                    Err(e) => { warn!("Invalid game library snapshot: {}", e); return; }
+                };
+                if let Some(store) = self.game_library.lock().unwrap().as_ref() {
+                    if let Err(e) = store.save(&session, data) { warn!("Game library snapshot rejected: {}", e); }
+                }
+            }
             message_types::HEARTBEAT => {
                 let hb: HeartbeatPayload = serde_json::from_value(envelope.payload.clone()).unwrap_or_default();
                 let latency_ms = hb.client_timestamp.map(|client_ts| (now - client_ts).max(0) as u64);
@@ -2217,6 +2248,9 @@ impl BridgeServer {
                     let old_room = previous.room_id.unwrap_or(0);
                     if payload.match_state != "MAIN_IN_MATCH" || payload.get_internal_room_id() != Some(old_room as i64) {
                         for watcher in self.session_manager.list().into_iter().filter(|s| self.session_manager.is_bound_taptap_spectator(&s.connection_id)) {
+                            if watcher.room_id == Some(old_room) {
+                                self.connection_manager.retire_spectator_epoch(&watcher.connection_id);
+                            }
                             let stop = BridgeEnvelope::new("WATCH_STOP", serde_json::json!({
                                 "roomId": old_room, "expectedSpectatorPlayerId": watcher.live_player_id,
                                 "targetPlatform": watcher.platform_id
@@ -5492,7 +5526,15 @@ mod tests {
             match_state: "MAIN_IN_MATCH".into(), in_match: true, sequence: 1, generation: Some(1), ..Default::default() };
         let raw = serde_json::to_string(&BridgeEnvelope::new(message_types::RUNTIME_MATCH_CONTEXT, serde_json::to_value(&ctx).unwrap())).unwrap();
         server.process_incoming_message_for_connection(&raw, "main", "STEAM_CN", 1).await;
-        server.state.lock().unwrap().latest_spectator_snapshot = Some(SpectatorHandPayload { room_id: 71, ..Default::default() });
+        let mut snapshot = SpectatorHandPayload { schema_version: "1.1.0".into(), room_id: 71,
+            spectator_session_epoch: 10, sequence_number: 1, spectator_account_player_id: 222,
+            ..Default::default() };
+        let frame = serde_json::to_string(&BridgeEnvelope::new(message_types::SPECTATOR_HAND_SNAPSHOT,
+            serde_json::to_value(&snapshot).unwrap())).unwrap();
+        server.process_incoming_message_for_connection(&frame, "spec", "STEAM_CN", 1).await;
+        assert!(server.get_latest_spectator_snapshot().is_some());
+        let mirror: serde_json::Value = serde_json::from_str(&main_rx.try_recv().unwrap()).unwrap();
+        assert_eq!(mirror["messageType"], message_types::HAND_TRUTH_MIRROR);
         ctx.match_state = "MATCH_ENDED".into(); ctx.in_match = false; ctx.sequence = 2;
         let raw = serde_json::to_string(&BridgeEnvelope::new(message_types::RUNTIME_MATCH_CONTEXT, serde_json::to_value(&ctx).unwrap())).unwrap();
         server.process_incoming_message_for_connection(&raw, "main", "STEAM_CN", 1).await;
@@ -5501,6 +5543,19 @@ mod tests {
         assert_eq!(stop["payload"]["roomId"], 71);
         assert!(main_rx.try_recv().is_err());
         assert!(server.get_latest_spectator_snapshot().is_none());
+        // A queued message from the ended watch session must not refill the waiting page.
+        snapshot.sequence_number = 2;
+        let frame = serde_json::to_string(&BridgeEnvelope::new(message_types::SPECTATOR_HAND_SNAPSHOT,
+            serde_json::to_value(&snapshot).unwrap())).unwrap();
+        server.process_incoming_message_for_connection(&frame, "spec", "STEAM_CN", 1).await;
+        assert!(server.get_latest_spectator_snapshot().is_none(), "Ended spectator epoch was revived by a late snapshot");
+        // The next watch session may use the same room with sequence numbering reset.
+        snapshot.spectator_session_epoch = 11;
+        snapshot.sequence_number = 1;
+        let frame = serde_json::to_string(&BridgeEnvelope::new(message_types::SPECTATOR_HAND_SNAPSHOT,
+            serde_json::to_value(&snapshot).unwrap())).unwrap();
+        server.process_incoming_message_for_connection(&frame, "spec", "STEAM_CN", 1).await;
+        assert_eq!(server.get_latest_spectator_snapshot().unwrap().spectator_session_epoch, 11);
         // Replay of an older main context cannot emit another stop.
         server.process_incoming_message_for_connection(&raw, "main", "STEAM_CN", 1).await;
         assert!(spec_rx.try_recv().is_err());

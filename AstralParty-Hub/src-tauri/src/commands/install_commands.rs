@@ -7,9 +7,10 @@ use crate::domain::installation::{Backup, InstallTransaction};
 #[tauri::command]
 pub async fn install_package(
     archive_path: String,
+    installation_id: String,
     install_service: State<'_, InstallService>,
 ) -> HubResult<InstallTransaction> {
-    install_service.install_package_from_zip(Path::new(&archive_path))
+    install_service.install_package_from_zip(Path::new(&archive_path), &installation_id)
 }
 
 #[tauri::command]

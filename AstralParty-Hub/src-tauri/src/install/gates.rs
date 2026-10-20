@@ -9,6 +9,25 @@ use crate::security::path_guard::PathGuard;
 pub struct ProcessGate;
 
 impl ProcessGate {
+    /// Other installations may remain open; only the selected executable is blocked.
+    pub fn check_target(executable: &Path) -> HubResult<()> {
+        use sysinfo::{ProcessRefreshKind, RefreshKind, System, UpdateKind};
+        let system = System::new_with_specifics(RefreshKind::nothing().with_processes(
+            ProcessRefreshKind::nothing().with_exe(UpdateKind::Always),
+        ));
+        let expected = dunce::canonicalize(executable).map_err(|e| HubError::game_not_found(&e.to_string()))?;
+        let normalized = |p: &Path| p.to_string_lossy().replace('\\', "/").to_lowercase();
+        let mut running = Vec::new();
+        for process in system.processes().values() {
+            let matches = match process.exe() {
+                Some(path) => dunce::canonicalize(path).map(|p| normalized(&p) == normalized(&expected)).unwrap_or(false),
+                None => executable.file_name().is_some_and(|name| name.to_string_lossy().eq_ignore_ascii_case(&process.name().to_string_lossy())),
+            };
+            if matches { running.push(process.name().to_string_lossy().to_string()); }
+        }
+        if running.is_empty() { Ok(()) } else { Err(HubError::game_running(&running)) }
+    }
+
     pub fn check(requires_game_closed: bool) -> HubResult<()> {
         if !requires_game_closed {
             return Ok(());

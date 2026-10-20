@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { api } from '../../shared/api/tauri';
 import type { DiagnosticReport } from '../../shared/types';
@@ -10,11 +10,20 @@ import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 export const Layout: React.FC = () => {
   const [report, setReport] = useState<DiagnosticReport | null>(null);
   const { locale, t } = useTranslation();
+  const contentRef = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
 
   useEffect(() => {
-    api.getDiagnosticReport()
+    contentRef.current?.scrollTo(0, 0);
+  }, [pathname]);
+
+  useEffect(() => {
+    const refresh = () => api.getDiagnosticReport()
       .then(setReport)
-      .catch((err) => console.error('Failed to fetch initial status:', err));
+      .catch(() => setReport(null));
+    void refresh();
+    const timer = setInterval(() => void refresh(), 10000);
+    return () => clearInterval(timer);
   }, []);
 
   const appTitle = locale === 'zh-CN' ? '星枢 Hub' : 'XingShu Hub';
@@ -72,16 +81,16 @@ export const Layout: React.FC = () => {
                 <AlertTriangle size={13} />
                 <span>{t('common.gameActive')} ({report.snapshot.running_processes.length})</span>
               </div>
-            ) : (
+            ) : report ? (
               <div className="status-pill ok" title={t('common.safeToModify')}>
                 <ShieldCheck size={13} />
                 <span>{t('common.safeToModify')}</span>
               </div>
-            )}
+            ) : null}
           </div>
         </header>
 
-        <main className="content-area">
+        <main className="content-area" ref={contentRef}>
           <Outlet />
         </main>
       </div>

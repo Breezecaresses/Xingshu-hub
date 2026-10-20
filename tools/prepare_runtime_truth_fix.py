@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+import re
 import UnityPy
 from UnityPy.files.ObjectReader import ObjectReader
 
@@ -67,6 +68,19 @@ def assets(env):
             result[obj.path_id] = (data.m_Name, sha(data.m_Script.encode('utf8', errors='surrogateescape')))
     return result
 
+def write_inventory(manifest):
+    """Keep Hub's file inventory in sync with the packaged runtime candidates."""
+    profiles = json.loads(PROFILES.read_text(encoding='utf8'))
+    source = (ROOT / 'APX-Dev/src/APX.hooks/XingShu/Runtime/XingShuRuntimeHost.cs').read_text('utf8')
+    version = re.search(r'const string RuntimeVersion = "([^"]+)"', source).group(1)
+    inventory = [{'platform': item['platform'], 'version': version,
+                  'sha256': item['candidateSha256'],
+                  'bundleRelativePath': next(p['bundleRelativePath'] for p in profiles if p['platformId'] == item['platform'])}
+                 for item in manifest]
+    (ROOT / 'AstralParty-Hub/src-tauri/src/runtime_inventory.generated.json').write_text(
+        json.dumps(inventory, ensure_ascii=False, indent=2) + '\n', encoding='utf8')
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     manifest = []
@@ -81,7 +95,14 @@ def main():
         folder = OUT / platform
         folder.mkdir(exist_ok=True)
         original = target.read_bytes()
-        known_installed = any(p['target'] == str(target) and p['candidateSha256'] == sha(original) for p in previous)
+        known_installed = any(
+            p['target'] == str(target) and (
+                p['candidateSha256'] == sha(original) or (
+                    p['beforeSha256'] == sha(original) and Path(p['backup']).is_file()
+                    and sha(Path(p['backup']).read_bytes()) == sha(original)
+                )
+            ) for p in previous
+        )
         if sha(original).upper() != profile['containerSha256'].upper() and not known_installed:
             raise RuntimeError(f'{platform}: cache differs from selected current baseline; update compatibility data first')
         backup = folder / ('__data.before.' + sha(original)[:12])
@@ -120,6 +141,7 @@ def main():
                          'candidateSha256': sha(candidate.read_bytes())})
         print(f'{platform}: prepared; {len(before)-len(set(before) & changed)} other assemblies unchanged; bootstrap, hooks and three timer methods updated', flush=True)
     (OUT / 'deployment.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf8')
+    write_inventory(manifest)
 
 if __name__ == '__main__':
     main()

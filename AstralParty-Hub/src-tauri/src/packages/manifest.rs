@@ -33,6 +33,8 @@ pub struct CompatibilityMeta {
 #[serde(rename_all = "camelCase")]
 pub struct GameCompatibility {
     pub app_id: String,
+    #[serde(default)]
+    pub platforms: Vec<String>,
     pub min_version: Option<String>,
     pub max_version: Option<String>,
 }

@@ -25,12 +25,10 @@ impl InstallService {
         }
     }
 
-    pub fn install_package_from_zip<P: AsRef<Path>>(&self, zip_path: P) -> HubResult<InstallTransaction> {
-        let primary_game = self.game_repo.get_primary()?.ok_or_else(|| {
-            HubError::game_not_found("No primary Astral Party installation configured. Please detect or set game path in Settings.")
-        })?;
-
-        self.engine.install_package(zip_path, &primary_game)
+    pub fn install_package_from_zip<P: AsRef<Path>>(&self, zip_path: P, installation_id: &str) -> HubResult<InstallTransaction> {
+        let game = self.game_repo.list_all()?.into_iter().find(|g| g.id == installation_id)
+            .ok_or_else(|| HubError::game_not_found("请选择具体渠道和安装位置。"))?;
+        self.engine.install_package(zip_path, &game)
     }
 
     pub fn rollback_transaction(&self, transaction_id: &str) -> HubResult<()> {

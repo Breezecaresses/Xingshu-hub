@@ -40,6 +40,17 @@ The GitHub repository stores source and version history. The Hub, main game, and
 
 See [the local watcher notes](AstralParty-Hub/docs/local-managed-watcher.md) for verification details and remaining work.
 
+## Hub and Runtime Update
+
+- The character library includes 37 official configurations, including two unfinished preview entries. Missing names, skills, and artwork remain explicitly pending.
+- Character, skin, bond, and growth details; full portrait card layouts and native animated alternate artwork; token and map/field-effect libraries.
+- Match history and settlement details persist per account. PVE uses victory/defeat; PVP uses placement. Support transfers receive more rating weight; remaining gold stays visible and is excluded from ratings.
+- Runtime, packages, plugins, and mods use five channels and explicit installation directories, including multiple locations per channel. Externally installed files show detection status only.
+- Runtime management separates file verification, the actual game process, and the version reported by a confirmed connection. This bundle supplies verified runtime payloads for Steam CN and TapTap Windows; other channels still need runtime testing.
+- The Hub sidebar, settings, and plugin F1 center link to the project source. The current runtime version is `1.0.0-library-r3`.
+
+See [extension channel documentation](AstralParty-Hub/docs/specs/extension_channels.md) for manifests, destination mappings, and management boundaries. Game artwork, configuration, and resources remain the property of their respective owners and are not relicensed under the code's MIT license.
+
 ## 🏗️ Architecture Overview
 
 ```mermaid

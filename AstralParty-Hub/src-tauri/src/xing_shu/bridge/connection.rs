@@ -12,6 +12,34 @@ pub struct ActiveConnection {
     pub sender: Sender<String>,
     pub spectator_active_epoch: u64,
     pub spectator_highest_sequence: u64,
+    pub spectator_retired_epoch: Option<u64>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn retired_watch_epoch_rejects_late_frames_without_affecting_peer_or_reconnect() {
+        let manager = ConnectionManager::new();
+        let (first, _first_rx) = tokio::sync::mpsc::channel(4);
+        let (peer, _peer_rx) = tokio::sync::mpsc::channel(4);
+        manager.insert(ActiveConnection::new("first", "TAPTAP", 1, 1, first));
+        manager.insert(ActiveConnection::new("peer", "STEAM_CN", 2, 1, peer));
+        assert_eq!(manager.check_and_update_spectator_monotonicity("first", 10, 1), Ok(()));
+        assert_eq!(manager.check_and_update_spectator_monotonicity("peer", 10, 1), Ok(()));
+        manager.retire_spectator_epoch("first");
+        assert_eq!(manager.check_and_update_spectator_monotonicity("first", 10, 500), Err("ENDED_EPOCH"));
+        assert_eq!(manager.check_and_update_spectator_monotonicity("first", 9, 500), Err("ENDED_EPOCH"));
+        assert_eq!(manager.check_and_update_spectator_monotonicity("peer", 10, 2), Ok(()));
+        assert_eq!(manager.check_and_update_spectator_monotonicity("first", 11, 1), Ok(()));
+        manager.retire_spectator_epoch("first");
+        assert_eq!(manager.check_and_update_spectator_monotonicity("first", 11, 2), Err("ENDED_EPOCH"));
+        manager.remove("first");
+        let (reconnected, _rx) = tokio::sync::mpsc::channel(4);
+        manager.insert(ActiveConnection::new("first", "TAPTAP", 1, 2, reconnected));
+        assert_eq!(manager.check_and_update_spectator_monotonicity("first", 1, 1), Ok(()));
+    }
 }
 
 impl ActiveConnection {
@@ -30,6 +58,7 @@ impl ActiveConnection {
             sender,
             spectator_active_epoch: 0,
             spectator_highest_sequence: 0,
+            spectator_retired_epoch: None,
         }
     }
 }
@@ -132,6 +161,17 @@ impl ConnectionManager {
         }
     }
 
+    /// Ending a match also retires its stream. A higher sequence within the old
+    /// epoch is still an old-match message, even if it arrives after cache clear.
+    pub fn retire_spectator_epoch(&self, connection_id: &str) {
+        let mut map = self.connections.write().unwrap();
+        if let Some(conn) = map.get_mut(connection_id) {
+            if conn.spectator_active_epoch > 0 {
+                conn.spectator_retired_epoch = Some(conn.spectator_active_epoch);
+            }
+        }
+    }
+
     pub fn check_and_update_spectator_monotonicity(
         &self,
         connection_id: &str,
@@ -140,6 +180,9 @@ impl ConnectionManager {
     ) -> Result<(), &'static str> {
         let mut map = self.connections.write().unwrap();
         if let Some(conn) = map.get_mut(connection_id) {
+            if conn.spectator_retired_epoch.is_some_and(|retired| epoch <= retired) {
+                return Err("ENDED_EPOCH");
+            }
             if epoch < conn.spectator_active_epoch {
                 return Err("STALE_EPOCH");
             }

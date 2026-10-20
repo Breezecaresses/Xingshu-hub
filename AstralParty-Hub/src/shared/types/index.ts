@@ -122,6 +122,7 @@ export interface HubPackageManifestV1 {
   compatibility: {
     game: {
       appId: string;
+      platforms?: string[];
       minVersion?: string;
       maxVersion?: string;
     };
@@ -307,6 +308,7 @@ export interface XspkgManifest {
   compatibility: {
     game: {
       appId: string;
+      platforms?: string[];
       minVersion?: string;
       maxVersion?: string;
     };

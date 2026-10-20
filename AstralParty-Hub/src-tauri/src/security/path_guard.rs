@@ -64,7 +64,16 @@ impl PathGuard {
         let canonical_candidate = if candidate_full.exists() {
             dunce::canonicalize(&candidate_full).unwrap_or(candidate_full)
         } else {
-            candidate_full
+            // Resolve an existing ancestor too: a new file under a junction must not escape.
+            let mut ancestor = candidate_full.as_path();
+            let mut missing = Vec::new();
+            while !ancestor.exists() {
+                if let Some(name) = ancestor.file_name() { missing.push(name.to_os_string()); }
+                ancestor = ancestor.parent().ok_or_else(|| HubError::security_violation("无法验证目标目录。"))?;
+            }
+            let mut resolved = dunce::canonicalize(ancestor).map_err(|e| HubError::security_violation(e.to_string()))?;
+            for name in missing.into_iter().rev() { resolved.push(name); }
+            resolved
         };
 
         if !canonical_candidate.starts_with(&canonical_base) {

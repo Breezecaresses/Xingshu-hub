@@ -1,0 +1,14 @@
+[
+  {
+    "platform": "STEAM_CN",
+    "version": "1.0.0-library-r3",
+    "sha256": "003da48c7740bffff37645c8728005f412c175cf4b2aab5c7b26cb60b23688a6",
+    "bundleRelativePath": "AstralParty_CN_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\3486f99276eba77677d4880fd8d32918\\__data"
+  },
+  {
+    "platform": "TAPTAP",
+    "version": "1.0.0-library-r3",
+    "sha256": "1d3f3f45e2eeca48e491c318087707c008374e2e8087a33930a2596a51d52528",
+    "bundleRelativePath": "吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\71c9197f5dd65c9b30bdf1e716719991\\__data"
+  }
+]

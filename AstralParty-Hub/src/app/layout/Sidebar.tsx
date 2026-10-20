@@ -1,4 +1,6 @@
 import React from 'react';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import { PROJECT_SOURCE, PROJECT_SOURCE_LABEL } from '../../shared/projectSource';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -6,6 +8,8 @@ import {
   UserCheck,
   Users,
   Layers,
+  Coins,
+  Map,
   History,
   Puzzle,
   Sparkles,
@@ -77,6 +81,20 @@ export const Sidebar: React.FC = () => {
         >
           <Layers size={17} />
           <span>{t('nav.cards')}</span>
+        </NavLink>
+        <NavLink
+          to="/player/chips"
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+        >
+          <Coins size={17} />
+          <span>{locale === 'zh-CN' ? '筹码图鉴' : 'Battle tokens'}</span>
+        </NavLink>
+        <NavLink
+          to="/player/maps"
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+        >
+          <Map size={17} />
+          <span>{locale === 'zh-CN' ? '地图与场地' : 'Maps & fields'}</span>
         </NavLink>
         <NavLink
           to="/player/matches"
@@ -171,7 +189,7 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       <div className="sidebar-footer">
-        <span>XingShu Engine + Rust</span>
+        <button type="button" title={`项目来源：${PROJECT_SOURCE_LABEL}`} onClick={() => void openUrl(PROJECT_SOURCE)} style={{ color: 'var(--text-secondary)', border: 0, background: 'none', cursor: 'pointer', padding: 0 }}>项目来源 ↗ GitHub</button>
         <span style={{ color: 'var(--success)', fontWeight: 600 }}>{t('common.versionReady')}</span>
       </div>
     </aside>

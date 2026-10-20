@@ -3,6 +3,8 @@ pub mod commands;
 pub mod diagnostics;
 pub mod domain;
 pub mod game;
+pub mod game_library;
+pub mod extension_center;
 pub mod install;
 pub mod packages;
 pub mod platform;
@@ -60,6 +62,7 @@ pub fn run() {
             info!("Backup storage location: {}", backup_dir.display());
 
             let db = Database::init(&db_path).expect("Failed to initialize XingShu Hub SQLite database");
+            let game_library_store = game_library::GameLibraryStore::new(db.clone())?;
 
             let game_service = GameService::new(db.clone());
             let player_service = PlayerService::new(db.clone());
@@ -84,6 +87,7 @@ pub fn run() {
             } else {
                 Arc::new(BridgeServer::new())
             };
+            bridge_server.set_game_library_store(game_library_store.clone());
             bridge_server.start().map_err(|e| format!("Failed to start XingShu Bridge production server: {}", e))?;
             bridge_server.set_app_handle(app_handle.clone());
             let spectator_service = Arc::new(SpectatorService::new(bridge_server.clone()));
@@ -98,10 +102,12 @@ pub fn run() {
             registry.register(imported_provider);
             registry.register(spectator_provider);
 
-            let orchestrator = ProviderOrchestrator::new(db, registry);
+            let orchestrator = ProviderOrchestrator::new(db.clone(), registry);
 
             // Manage services in Tauri state
             app.manage(game_service);
+            app.manage(extension_center::ExtensionCenter { db: db.clone() });
+            app.manage(game_library_store);
             app.manage(player_service);
             app.manage(catalog_service);
             app.manage(extension_service);
@@ -147,10 +153,19 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            game_library::get_game_library,
+            game_library::sync_game_library,
+            game_library::get_game_match_detail,
+            game_library::request_game_match_detail,
             // Game commands
             detect_game,
             set_manual_game_path,
             get_primary_game,
+            extension_center::list_extension_targets,
+            extension_center::register_extension_target,
+            extension_center::get_extension_inventory,
+            extension_center::get_extension_runtime_state,
+            extension_center::open_group_installer,
             // Player commands
             get_player_profile,
             list_character_progress,

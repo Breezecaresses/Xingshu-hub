@@ -25,11 +25,15 @@ FILES = [
     'AstralParty-Hub/src-tauri/Cargo.toml', 'AstralParty-Hub/src-tauri/Cargo.lock',
     'AstralParty-Hub/src-tauri/build.rs', 'AstralParty-Hub/src-tauri/tauri.conf.json',
     'AstralParty-Hub/docs/local-managed-watcher.md',
+    'AstralParty-Hub/docs/specs/extension_channels.md',
+    'AstralParty-Hub/docs/specs/package_manifest_v1_schema.json',
+    'tools/export_game_catalog.py',
     'tools/patch_thinking_time.ps1', 'tools/verify_thinking_time.ps1',
     'tools/prepare_runtime_truth_fix.py', 'tools/install_runtime_truth_fix.ps1',
     'tools/patch_taptap_runtime.cs',
     'tools/check_runtime_compatibility.ps1',
     'tools/install_hub_watch_join_fix.ps1', 'tools/export_source_repo.py',
+    'tools/GroupTestInstaller.cs', 'tools/package_group_test.py',
 ]
 SKIP_DIRS = {'.git', 'bin', 'obj', 'target', 'node_modules', '__pycache__', 'dist', 'release'}
 SKIP_SUFFIXES = {'.dll', '.exe', '.pdb', '.bundle', '.7z', '.zip', '.rar', '.log', '.pyc', '.tsbuildinfo'}
@@ -67,7 +71,16 @@ def main():
         if destination not in target.resolve().parents:
             raise SystemExit('Target escaped source checkout')
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, target)
+        if source.suffix.lower() in {'.cs', '.rs', '.ts', '.tsx', '.json', '.css', '.ps1', '.py', '.md', '.toml', '.html'}:
+            normalized = b'\n'.join(line.rstrip(b'\r') for line in source.read_bytes().split(b'\n'))
+            existing = target.read_bytes() if target.exists() else b''
+            previous = b'\n'.join(line.rstrip(b'\r') for line in existing.split(b'\n'))
+            if normalized != previous:
+                # Avoid newline-only changes; preserve the checkout's existing line style.
+                ending = b'\r\n' if b'\r\n' in existing else b'\n'
+                target.write_bytes(normalized.replace(b'\n', ending))
+        else:
+            shutil.copy2(source, target)
         count += 1
         size += source.stat().st_size
     (destination / '.xingshu-source-export').write_text('Active source export; generated files can be refreshed from tools/export_source_repo.py\n', encoding='utf-8')

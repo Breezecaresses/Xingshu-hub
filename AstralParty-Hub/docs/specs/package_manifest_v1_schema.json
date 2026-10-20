@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AstralPartyHubPackageManifestV1",
+  "type": "object",
+  "required": ["schemaVersion", "package", "compatibility", "install", "files"],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "package": {
+      "type": "object",
+      "required": ["id", "type", "name", "version", "publisher"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+(\\.[a-zA-Z0-9_-]+)+$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["apx-plugin", "mod", "resource-pack"]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string"
+        },
+        "publisher": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "required": ["game"],
+      "properties": {
+        "game": {
+          "type": "object",
+          "required": ["appId"],
+          "properties": {
+            "appId": {
+              "type": "string"
+            },
+            "platforms": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "enum": ["STEAM_CN", "STEAM_GLOBAL", "TAPTAP", "BILIBILI", "WEGAME"] },
+              "description": "Supported installation channels. Omitted or empty legacy values default to STEAM_CN."
+            },
+            "minVersion": {
+              "type": ["string", "null"]
+            },
+            "maxVersion": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        "apx": {
+          "type": "object",
+          "properties": {
+            "minVersion": {
+              "type": ["string", "null"]
+            },
+            "maxVersion": {
+              "type": ["string", "null"]
+            }
+          }
+        }
+      }
+    },
+    "install": {
+      "type": "object",
+      "required": ["requiresGameClosed", "requiresApxClosed", "backup"],
+      "properties": {
+        "requiresGameClosed": {
+          "type": "boolean"
+        },
+        "requiresApxClosed": {
+          "type": "boolean"
+        },
+        "backup": {
+          "type": "boolean"
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "target", "sha256", "size"],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string",
+            "pattern": "^(apx/plugins/|game/mods/|game/resources/|hub/data/).+"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-fA-F0-9]{64}$"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

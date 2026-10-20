@@ -39,36 +39,39 @@ impl InstallEngine {
     /// Resolves logical targets against the actual game installation root
     pub fn resolve_logical_target(game_root: &Path, logical_target: &str) -> HubResult<PathBuf> {
         let clean = logical_target.replace('\\', "/");
-        if let Some(rel) = clean.strip_prefix("apx/plugins/") {
-            // Check if game has CN/INT sub-folders or direct root
-            let cn_dir = game_root.join("8vJXn6CN");
-            let target_base = if cn_dir.exists() {
-                cn_dir.join("apx").join("plugins")
-            } else {
-                game_root.join("apx").join("plugins")
-            };
-            Ok(target_base.join(rel))
-        } else if let Some(rel) = clean.strip_prefix("game/mods/") {
-            let cn_dir = game_root.join("8vJXn6CN");
-            let target_base = if cn_dir.exists() {
-                cn_dir.join("mods")
-            } else {
-                game_root.join("mods")
-            };
-            Ok(target_base.join(rel))
-        } else if let Some(rel) = clean.strip_prefix("game/resources/") {
-            let cn_dir = game_root.join("8vJXn6CN");
-            let target_base = if cn_dir.exists() {
-                cn_dir.join("resources")
-            } else {
-                game_root.join("resources")
-            };
-            Ok(target_base.join(rel))
-        } else if let Some(rel) = clean.strip_prefix("hub/data/") {
-            Ok(game_root.join("hub_data").join(rel))
-        } else {
-            Err(HubError::invalid_manifest(format!("Unrecognized logical prefix in '{logical_target}'")))
+        crate::security::path_guard::PathGuard::sanitize_relative_path(&clean)?;
+        let target = [("apx/plugins/", "apx/plugins"), ("game/mods/", "mods"), ("game/resources/", "resources"), ("hub/data/", "hub_data")]
+            .iter().find_map(|(prefix, directory)| clean.strip_prefix(prefix).map(|rel| game_root.join(directory).join(rel)))
+            .ok_or_else(|| HubError::invalid_manifest(format!("Unrecognized logical prefix in '{logical_target}'")))?;
+        crate::security::path_guard::PathGuard::ensure_within_root(game_root, &target)
+    }
+
+    pub fn check_compatibility(manifest: &crate::packages::manifest::HubPackageManifestV1, game: &GameInstallation) -> HubResult<()> {
+        let compatibility = &manifest.compatibility.game;
+        let declared = if compatibility.platforms.is_empty() { vec!["STEAM_CN".to_string()] } else { compatibility.platforms.clone() };
+        if !declared.contains(&game.platform) {
+            return Err(HubError::invalid_manifest(format!("扩展未声明支持所选渠道 {}。旧包未填写 platforms 时仅按 Steam 国服处理。", game.platform)));
         }
+        if compatibility.app_id != "2622000" { return Err(HubError::invalid_manifest("扩展的游戏标识与吉星派对不一致。")); }
+        if compatibility.min_version.is_some() || compatibility.max_version.is_some() {
+            let profile = crate::extension_center::profiles().into_iter().find(|p| p["platformId"] == game.platform)
+                .ok_or_else(|| HubError::invalid_manifest("尚无此渠道的版本指纹。"))?;
+            let hash = crate::security::hash::compute_file_sha256(crate::extension_center::game_root(game)?.join("GameAssembly.dll"))?;
+            if !hash.eq_ignore_ascii_case(profile["gameRuntimeDllSha256"].as_str().unwrap_or_default()) {
+                return Err(HubError::invalid_manifest("无法核验所选游戏版本，不能安装有版本限制的包。"));
+            }
+            let parse = |v: &str| -> HubResult<Vec<u32>> {
+                let mut parts: Vec<u32> = v.split('.').map(|part| part.parse().map_err(|_| HubError::invalid_manifest("游戏版本应为数字点分格式。"))).collect::<HubResult<_>>()?;
+                while parts.len() < 4 { parts.push(0); }
+                Ok(parts)
+            };
+            let version = parse(profile["gameVersion"].as_str().unwrap_or_default())?;
+            if compatibility.min_version.as_ref().map(|v| parse(v).map(|min| version < min)).transpose()?.unwrap_or(false)
+                || compatibility.max_version.as_ref().map(|v| parse(v).map(|max| version > max)).transpose()?.unwrap_or(false) {
+                return Err(HubError::invalid_manifest("所选游戏版本不在扩展支持范围内。"));
+            }
+        }
+        Ok(())
     }
 
     /// Full atomic installation transaction pipeline
@@ -79,13 +82,15 @@ impl InstallEngine {
     ) -> HubResult<InstallTransaction> {
         let tx_id = Uuid::new_v4().to_string();
         let archive_path = archive_path.as_ref();
-        let game_root = Path::new(&game_installation.install_path);
+        let selected_root = crate::extension_center::game_root(game_installation)?;
+        let game_root = selected_root.as_path();
 
         info!("Starting install transaction {} for archive {}", tx_id, archive_path.display());
 
         // 1. Parse and validate manifest from archive
         let manifest = PackageParser::parse_archive(archive_path)?;
-        let pkg_id = manifest.package.id.clone();
+        Self::check_compatibility(&manifest, game_installation)?;
+        let pkg_id = crate::extension_center::scoped_package_id(&manifest.package.id, game_installation);
         let pkg_version = manifest.package.version.clone();
         let pkg_type = manifest.package.package_type.clone();
 
@@ -108,7 +113,7 @@ impl InstallEngine {
         self.log_step(&tx_id, 1, "SAFETY_GATES", "RUNNING")?;
         PathSafetyGate::check(&manifest)?;
         CatalogGate::check(&manifest, &["apx/plugins/", "game/mods/", "game/resources/", "hub/data/"])?;
-        ProcessGate::check(manifest.install.requires_game_closed)?;
+        ProcessGate::check_target(Path::new(game_installation.executable_path.as_deref().unwrap_or_default()))?;
         
         let total_size: u64 = manifest.files.iter().map(|f| f.size).sum();
         DiskSpaceGate::check(game_root, total_size)?;
@@ -120,6 +125,12 @@ impl InstallEngine {
         let mut resolved_targets: Vec<(String, PathBuf)> = Vec::new();
         for file in &manifest.files {
             let disk_path = Self::resolve_logical_target(game_root, &file.target)?;
+            let owner: Option<String> = self._db.with_conn(|conn| {
+                use rusqlite::OptionalExtension;
+                conn.query_row("SELECT package_id FROM installed_files WHERE target_path=?1", [disk_path.display().to_string()], |row| row.get(0))
+                    .optional().map_err(|e| HubError::storage_error(e.to_string()))
+            })?;
+            if owner.as_ref().is_some_and(|id| id != &pkg_id) { return Err(HubError::security_violation("目标文件已由其他扩展管理，请先处理冲突。")); }
             resolved_targets.push((file.target.clone(), disk_path));
         }
 
@@ -151,6 +162,7 @@ impl InstallEngine {
         self.log_step(&tx_id, 3, "STAGING", "COMPLETED")?;
 
         // Step 5: Ready to Commit & Committing
+        ProcessGate::check_target(Path::new(game_installation.executable_path.as_deref().unwrap_or_default()))?;
         self.update_tx_state(&mut tx, TransactionState::ReadyToCommit)?;
         self.update_tx_state(&mut tx, TransactionState::Committing)?;
         self.log_step(&tx_id, 4, "COMMIT", "RUNNING")?;

@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import { PROJECT_SOURCE, PROJECT_SOURCE_LABEL } from '../../shared/projectSource';
 import { api } from '../../shared/api/tauri';
 import type { GameInstallation, ProbeResult, ProviderMetadata } from '../../shared/types';
 import { Folder, Save, Database, Shield, RefreshCw, Globe, Check } from 'lucide-react';
@@ -175,6 +177,13 @@ export const SettingsPage: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="panel">
+          <h2 className="panel-title" style={{ marginBottom: 12 }}>星枢项目来源</h2>
+          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.8 }}>Hub 与游戏内运行时源码：{PROJECT_SOURCE_LABEL}</p>
+          <button type="button" className="btn btn-secondary" onClick={() => void openUrl(PROJECT_SOURCE)}>{PROJECT_SOURCE} ↗</button>
+          <p style={{ color: 'var(--text-muted)', marginTop: 12 }}>代码许可见项目仓库的 LICENSE；角色、卡面及游戏配置素材来源于吉星派对，相关权利归原权利人所有。</p>
         </div>
 
         {/* Security & Architecture Non-Goals */}
