@@ -105,6 +105,13 @@ def verify_installer(package, profiles, release):
                 shutil.copy2(previous_payload, upgrade_target)
                 invoke(exe, '--install', platform['Id'], upgrade)
                 assert sha(upgrade_target) == platform['PayloadSha256']
+                if previous_hash == platform['PayloadSha256']:
+                    # The desktop runtime is unchanged in a phone-helper release.
+                    # A no-op must not invent a restorable pre-install snapshot.
+                    assert not (upgrade / '.xingshu-backup').exists()
+                    invoke(exe, '--restore', platform['Id'], upgrade, ok=False)
+                    assert sha(upgrade_target) == previous_hash
+                    continue
                 invoke(exe, '--restore', platform['Id'], upgrade)
                 assert sha(upgrade_target) == previous_hash
             print(platform['Id'] + ': fresh install, repeat install, restore, reinstall, unknown version and corrupt payload PASS', flush=True)
@@ -190,6 +197,7 @@ def main():
     (stage / '先读我.txt').write_text(f'''星枢 XingShu 群发测试版 {args.version}
 适配：Windows 10/11 64 位，吉星派对 3.3.0 / 资源 026。
 本下载项包含的运行时：{channel_label}。其他端请下载同一 Release 的对应 Assets。
+已安装相同 r6 运行时会保持原样，无需重复写入；请保留原版助手和既有备份，使用对应安装版本还原。
 Hub 扩展目录管理：Steam 国服、Steam 国际服、TapTap Windows、哔哩哔哩、WeGame；支持同渠道保存多个安装位置。后面三个渠道本版未附带经过验证的运行时安装文件。
 
 安装（不需要 Git、Python、Node.js 或 Rust）
