@@ -20,7 +20,7 @@
 
 ## 群发测试包
 
-当前[群发测试包](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.2)标记为预发布，不作为正式稳定版。Assets 分别提供 Steam 国服、TapTap Windows 和手机安卓下载项，选择对应版本。电脑端完整解压 ZIP 后运行“星枢安装助手.exe”，支持 Steam 国服、TapTap 3.3.0 / 资源026。手牌挂件默认整体60%，可调40%–120%。已知边界见[本次说明](GROUP_DISTRIBUTION_20261022_2.md)，包中不附带仅限本地验证的原生变速原型。
+当前[群发测试包](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.2)标记为预发布，不作为正式稳定版。Assets 按电脑端和安卓端提供下载项；电脑端 ZIP 同时包含 Steam 国服与 TapTap Windows。电脑端完整解压 ZIP 后运行“星枢安装助手.exe”，支持 Steam 国服、TapTap 3.3.0 / 资源026。手牌挂件默认整体60%，可调40%–120%。已知边界见[本次说明](GROUP_DISTRIBUTION_20261022_2.md)，包中不附带仅限本地验证的原生变速原型。
 
 本版保留手机、电脑和 Hub 的移动步数统计与统一星枢命名，电脑 Runtime 沿用 r6。安卓手机助手新增内置无线调试配对与连接，Android 11+ 可在手机上独立安装、更新和还原，无需电脑或 Shizuku 通知；步骤见[手机安装说明](ANDROID_PHONE_INSTALL.md)。同时保留电脑 ADB 助手和手动替换文件。
 

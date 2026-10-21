@@ -20,7 +20,7 @@
 
 ## Group distribution build
 
-The current [group distribution build](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.2) is a prerelease, not the first stable version. Assets provide separate Steam CN, TapTap Windows, and Android downloads. For desktop, extract the matching ZIP and run `星枢安装助手.exe`. Supports Steam CN and TapTap 3.3.0 / resource 026. The hand dock defaults to 60% overall size, adjustable from 40% to 120%. See [build notes](GROUP_DISTRIBUTION_20261022_2.md) for known limitations. The local-only native speed prototype is excluded.
+The current [group distribution build](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.2) is a prerelease, not the first stable version. Assets are grouped by desktop and Android. The desktop ZIP includes both Steam CN and TapTap Windows; extract it and run `星枢安装助手.exe`. Supports Steam CN and TapTap 3.3.0 / resource 026. The hand dock defaults to 60% overall size, adjustable from 40% to 120%. See [build notes](GROUP_DISTRIBUTION_20261022_2.md) for known limitations. The local-only native speed prototype is excluded.
 
 The Android phone helper now pairs and connects to local wireless debugging inside its own APK. Android 11+ users can install, update, and restore using only their phone, without a computer or Shizuku notifications. Existing Shizuku installations remain optional. See the [phone installation guide](ANDROID_PHONE_INSTALL.md). Windows runtime r6 is retained and split into channel-specific assets; desktop ADB and manual Android files are also available.
 
