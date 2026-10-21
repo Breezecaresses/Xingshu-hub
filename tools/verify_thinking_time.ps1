@@ -1,7 +1,8 @@
 param([Parameter(Mandatory)][string]$Before, [Parameter(Mandatory)][string]$After)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
-Add-Type -Path (Join-Path $taskRoot 'APX-Dev/tools/lib/Mono.Cecil.dll')
+Add-Type -Path (Join-Path $taskRoot 'XingShu-Dev/tools/lib/Mono.Cecil.dll')
+$taskLegacy = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'legacy_runtime_names.json') -Raw | ConvertFrom-Json
 function Get-TaskMethods($types) {
     foreach($type in $types) {
         foreach($method in $type.Methods) { if ($method.HasBody) { $method } }
@@ -9,11 +10,13 @@ function Get-TaskMethods($types) {
     }
 }
 function Get-TaskBody($method) {
-    (@($method.Body.Instructions | ForEach-Object { $_.ToString() }) +
+    $taskBody = (@($method.Body.Instructions | ForEach-Object { $_.ToString() }) +
      @($method.Body.Variables | ForEach-Object { $_.VariableType.FullName }) +
      @($method.Body.ExceptionHandlers | ForEach-Object {
          "$($_.HandlerType):$($_.TryStart):$($_.TryEnd):$($_.HandlerStart):$($_.HandlerEnd):$($_.FilterStart):$($_.CatchType)"
      })) -join "`n"
+    # A verified upgrade changes old hook type references without changing instructions.
+    $taskBody.Replace($taskLegacy.runtimeNamespace + '.', 'XingShuRuntime.')
 }
 $taskOld = [Mono.Cecil.AssemblyDefinition]::ReadAssembly((Resolve-Path -LiteralPath $Before).Path)
 $taskNew = [Mono.Cecil.AssemblyDefinition]::ReadAssembly((Resolve-Path -LiteralPath $After).Path)

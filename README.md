@@ -20,7 +20,7 @@
 
 ## Group distribution build
 
-The current [group distribution build](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261021.2) is a prerelease, not the first stable version. Extract the complete ZIP and run `星枢安装助手.exe`. Supports Steam CN and TapTap 3.3.0 / resource 026. The hand dock defaults to 60% overall size, adjustable from 40% to 120%. See [build notes](GROUP_DISTRIBUTION_20261021_2.md) for known limitations. The local-only native speed prototype is excluded.
+The current [group distribution build](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261021.3) is a prerelease, not the first stable version. Extract the complete ZIP and run `星枢安装助手.exe`. Supports Steam CN and TapTap 3.3.0 / resource 026. The hand dock defaults to 60% overall size, adjustable from 40% to 120%. See [build notes](GROUP_DISTRIBUTION_20261021_3.md) for known limitations. The local-only native speed prototype is excluded.
 
 ---
 
@@ -30,7 +30,7 @@ The current [group distribution build](https://github.com/Breezecaresses/Xingshu
 
 The project consists of two core components:
 1. **AstralParty-Hub**: A modern desktop management hub built on Tauri 2 + Rust + React 19. It provides isolated account management, runtime lifecycle supervision, local loopback communication relay, and automated room following for spectating.
-2. **APX Runtime**: A C# Unity enhancement module injected into the game client. It provides floating card status overlays, HUD widgets, match statistics, adaptive lifecycle reconciliation, and authoritative hand truth mirroring.
+2. **XingShu Runtime**: A C# Unity enhancement module injected into the game client. It provides floating card status overlays, HUD widgets, match statistics, adaptive lifecycle reconciliation, and authoritative hand truth mirroring.
 
 ---
 
@@ -78,7 +78,7 @@ flowchart TD
         AccountMgr <--> FSM
     end
 
-    subgraph RuntimeSpectator["APX Runtime (Bound Spectator Client)"]
+    subgraph RuntimeSpectator["XingShu Runtime (Bound Spectator Client)"]
         SpecHook["WatchLogic Interception Hooks"]
         SpecStore["SpectatorStateStore (Authoritative Hand Snapshot)"]
         SpecBridge["Bridge Client (Loopback TCP)"]
@@ -86,7 +86,7 @@ flowchart TD
         SpecStore --> SpecBridge
     end
 
-    subgraph RuntimeMain["APX Runtime (Bound Main Game Client)"]
+    subgraph RuntimeMain["XingShu Runtime (Bound Main Game Client)"]
         MainBridge["Bridge Client (Loopback TCP)"]
         TruthSource["HandTruthSource Authoritative Arbiter"]
         Reconcile["Overlay Lifecycle Adaptive Reconciliation"]
@@ -133,8 +133,8 @@ XingShu/
 │   │   ├── src/xing_shu/       # Local TCP bridge server, protocol codec, spectator stream
 │   │   └── Cargo.toml          # Rust dependency configuration
 │   └── package.json            # Frontend dependency configuration
-├── APX-Dev/                    # In-game C# runtime module
-│   ├── src/APX.hooks/          # APX core logic (HandTruthSource, UI widgets, protocol client)
+├── XingShu-Dev/                    # In-game C# runtime module
+│   ├── src/XingShu.Runtime/          # XingShu core logic (HandTruthSource, UI widgets, protocol client)
 │   ├── tools/                  # MSBuild scripts, lifecycle tests, and bootstrapping tools
 │   └── assets/                 # In-game UI assets and icons (vanilla-ui-r3)
 ├── tools/                      # Automation tooling (registry generators, patch scripts, source sync)
@@ -175,22 +175,22 @@ npm run tauri -- build --no-bundle
 
 ---
 
-### 2. APX Runtime (C# Game Runtime)
+### 2. XingShu Runtime (C# Game Runtime)
 
 #### Prerequisites
 - Visual Studio MSBuild with C# 11 support; the project targets .NET Framework 4.0 using the game's reference assemblies
 - Python 3.x
-- Mono.Cecil and Mono.Cecil.Rocks (placed in `APX-Dev/tools/lib`)
+- Mono.Cecil and Mono.Cecil.Rocks (placed in `XingShu-Dev/tools/lib`)
 
 #### Dependency Setup
 Extract the matching version of `AstralParty.Runtime.dll` from your legally owned game client and place it in the default path:
-`APX-Dev/references/updated_20261019_verified/` (or specify the `AstralPartyRuntimePath` MSBuild property in your build configuration).
-Place other dependency assemblies into `APX-Dev/references/{unity,framework,thirdparty}` as needed.
+`XingShu-Dev/references/updated_20261019_verified/` (or specify the `AstralPartyRuntimePath` MSBuild property in your build configuration).
+Place other dependency assemblies into `XingShu-Dev/references/{unity,framework,thirdparty}` as needed.
 
 #### Build Steps
 ```powershell
 # Execute build script
-.\APX-Dev\tools\build.ps1 -Configuration Release
+.\XingShu-Dev\tools\build.ps1 -Configuration Release
 ```
 
 ---

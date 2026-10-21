@@ -12,8 +12,8 @@ pub struct SystemDiagnosticSnapshot {
     pub os_version: String,
     pub primary_game: Option<GameInstallation>,
     pub running_processes: Vec<String>,
-    pub apx_detected: bool,
-    pub apx_path: Option<String>,
+    pub xingshu_detected: bool,
+    pub xingshu_path: Option<String>,
     pub recent_transactions: Vec<InstallTransaction>,
 }
 
@@ -49,18 +49,18 @@ impl DiagnosticCollector {
             }
         });
 
-        // Check APX presence in game directory
-        let (apx_detected, apx_path) = if let Some(game) = &primary_game {
+        // Check XingShu presence in game directory
+        let (xingshu_detected, xingshu_path) = if let Some(game) = &primary_game {
             let root = Path::new(&game.install_path);
-            let cn_apx = root.join("8vJXn6CN").join("apx");
-            let root_apx = root.join("apx");
+            let cn_xingshu = root.join("8vJXn6CN").join("xingshu");
+            let root_xingshu = root.join("xingshu");
             let cn_version_dll = root.join("8vJXn6CN").join("version.dll");
             let root_version_dll = root.join("version.dll");
 
-            if cn_apx.exists() {
-                (true, Some(cn_apx.display().to_string()))
-            } else if root_apx.exists() {
-                (true, Some(root_apx.display().to_string()))
+            if cn_xingshu.exists() {
+                (true, Some(cn_xingshu.display().to_string()))
+            } else if root_xingshu.exists() {
+                (true, Some(root_xingshu.display().to_string()))
             } else if cn_version_dll.exists() {
                 (true, Some(cn_version_dll.display().to_string()))
             } else if root_version_dll.exists() {
@@ -80,8 +80,8 @@ impl DiagnosticCollector {
             os_version: System::os_version().unwrap_or_default(),
             primary_game,
             running_processes,
-            apx_detected,
-            apx_path,
+            xingshu_detected,
+            xingshu_path,
             recent_transactions,
         }
     }

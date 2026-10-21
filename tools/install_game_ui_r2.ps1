@@ -1,7 +1,7 @@
 param([switch]$CheckOnly)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
-$taskBuild = Join-Path $taskRoot 'APX-Dev/build/runtime-truth-fix'
+$taskBuild = Join-Path $taskRoot 'XingShu-Dev/build/runtime-truth-fix'
 function Assert-GameClosed {
     if (Get-Process -Name AstralParty_CN,吉星派对 -ErrorAction SilentlyContinue) {
         throw 'Game is running; exit normally before installing. No process will be stopped.'
@@ -28,7 +28,7 @@ foreach ($taskItem in $taskManifest) {
     if ($taskCurrent -ne $taskItem.beforeSha256 -and $taskCurrent -ne $taskItem.candidateSha256) { throw "Unknown installed runtime: $($taskItem.platform)" }
     $taskPlan.Add([pscustomobject]@{ Kind=$taskItem.platform; Target=$taskItem.target; Source=$taskItem.candidate; Backup=$taskItem.backup; Before=$taskCurrent; After=$taskItem.candidateSha256 })
 }
-$taskNative = Join-Path $taskRoot 'APX-Dev/build/native-speed-10x/release/version.dll'
+$taskNative = Join-Path $taskRoot 'XingShu-Dev/build/native-speed-10x/release/version.dll'
 $taskNativeHash = '36e7df0fce281c95dccd237760fdc982fba3d56d25883d55ded86b87a0588e20'
 if ((Task-Hash $taskNative) -ne $taskNativeHash) { throw 'Unknown native 10x component' }
 foreach ($taskTarget in @('E:\Steam\steamapps\common\Astral Party\8vJXn6CN\version.dll', 'F:\TapTap\PC Games\524022\CN_TAPTAP_V3.3.0\version.dll')) {

@@ -456,7 +456,7 @@ mod tests {
         promoted_global.xingshu_runtime_dll_sha256 = Some("105E39705202C5DC125063D2A9412FB0573E61213906C731827F14660C996C10".to_string());
         promoted_global.container_sha256 = Some("B8CC3264CC36B33DA6B28930F7854223160B39B09991F17917DEDD6A41D7927F".to_string());
         promoted_global.hook_text_asset_path_id = Some(99992000);
-        promoted_global.hook_signatures = vec!["APXBootstrap.EnsureRuntimeHost".to_string()];
+        promoted_global.hook_signatures = vec!["XingShuBootstrap.EnsureRuntimeHost".to_string()];
         promoted_global.last_verified_at = Some("2026-10-17T00:00:00Z".to_string());
 
         // Individual profile schema validation MUST SUCCEED (decoupled from baseline governance)
@@ -585,7 +585,7 @@ mod tests {
         assert_eq!(
             profile.hook_signatures,
             vec![
-                "APXBootstrap.EnsureRuntimeHost",
+                "XingShuBootstrap.EnsureRuntimeHost",
                 "SpectatorEventInterceptor.Initialize",
                 "LoopbackTcpTransport.Connect",
                 "SpectatorHandStateReducer.ProcessPayload"
@@ -807,7 +807,7 @@ mod tests {
             container_sha256: Some("105E39705202C5DC125063D2A9412FB0573E61213906C731827F14660C996C10".to_string()),
             hook_text_asset_path_id: Some(99992000),
             hook_signatures: vec![
-                "APXBootstrap.EnsureRuntimeHost".to_string(),
+                "XingShuBootstrap.EnsureRuntimeHost".to_string(),
                 "SpectatorEventInterceptor.Initialize".to_string(),
             ],
             compatibility_status: CompatibilityStatus::Verified,

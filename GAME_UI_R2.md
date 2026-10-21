@@ -15,16 +15,16 @@
 ## 验证
 
 - Windows Release 构建通过；Steam 国服与 TapTap 各 550 个游戏成员引用、7 个反射字段兼容校验通过，17 个其他程序集不变。
-- `APX-Dev/tools/test_decision_stats.ps1`：21 项检查通过，覆盖 Hub 评分样本、缺失字段、事件去重、结算状态，以及倍速切换和时钟回拨、取消与完成回调。
-- `APX-Dev/tools/test_monster_targeting.ps1`：33 项算法和7项上下文检查通过。
-- `APX-Dev/tools/test_native_ipc_harness.py`：9组测试通过；10倍 QPC 实测约10.02倍，两种独立思考时钟在10倍下仍约真实150毫秒。
+- `XingShu-Dev/tools/test_decision_stats.ps1`：21 项检查通过，覆盖 Hub 评分样本、缺失字段、事件去重、结算状态，以及倍速切换和时钟回拨、取消与完成回调。
+- `XingShu-Dev/tools/test_monster_targeting.ps1`：33 项算法和7项上下文检查通过。
+- `XingShu-Dev/tools/test_native_ipc_harness.py`：9组测试通过；10倍 QPC 实测约10.02倍，两种独立思考时钟在10倍下仍约真实150毫秒。
 - `tools/verify_thinking_time.ps1`：两端仅改动预期的5个现有方法并加入3个计时包装方法；再次应用补丁时，67038个现有方法体均未变化，没有叠加倍率或观察入口。
 - TapTap 新启动日志确认 R2、手牌挂件及怪物索敌模块登记，24/24 界面素材自检通过。已查看粉黄功能中心及九项统计详情卡；Steam 本轮只核对安装与哈希。真实手牌内容、怪物索敌提示和局内倒计时仍待用户实测。
 - TapTap 日志另有手牌缩放预设引用旧名称 `tab_selected.png` 的警告，当前使用已生成的圆角主题回退，界面可显示。该小项留作后续素材整理，不在用户测试期间替换运行文件。
 
 ## 双端安装与回退
 
-用户正常退出后，于 `2026-10-21 05:47:27 +08:00` 安装；没有强制关闭游戏。`tools/install_game_ui_r2.ps1` 在替换前检查进程、路径及原文件哈希，逐项备份，异常时回退。安装记录在本机 `APX-Dev/build/runtime-truth-fix/game-ui-r2-installed.json`。
+用户正常退出后，于 `2026-10-21 05:47:27 +08:00` 安装；没有强制关闭游戏。`tools/install_game_ui_r2.ps1` 在替换前检查进程、路径及原文件哈希，逐项备份，异常时回退。安装记录在本机 `XingShu-Dev/build/runtime-truth-fix/game-ui-r2-installed.json`。
 
 | 文件 | 安装后 SHA-256 |
 | --- | --- |

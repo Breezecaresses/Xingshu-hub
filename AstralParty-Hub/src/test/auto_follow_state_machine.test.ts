@@ -213,7 +213,7 @@ runTest('Full bootstrap sequence when spectator client starts completely offline
   assertStrictEqual(r.nextState, 'WAITING_SPECTATOR_RUNTIME');
   assertStrictEqual(sm.getContext().spectatorPid, 45678);
 
-  // 4. APX runtime connects via loopback TCP without playerId (pending)
+  // 4. XingShu runtime connects via loopback TCP without playerId (pending)
   r = sm.dispatch({
     type: 'RUNTIME_CONNECTED',
     connectionId: 'conn_tap_45678',

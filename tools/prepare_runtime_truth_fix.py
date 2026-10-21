@@ -10,18 +10,19 @@ import UnityPy
 from UnityPy.files.ObjectReader import ObjectReader
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / 'APX-Dev/build/runtime-truth-fix'
-DLL = ROOT / 'APX-Dev/build/bin/Release/APX.hooks.dll'
+LEGACY = json.loads((ROOT / 'tools/legacy_runtime_names.json').read_text('utf8'))
+OUT = ROOT / 'XingShu-Dev/build/runtime-truth-fix'
+DLL = ROOT / 'XingShu-Dev/build/bin/Release/XingShu.Runtime.dll'
 PROFILES = ROOT / 'AstralParty-Hub/src-tauri/src/xing_shu/platform/platform_profiles.json'
 MSBUILD = Path(r'D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe')
 CSC = MSBUILD.parent / 'Roslyn/csc.exe'
 
 
 def build_bootstrap():
-    project = ROOT / 'APX-Dev/tools/RuntimeBootstrap/Bootstrap.csproj'
+    project = ROOT / 'XingShu-Dev/tools/RuntimeBootstrap/Bootstrap.csproj'
     subprocess.run([str(MSBUILD), str(project), '/t:Rebuild', '/nologo', '/v:q'], check=True)
     patcher = OUT / 'RuntimeBootstrapPatcher.exe'
-    libraries = ROOT / 'APX-Dev/tools/lib'
+    libraries = ROOT / 'XingShu-Dev/tools/lib'
     subprocess.run([str(CSC), '/nologo', '/out:' + str(patcher),
                     '/reference:' + str(libraries / 'Mono.Cecil.dll'),
                     '/reference:' + str(libraries / 'Mono.Cecil.Rocks.dll'),
@@ -34,9 +35,13 @@ def build_bootstrap():
 def put_hooks(env, dll):
     hooks = [o for o in env.objects if o.path_id == 99992000]
     if hooks:
-        if len(hooks) != 1 or hooks[0].type.name != 'TextAsset' or hooks[0].read().m_Name != 'APX.hooks.dll':
+        if len(hooks) != 1 or hooks[0].type.name != 'TextAsset' or hooks[0].read().m_Name not in ('XingShu.Runtime.dll', LEGACY['assembly'] + '.dll'):
             raise RuntimeError('Hooks path ID collision')
         hook = hooks[0].read()
+        bundle = next(o.read() for o in hooks[0].assets_file.objects.values() if o.type.name == 'AssetBundle')
+        bundle.m_Container = [('XingShu.Runtime.dll' if entry.asset.m_PathID == 99992000 else name, entry)
+                              for name, entry in bundle.m_Container]
+        bundle.save()
     else:
         sample = next(o for o in env.objects if o.type.name == 'TextAsset')
         sf = sample.assets_file
@@ -51,9 +56,9 @@ def put_hooks(env, dll):
         entry = copy.copy(bundle.m_Container[0][1])
         entry.asset = copy.copy(entry.asset)
         entry.asset.m_PathID = 99992000
-        bundle.m_Container.append(('APX.hooks.dll', entry))
+        bundle.m_Container.append(('XingShu.Runtime.dll', entry))
         bundle.save()
-    hook.m_Name = 'APX.hooks.dll'
+    hook.m_Name = 'XingShu.Runtime.dll'
     hook.m_Script = dll.decode('utf8', errors='surrogateescape')
     hook.save()
 
@@ -71,7 +76,7 @@ def assets(env):
 def write_inventory(manifest):
     """Keep Hub's file inventory in sync with the packaged runtime candidates."""
     profiles = json.loads(PROFILES.read_text(encoding='utf8'))
-    source = (ROOT / 'APX-Dev/src/APX.hooks/XingShu/Runtime/XingShuRuntimeHost.cs').read_text('utf8')
+    source = (ROOT / 'XingShu-Dev/src/XingShu.Runtime/XingShu/Runtime/XingShuRuntimeHost.cs').read_text('utf8')
     version = re.search(r'#else\s+public const string RuntimeVersion = "([^"]+)"', source).group(1)
     inventory = [{'platform': item['platform'], 'version': version,
                   'sha256': item['candidateSha256'],
@@ -122,7 +127,7 @@ def main():
                         '-RuntimeDll', str(original_runtime)], check=True)
         boot_runtime = folder / 'AstralParty.Runtime.bootstrap.dll'
         subprocess.run([str(patcher), str(original_runtime), str(bootstrap), str(boot_runtime),
-                        sha(original_runtime.read_bytes())], check=True)
+                        sha(original_runtime.read_bytes()), LEGACY['bootstrapType']], check=True)
         subprocess.run(['pwsh', '-NoProfile', '-File', str(ROOT / 'tools/patch_thinking_time.ps1'),
                         '-InputDll', str(boot_runtime), '-OutputDll', str(patched_runtime)], check=True)
         runtime.m_Script = patched_runtime.read_bytes().decode('utf8', errors='surrogateescape')
@@ -132,7 +137,7 @@ def main():
         candidate.write_bytes(env.file.save())
         after = assets(UnityPy.load(str(candidate)))
         assert set(before) | {99992000} == set(after)
-        assert after[99992000] == ('APX.hooks.dll', sha(dll))
+        assert after[99992000] == ('XingShu.Runtime.dll', sha(dll))
         changed = {99992000, runtime_objects[0].path_id}
         assert all(after[key] == value for key, value in before.items() if key not in changed)
         manifest.append({'platform': platform, 'resourceVersion': profile.get('resourceVersion'),

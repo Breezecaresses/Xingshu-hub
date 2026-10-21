@@ -1,11 +1,11 @@
 # Project XingShu — Phase HS4-P1.6R2 Lane 3: Hand Truth Source Architecture Specification
 # (HAND_TRUTH_SOURCE_ARCHITECTURE.md)
 
-> **Phase**: Project XingShu HS4-P1.6R2 Lane 3 — PVE/Bot Hand Truth Source Investigator  
-> **Status**: `VERIFIED & DELIVERED`  
+> **Phase**: Project XingShu HS4-P1.6R2 Lane 3 — PVE/Bot Hand Truth Source Investigator
+> **Status**: `VERIFIED & DELIVERED`
 > **Component Stack**:
 > - Rust Hub: `AstralParty-Hub/src-tauri` (`xing_shu::bridge::server`, `protocol`)
-> - C# Hooks: `APX-Dev/src/APX.hooks` (`XingShu.Truth.HandTruthSource`, `HandCardDisplayManager`, `APXHandCardView`)  
+> - C# Hooks: `XingShu-Dev/src/XingShu.Runtime` (`XingShu.Truth.HandTruthSource`, `HandCardDisplayManager`, `XingShuHandCardView`)
 > **Authoritative Invariants**:
 > 1. Zero Fake Cards: Never fabricate dummy cards (`CardId = -1`).
 > 2. Strict Roster Invariant: Room overlay display rows == authoritative active room hero roster (strictly 4).
@@ -88,7 +88,7 @@ sequenceDiagram
     participant TapTap as TapTap Spectator Client (3045259)
     participant Hub as AstralParty-Hub (127.0.0.1:28888)
     participant Steam as Steam Main Client (1556514)
-    participant UI as Steam APXHandCardView
+    participant UI as Steam XingShuHandCardView
 
     Note over GameServer,TapTap: Official Spectator Connection Established
     GameServer->>TapTap: RoomHeroCardChangeS2C (Full Unmasked Hand Cards)
@@ -163,7 +163,7 @@ if (staleKeys != null)
 }
 ```
 
-In `APXHandCardView.UpdateSync`:
+In `XingShuHandCardView.UpdateSync`:
 ```csharp
 var truthPids = HandTruthSource.GetActiveRoomPlayerIds();
 if (truthPids != null && truthPids.Count > 0)
@@ -207,7 +207,7 @@ if (truthPids != null && truthPids.Count > 0)
 | :--- | :--- | :--- | :--- |
 | **Rust Hub Unit Test** | `test_dual_runtime_independent_identity_isolation_zero_leakage` | **PASS** | Passed in 0.34s (`ok. 1 passed`) |
 | **Rust Hub Mirror Broadcast** | Ingest `SPECTATOR_HAND_SNAPSHOT` -> broadcast `HAND_TRUTH_MIRROR` | **PASS** | Validated in automated test assertions |
-| **C# Compilation** | `dotnet build APX-Dev/src/APX.hooks/APX.hooks.csproj -c Release` | **PASS** | `0 errors, 0 warnings` |
+| **C# Compilation** | `dotnet build XingShu-Dev/src/XingShu.Runtime/XingShu.Runtime.csproj -c Release` | **PASS** | `0 errors, 0 warnings` |
 | **8-Player Ghost Row Fix** | Purge `characterType == Monster` from `_playerHands` and UI projection | **PASS** | Active room roster locked to 4 heroes |
 | **Zero Fake Cards Invariant** | Remove `TrackedCard { CardId = -1 }` | **PASS** | Displays truthful waiting tag instead of fake cards |
 | **FormatCardDisplay Integration** | Replace `[:0]` with localized canonical card names | **PASS** | 73 card registry integrated |

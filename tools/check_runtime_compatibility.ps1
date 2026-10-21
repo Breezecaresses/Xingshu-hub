@@ -1,11 +1,11 @@
 param([Parameter(Mandatory)][string]$RuntimeDll, [string]$HooksDll)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
-Add-Type -Path (Join-Path $taskRoot 'APX-Dev/tools/lib/Mono.Cecil.dll')
+Add-Type -Path (Join-Path $taskRoot 'XingShu-Dev/tools/lib/Mono.Cecil.dll')
 $taskResolver = [Mono.Cecil.DefaultAssemblyResolver]::new()
 $taskResolver.AddSearchDirectory((Split-Path -Parent (Resolve-Path -LiteralPath $RuntimeDll).Path))
 foreach ($taskDir in @('references/unity','references/framework','references/thirdparty','build/bin/Release')) {
-    $taskResolver.AddSearchDirectory((Join-Path $taskRoot ('APX-Dev/' + $taskDir)))
+    $taskResolver.AddSearchDirectory((Join-Path $taskRoot ('XingShu-Dev/' + $taskDir)))
 }
 $taskParameters = [Mono.Cecil.ReaderParameters]::new()
 $taskParameters.AssemblyResolver = $taskResolver
@@ -14,7 +14,7 @@ $taskRuntime = [Mono.Cecil.AssemblyDefinition]::ReadAssembly((Resolve-Path -Lite
 # Resolve hooks against this exact input rather than whichever same-name DLL is found first.
 $taskRegister = [Mono.Cecil.DefaultAssemblyResolver].GetMethod('RegisterAssembly', [Reflection.BindingFlags]'Instance,NonPublic')
 $null = $taskRegister.Invoke($taskResolver, @($taskRuntime))
-if (!$HooksDll) { $HooksDll = Join-Path $taskRoot 'APX-Dev/build/bin/Release/APX.hooks.dll' }
+if (!$HooksDll) { $HooksDll = Join-Path $taskRoot 'XingShu-Dev/build/bin/Release/XingShu.Runtime.dll' }
 $taskHooks = [Mono.Cecil.AssemblyDefinition]::ReadAssembly((Resolve-Path -LiteralPath $HooksDll).Path, $taskParameters)
 $taskCount = 0
 foreach ($taskMember in $taskHooks.MainModule.GetMemberReferences()) {

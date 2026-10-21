@@ -1,14 +1,14 @@
 [
   {
     "platform": "STEAM_CN",
-    "version": "1.0.0-game-ui-r5",
-    "sha256": "eca91d4119f991a5738cb091d4155dcf1213db888bdc5b19aeeebe7bedfef74d",
+    "version": "1.0.0-game-ui-r6",
+    "sha256": "6ffb19f5eb3044bfa5cfb9affba2db56163c1d9af4000a3d255838047e1f148c",
     "bundleRelativePath": "AstralParty_CN_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\3486f99276eba77677d4880fd8d32918\\__data"
   },
   {
     "platform": "TAPTAP",
-    "version": "1.0.0-game-ui-r5",
-    "sha256": "acb7bde2486d356cdd8c0700c235b5db243307b86cf3c2c6544376cacead3bc0",
+    "version": "1.0.0-game-ui-r6",
+    "sha256": "179b5e677c69e48fe47cec58fcc707744af702570718348d409b7b3c8ade7c21",
     "bundleRelativePath": "吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\71c9197f5dd65c9b30bdf1e716719991\\__data"
   }
 ]

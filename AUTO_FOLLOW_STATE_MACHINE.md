@@ -26,8 +26,8 @@ In competitive ladder matches or tournament play:
 | **2. MAIN_IN_MATCH** | 主账号对局已检测 | Main client has entered a match (`roomId > 0` detected). Hub evaluates spectator readiness. | Evaluates spectator status: → `SPECTATOR_READY` / `WAITING_SPECTATOR_RUNTIME` / `WAITING_SPECTATOR_LOGIN` / `SPECTATOR_CLIENT_OFFLINE` / `MAIN_MATCH_ENDED` |
 | **3. SPECTATOR_CLIENT_OFFLINE** | 观战客户端离线 | Main player is in match, but TapTap spectator process is not running. | `CLIENT_LAUNCH_INITIATED` → `LAUNCHING_SPECTATOR_CLIENT`<br>`MAIN_MATCH_ENDED` → `MAIN_MATCH_ENDED` |
 | **4. LAUNCHING_SPECTATOR_CLIENT** | 正在拉起观战端 | Hub process launcher has dispatched `launchGameUri('taptap://open')`. Waiting for OS process spawn. | `PROCESS_STATUS(running=true)` → `WAITING_SPECTATOR_RUNTIME`<br>`CLIENT_LAUNCH_TIMEOUT` → `AUTO_JOIN_FAILED`<br>`MAIN_MATCH_ENDED` → `MAIN_MATCH_ENDED` |
-| **5. WAITING_SPECTATOR_RUNTIME** | 等待运行时连接 | TapTap process PID is alive. Waiting for APX runtime `version.dll` hook to establish loopback TCP socket to port 25890 and complete `HELLO` handshake. | `RUNTIME_CONNECTED` (playerId=3045259) → `SPECTATOR_READY`<br>`RUNTIME_CONNECTED` (playerId=null) → `WAITING_SPECTATOR_LOGIN`<br>`RUNTIME_CONNECTED` (wrong playerId) → `AUTO_JOIN_FAILED`<br>`RUNTIME_TIMEOUT` → `AUTO_JOIN_FAILED` |
-| **6. WAITING_SPECTATOR_LOGIN** | 等待账号登录识别 | TapTap APX runtime is connected, but player identity has not yet been resolved or user is at login screen. | `IDENTITY_RESOLVED` (3045259) → `SPECTATOR_READY`<br>`IDENTITY_RESOLVED` (≠3045259) → `AUTO_JOIN_FAILED`<br>`LOGIN_TIMEOUT` → `AUTO_JOIN_FAILED`<br>`SPECTATOR_DISCONNECTED` → `WAITING_SPECTATOR_RUNTIME` |
+| **5. WAITING_SPECTATOR_RUNTIME** | 等待运行时连接 | TapTap process PID is alive. Waiting for XingShu runtime `version.dll` hook to establish loopback TCP socket to port 25890 and complete `HELLO` handshake. | `RUNTIME_CONNECTED` (playerId=3045259) → `SPECTATOR_READY`<br>`RUNTIME_CONNECTED` (playerId=null) → `WAITING_SPECTATOR_LOGIN`<br>`RUNTIME_CONNECTED` (wrong playerId) → `AUTO_JOIN_FAILED`<br>`RUNTIME_TIMEOUT` → `AUTO_JOIN_FAILED` |
+| **6. WAITING_SPECTATOR_LOGIN** | 等待账号登录识别 | TapTap XingShu runtime is connected, but player identity has not yet been resolved or user is at login screen. | `IDENTITY_RESOLVED` (3045259) → `SPECTATOR_READY`<br>`IDENTITY_RESOLVED` (≠3045259) → `AUTO_JOIN_FAILED`<br>`LOGIN_TIMEOUT` → `AUTO_JOIN_FAILED`<br>`SPECTATOR_DISCONNECTED` → `WAITING_SPECTATOR_RUNTIME` |
 | **7. SPECTATOR_READY** | 观战端已就绪 | TapTap runtime is connected, authenticated, and verified as bound `USER_SPECTATOR` (PlayerId `3045259`). Ready to dispatch watch command. | `WATCH_TARGET_DISPATCHED` → `AUTO_JOINING`<br>`SPECTATOR_DISCONNECTED` → `WAITING_SPECTATOR_RUNTIME`<br>`MAIN_MATCH_ENDED` → `MAIN_MATCH_ENDED` |
 | **8. AUTO_JOINING** | 自动跟随加入中 | Hub has sent `WATCH_TARGET` to TapTap runtime. Waiting for server room join handshake and first data snapshot. | `HAND_SNAPSHOT_RECEIVED` → `SPECTATING`<br>`WATCH_ALREADY_JOINED` → `SPECTATING`<br>`WATCH_JOIN_REJECTED` → `AUTO_JOIN_FAILED`<br>`WATCH_JOIN_TIMEOUT` → `AUTO_JOIN_FAILED`<br>`WATCH_TARGET_INVALID` → `AUTO_JOIN_FAILED`<br>`SPECTATOR_DISCONNECTED` → `AUTO_JOIN_FAILED`<br>`MAIN_MATCH_ENDED` → `MAIN_MATCH_ENDED` |
 | **9. SPECTATING** | 全知观战进行中 | Watch session active! Live 4-player hand snapshots arriving via TCP (`SPECTATOR_HAND_SNAPSHOT`). | `MAIN_MATCH_ENDED` → `MAIN_MATCH_ENDED`<br>`SPECTATOR_DISCONNECTED` → `AUTO_JOIN_FAILED` |
@@ -97,14 +97,14 @@ stateDiagram-v2
 - **Timeout**: If process is not detected within 15 seconds, transitions to `AUTO_JOIN_FAILED` (`CLIENT_LAUNCH_FAILED`).
 - **Recovery**: User clicks [重试自动跟随] (Retry), incrementing `retryCount` and re-initiating launch.
 
-### 4.2. APX Runtime Connection & Identity Timeout
+### 4.2. XingShu Runtime Connection & Identity Timeout
 - **Trigger**: Process is running, but TCP socket to `127.0.0.1:25890` is not established or handshake stalls.
 - **Timeout**: If connection does not complete within 20 seconds, transitions to `AUTO_JOIN_FAILED` (`RUNTIME_CONNECT_TIMEOUT`).
 - **Recovery**: User clicks [重试自动跟随] without needing to restart the game.
 
 ### 4.3. Wrong Account Logged In Defense
 - **Security Rule**: TapTap client must be logged into `3045259` (`USER_SPECTATOR`).
-- **Detection**: If APX runtime transmits `playerId = 9999999` (or any non-zero ID not matching `3045259`), transition immediately to `AUTO_JOIN_FAILED` (`WRONG_ACCOUNT_LOGGED_IN`).
+- **Detection**: If XingShu runtime transmits `playerId = 9999999` (or any non-zero ID not matching `3045259`), transition immediately to `AUTO_JOIN_FAILED` (`WRONG_ACCOUNT_LOGGED_IN`).
 - **User Prompt**: Explicit warning indicating the logged-in player ID and bound spectator ID, prohibiting room join.
 
 ### 4.4. Server Room Join Rejection & Audience Limits

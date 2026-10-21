@@ -22,7 +22,7 @@ export interface MatchParticipant {
   playerId: number; name: string; heroId: number; rank: number; level: number; gold: number;
   slot: number; giveUp: boolean; playerLevel: number;
   kills?: number | null; deaths?: number | null; damage?: number | null; taken?: number | null;
-  healing?: number | null; coins?: number | null; transfer?: number | null; turns?: number | null;
+  healing?: number | null; coins?: number | null; transfer?: number | null; turns?: number | null; movement?: number | null;
 }
 export interface MatchDetail {
   requestId: string; playerId: number; index: number; time: number; heroId: number; mapId: number;

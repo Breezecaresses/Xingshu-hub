@@ -24,10 +24,11 @@ public class TapTapRuntimePatcher
     {
         try
         {
-            string inputPath = args.Length > 0 ? args[0] : @"APX-Dev\references\taptap\AstralParty.Runtime.dll";
-            string bootstrapPath = args.Length > 1 ? args[1] : @"APX-Dev\scratch\bootstrap_builder\bin\Bootstrap.dll";
+            string inputPath = args.Length > 0 ? args[0] : @"XingShu-Dev\references\taptap\AstralParty.Runtime.dll";
+            string bootstrapPath = args.Length > 1 ? args[1] : @"XingShu-Dev\scratch\bootstrap_builder\bin\Bootstrap.dll";
             string outputPath = args.Length > 2 ? args[2] : @"HS4-P1.5\candidate\AstralParty.Runtime.patched.dll";
             string expectedHash = args.Length > 3 ? args[3] : EXPECTED_VANILLA_SHA256;
+            string legacyBootstrap = args.Length > 4 ? args[4] : "";
 
             Console.WriteLine("================================================================================");
             Console.WriteLine("PROJECT XINGSHU — TAPTAP RUNTIME BOOTSTRAP PATCHER");
@@ -53,11 +54,11 @@ public class TapTapRuntimePatcher
                 throw new InvalidOperationException("Runtime input differs from the explicitly selected baseline");
 
             var resolver = new DefaultAssemblyResolver();
-            resolver.AddSearchDirectory(@"APX-Dev\references\unity");
-            resolver.AddSearchDirectory(@"APX-Dev\references\framework");
-            resolver.AddSearchDirectory(@"APX-Dev\references\taptap");
-            resolver.AddSearchDirectory(@"APX-Dev\references\thirdparty");
-            resolver.AddSearchDirectory(@"APX-Dev\baseline\updated_20261015\host_6cc68f01\extracted");
+            resolver.AddSearchDirectory(@"XingShu-Dev\references\unity");
+            resolver.AddSearchDirectory(@"XingShu-Dev\references\framework");
+            resolver.AddSearchDirectory(@"XingShu-Dev\references\taptap");
+            resolver.AddSearchDirectory(@"XingShu-Dev\references\thirdparty");
+            resolver.AddSearchDirectory(@"XingShu-Dev\baseline\updated_20261015\host_6cc68f01\extracted");
             resolver.AddSearchDirectory(Path.GetDirectoryName(inputPath));
 
             var readerParams = new ReaderParameters { AssemblyResolver = resolver, ReadWrite = false };
@@ -67,7 +68,7 @@ public class TapTapRuntimePatcher
                 var runtimeModule = runtimeAssembly.MainModule;
 
                 // 1. Idempotency Check
-                var existingBoot = runtimeModule.Types.FirstOrDefault(t => t.FullName == "APX.APXUpdatedBootstrap");
+                var existingBoot = runtimeModule.Types.FirstOrDefault(t => t.FullName == "XingShu.XingShuUpdatedBootstrap" || t.FullName == legacyBootstrap);
                 var gmType = runtimeModule.Types.FirstOrDefault(t => t.FullName == "Core.GameManager");
                 if (gmType == null)
                 {
@@ -81,35 +82,30 @@ public class TapTapRuntimePatcher
                     return 2;
                 }
 
-                bool alreadyInjected = false;
-                if (gmGameStart.Body != null && gmGameStart.Body.Instructions.Count > 0)
+                if (existingBoot != null)
                 {
-                    var firstInst = gmGameStart.Body.Instructions[0];
-                    if (firstInst.OpCode == OpCodes.Call && firstInst.Operand != null &&
-                        firstInst.Operand.ToString().Contains("APXUpdatedBootstrap::InstallOnce"))
+                    // Refresh an earlier bootstrap as well as the payload. Otherwise
+                    // upgrades keep looking for the old assembly filename.
+                    foreach (var instruction in gmGameStart.Body.Instructions.ToArray())
                     {
-                        alreadyInjected = true;
+                        var reference = instruction.Operand as MethodReference;
+                        if (instruction.OpCode == OpCodes.Call && reference != null &&
+                            reference.DeclaringType.FullName == existingBoot.FullName && reference.Name == "InstallOnce")
+                        {
+                            instruction.OpCode = OpCodes.Nop;
+                            instruction.Operand = null;
+                        }
                     }
-                }
-
-                if (existingBoot != null && alreadyInjected)
-                {
-                    Console.WriteLine("IDEMPOTENT: Assembly is ALREADY patched with APX.APXUpdatedBootstrap!");
-                    if (Path.GetFullPath(inputPath) != Path.GetFullPath(outputPath))
-                    {
-                        Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
-                        File.Copy(inputPath, outputPath, true);
-                    }
-                    Console.WriteLine("Output SHA256: " + ComputeSHA256(outputPath));
-                    return 0;
+                    runtimeModule.Types.Remove(existingBoot);
+                    Console.WriteLine("Refreshing the previous bootstrap for the current payload.");
                 }
 
                 int originalInstructionCount = gmGameStart.Body.Instructions.Count;
 
-                var bootstrapType = bootstrapAssembly.MainModule.Types.First(t => t.FullName == "APX.APXUpdatedBootstrap");
+                var bootstrapType = bootstrapAssembly.MainModule.Types.First(t => t.FullName == "XingShu.XingShuUpdatedBootstrap");
                 Console.WriteLine("Cloning bootstrap type: " + bootstrapType.FullName);
 
-                // Create APX.APXUpdatedBootstrap type in runtimeModule
+                // Create XingShu.XingShuUpdatedBootstrap type in runtimeModule
                 var newBootstrapType = new TypeDefinition(
                     bootstrapType.Namespace,
                     bootstrapType.Name,
@@ -223,15 +219,15 @@ public class TapTapRuntimePatcher
 
             using (var verifyAsm = AssemblyDefinition.ReadAssembly(outputPath, readerParams))
             {
-                var boot = verifyAsm.MainModule.Types.FirstOrDefault(t => t.FullName == "APX.APXUpdatedBootstrap");
-                if (boot == null) throw new Exception("Post-verification failed: APXUpdatedBootstrap missing!");
+                var boot = verifyAsm.MainModule.Types.FirstOrDefault(t => t.FullName == "XingShu.XingShuUpdatedBootstrap");
+                if (boot == null) throw new Exception("Post-verification failed: XingShuUpdatedBootstrap missing!");
                 var gm = verifyAsm.MainModule.Types.First(t => t.FullName == "Core.GameManager");
                 var gs = gm.Methods.First(m => m.Name == "GameStart");
                 if (gs.Body.Instructions[0].OpCode != OpCodes.Call)
                     throw new Exception("Post-verification failed: GameStart entry instruction is not call!");
                 if (!gs.Body.Instructions[0].Operand.ToString().Contains("InstallOnce"))
                     throw new Exception("Post-verification failed: GameStart does not call InstallOnce!");
-                if (gs.Body.Instructions.Count(i => i.Operand != null && i.Operand.ToString().Contains("APXUpdatedBootstrap::InstallOnce")) != 1)
+                if (gs.Body.Instructions.Count(i => i.Operand != null && i.Operand.ToString().Contains("XingShuUpdatedBootstrap::InstallOnce")) != 1)
                     throw new Exception("Post-verification failed: duplicate bootstrap call");
                 Console.WriteLine("Post-verification SUCCESSFUL: Clean single-instruction injection verified.");
             }

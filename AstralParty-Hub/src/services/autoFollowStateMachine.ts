@@ -382,7 +382,7 @@ export function processAutoFollowTransition(
       } else if (event.type === 'RUNTIME_TIMEOUT') {
         next = 'AUTO_JOIN_FAILED';
         nextCtx.failureReason = 'RUNTIME_CONNECT_TIMEOUT';
-        nextCtx.failureMessage = '观战客户端已启动，但 APX 运行时握手通讯超时';
+        nextCtx.failureMessage = '观战客户端已启动，但 XingShu 运行时握手通讯超时';
         action = 'SHOW_ERROR';
       } else if (event.type === 'PROCESS_STATUS' && !event.isRunning) {
         nextCtx.spectatorPid = null;
@@ -747,14 +747,14 @@ export const AUTO_FOLLOW_STATE_CONFIG_ZH: Record<
   },
   WAITING_SPECTATOR_RUNTIME: {
     label: '等待运行时连接',
-    description: '观战端进程已启动，等待 APX 运行时接入 TCP:25890',
+    description: '观战端进程已启动，等待 XingShu 运行时接入 TCP:25890',
     color: '#a855f7',
     bg: 'rgba(168, 85, 247, 0.15)',
     border: 'rgba(168, 85, 247, 0.35)',
   },
   WAITING_SPECTATOR_LOGIN: {
     label: '等待账号登录识别',
-    description: 'APX 运行时已连入，等待识别登录账号 3045259',
+    description: 'XingShu 运行时已连入，等待识别登录账号 3045259',
     color: '#06b6d4',
     bg: 'rgba(6, 182, 212, 0.15)',
     border: 'rgba(6, 182, 212, 0.35)',

@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn test_accepts_clean_relative() {
-        let res = PathGuard::sanitize_relative_path("apx/plugins/my_plugin.dll");
+        let res = PathGuard::sanitize_relative_path("xingshu/plugins/my_plugin.dll");
         assert!(res.is_ok());
         let res = PathGuard::sanitize_relative_path("game/mods/texture.png");
         assert!(res.is_ok());

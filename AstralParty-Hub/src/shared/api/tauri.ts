@@ -103,11 +103,11 @@ export const api = {
       versions: import('../types').RuntimeVersion[];
       installed_runtime?: import('../types').InstalledRuntime;
     }>('get_runtime_status').catch(() => ({
-      active_version: 'APX v1.3.4 (Production)',
+      active_version: 'XingShu v1.3.4 (Production)',
       installed_runtime: {
-        version_id: 'apx-1.3.4',
-        runtime_type: 'APX' as const,
-        version_name: 'APX v1.3.4 (Production Core)',
+        version_id: 'xingshu-1.3.4',
+        runtime_type: 'XingShu' as const,
+        version_name: 'XingShu v1.3.4 (Production Core)',
         install_path: 'com.unity.addressables/.../__data',
         container_hash: 'sha256:7f8e219ba420d931acbf6e',
         manifest_verified: true,
@@ -115,9 +115,9 @@ export const api = {
       },
       versions: [
         {
-          version_id: 'apx-1.3.4',
-          runtime_type: 'APX' as const,
-          version_name: 'APX v1.3.4 (Production Core)',
+          version_id: 'xingshu-1.3.4',
+          runtime_type: 'XingShu' as const,
+          version_name: 'XingShu v1.3.4 (Production Core)',
           is_installed: true,
           is_active: true,
           install_date: '2026-10-15',
@@ -150,9 +150,9 @@ export const api = {
     })),
   getInstalledRuntime: () =>
     invoke<import('../types').InstalledRuntime>('get_installed_runtime').catch(() => ({
-      version_id: 'apx-1.3.4',
-      runtime_type: 'APX' as const,
-      version_name: 'APX v1.3.4 (Production Core)',
+      version_id: 'xingshu-1.3.4',
+      runtime_type: 'XingShu' as const,
+      version_name: 'XingShu v1.3.4 (Production Core)',
       install_path: 'com.unity.addressables/.../__data',
       container_hash: 'sha256:7f8e219ba420d931acbf6e',
       manifest_verified: true,

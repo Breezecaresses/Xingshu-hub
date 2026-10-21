@@ -8,7 +8,7 @@
 
 ## 1. Protocol Architecture & Overview
 
-The **Auto-Follow Local Control Protocol** enables AstralParty-Hub to instruct the dedicated spectator client running APX Runtime (**TapTap USER_SPECTATOR**, PlayerId `3045259`) to join a specific match room.
+The **Auto-Follow Local Control Protocol** enables AstralParty-Hub to instruct the dedicated spectator client running XingShu Runtime (**TapTap USER_SPECTATOR**, PlayerId `3045259`) to join a specific match room.
 
 ```
 +---------------------------------------------------------------------------------+
@@ -26,7 +26,7 @@ The **Auto-Follow Local Control Protocol** enables AstralParty-Hub to instruct t
           │ - expectedSpectatorPlayerId: 3045259          │ - WATCH_TARGET_INVALID
           ▼                                               │
 +---------------------------------------------------------------------------------+
-|                       APX Runtime (TapTap Spectator Client)                     |
+|                       XingShu Runtime (TapTap Spectator Client)                     |
 |   - Loopback TCP Transport (`127.0.0.1:25890`)                                  |
 |   - GameLogic.WatchLogic Hook (WatchJoinRoomC2S / WatchRefreshRoomStateC2S)     |
 |   - SpectatorStateStore & Hand Snapshot Reducer                                 |
@@ -122,7 +122,7 @@ All messages adhere to standard XingShu Bridge JSON Envelope V0.1:
 
 ### 3.2. Inbound Responses (Runtime -> Hub)
 
-The APX Runtime responds with one of 5 canonical response types matching `requestId`:
+The XingShu Runtime responds with one of 5 canonical response types matching `requestId`:
 
 #### 1. `WATCH_JOIN_ACCEPTED`
 - **Meaning:** Runtime successfully received `WATCH_TARGET`, validated lobby state, and dispatched `WatchJoinRoomC2S` to the game gateway.
@@ -243,5 +243,5 @@ sequenceDiagram
 | **State Machine Engine** | TypeScript | [`AstralParty-Hub/src/services/autoFollowStateMachine.ts`](file:///E:/%E5%B7%A5%E4%BD%9C%E6%B5%81/%E6%98%9F%E5%BC%95%E6%93%8E%E6%8F%92%E4%BB%B6/AstralParty-Hub/src/services/autoFollowStateMachine.ts) | Pure FSM evaluating 11 states, security checks, and error recovery. |
 | **Integration Service** | TypeScript | [`AstralParty-Hub/src/services/autoFollowService.ts`](file:///E:/%E5%B7%A5%E4%BD%9C%E6%B5%81/%E6%98%9F%E5%BC%95%E6%93%8E%E6%8F%92%E4%BB%B6/AstralParty-Hub/src/services/autoFollowService.ts) | Binds Tauri IPC, Session Resolver, and AutoFollowStateMachine. |
 | **UI Presentation** | TSX | [`AstralParty-Hub/src/pages/spectator/components/AutoFollowStatusPanel.tsx`](file:///E:/%E5%B7%A5%E4%BD%9C%E6%B5%81/%E6%98%9F%E5%BC%95%E6%93%8E%E6%8F%92%E4%BB%B6/AstralParty-Hub/src/pages/spectator/components/AutoFollowStatusPanel.tsx) | Renders dual-client cards, progression pipeline, error fallback, diagnostics. |
-| **C# Protocol & Client** | C# | [`APX-Dev/src/APX.hooks/XingShu/Bridge/BridgeProtocol.cs`](file:///E:/%E5%B7%A5%E4%BD%9C%E6%B5%81/%E6%98%9F%E5%BC%95%E6%93%8E%E6%8F%92%E4%BB%B6/APX-Dev/src/APX.hooks/XingShu/Bridge/BridgeProtocol.cs) | C# runtime message constants and incoming `WATCH_TARGET` handler. |
+| **C# Protocol & Client** | C# | [`XingShu-Dev/src/XingShu.Runtime/XingShu/Bridge/BridgeProtocol.cs`](file:///E:/%E5%B7%A5%E4%BD%9C%E6%B5%81/%E6%98%9F%E5%BC%95%E6%93%8E%E6%8F%92%E4%BB%B6/XingShu-Dev/src/XingShu.Runtime/XingShu/Bridge/BridgeProtocol.cs) | C# runtime message constants and incoming `WATCH_TARGET` handler. |
 | **Regression Test Suite** | TypeScript | [`AstralParty-Hub/src/test/auto_follow_state_machine.test.ts`](file:///E:/%E5%B7%A5%E4%BD%9C%E6%B5%81/%E6%98%9F%E5%BC%95%E6%93%8E%E6%8F%92%E4%BB%B6/AstralParty-Hub/src/test/auto_follow_state_machine.test.ts) | 20 automated regression tests verifying all states and security invariants. |

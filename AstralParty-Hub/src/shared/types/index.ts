@@ -113,7 +113,7 @@ export interface HubPackageManifestV1 {
   schemaVersion: number;
   package: {
     id: string;
-    type: 'apx-plugin' | 'mod' | 'resource-pack';
+    type: 'xingshu-plugin' | 'mod' | 'resource-pack';
     name: string;
     version: string;
     publisher: string;
@@ -126,14 +126,14 @@ export interface HubPackageManifestV1 {
       minVersion?: string;
       maxVersion?: string;
     };
-    apx?: {
+    xingshu?: {
       minVersion?: string;
       maxVersion?: string;
     };
   };
   install: {
     requiresGameClosed: boolean;
-    requiresApxClosed: boolean;
+    requiresXingShuClosed: boolean;
     backup: boolean;
   };
   files: Array<{
@@ -182,8 +182,8 @@ export interface SystemDiagnosticSnapshot {
   os_version: string;
   primary_game?: GameInstallation;
   running_processes: string[];
-  apx_detected: boolean;
-  apx_path?: string;
+  xingshu_detected: boolean;
+  xingshu_path?: string;
   recent_transactions: InstallTransaction[];
 }
 
@@ -215,7 +215,7 @@ export type GameChannel = 'STEAM_CN' | 'STEAM_INT' | 'DMM' | 'STANDALONE';
 
 export interface RuntimeVersion {
   version_id: string;
-  runtime_type: 'APX' | 'BEPINEX_5' | 'BEPINEX_6' | 'VANILLA';
+  runtime_type: 'XingShu' | 'BEPINEX_5' | 'BEPINEX_6' | 'VANILLA';
   version_name: string;
   is_installed: boolean;
   is_active: boolean;
@@ -225,14 +225,14 @@ export interface RuntimeVersion {
 
 export interface SelectedRuntimePlan {
   version_id: string;
-  runtime_type: 'APX' | 'BEPINEX_5' | 'BEPINEX_6' | 'VANILLA';
+  runtime_type: 'XingShu' | 'BEPINEX_5' | 'BEPINEX_6' | 'VANILLA';
   version_name: string;
   description?: string;
 }
 
 export interface InstalledRuntime {
   version_id: string;
-  runtime_type: 'APX' | 'BEPINEX_5' | 'BEPINEX_6' | 'VANILLA';
+  runtime_type: 'XingShu' | 'BEPINEX_5' | 'BEPINEX_6' | 'VANILLA';
   version_name: string;
   install_path: string;
   container_hash?: string;
@@ -285,7 +285,7 @@ export interface RuntimeManagerConfig {
 // ==========================================
 
 export type PackageCategory =
-  | 'apx-plugin'
+  | 'xingshu-plugin'
   | 'mod'
   | 'resource-pack'
   | 'voice-pack'
@@ -313,7 +313,7 @@ export interface XspkgManifest {
       maxVersion?: string;
     };
     runtime?: {
-      type: 'apx' | 'bepinex';
+      type: 'xingshu' | 'bepinex';
       minVersion?: string;
       maxVersion?: string;
     };

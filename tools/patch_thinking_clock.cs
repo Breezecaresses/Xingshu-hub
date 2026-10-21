@@ -19,14 +19,14 @@ class ThinkingClockPatcher
     {
         var resolver = new DefaultAssemblyResolver();
         foreach (string dir in new[] { "updated_20261019_verified", "unity", "framework", "thirdparty" })
-            resolver.AddSearchDirectory(Path.Combine(args[3], "APX-Dev", "references", dir));
+            resolver.AddSearchDirectory(Path.Combine(args[3], "XingShu-Dev", "references", dir));
         var reader = new ReaderParameters { AssemblyResolver = resolver };
         using (var game = AssemblyDefinition.ReadAssembly(args[0], reader))
         using (var hooks = AssemblyDefinition.ReadAssembly(args[1], reader))
         {
             var module = game.MainModule;
-            var clock = hooks.MainModule.Types.Single(t => t.FullName == "APXRuntime.Utilities.ThinkingClock");
-            var enabled = hooks.MainModule.Types.Single(t => t.FullName == "APXRuntime.Utilities.ThinkingTime")
+            var clock = hooks.MainModule.Types.Single(t => t.FullName == "XingShuRuntime.Utilities.ThinkingClock");
+            var enabled = hooks.MainModule.Types.Single(t => t.FullName == "XingShuRuntime.Utilities.ThinkingTime")
                 .Methods.Single(m => m.Name == "UseRealClock");
             var ctor = clock.Methods.Single(m => m.IsConstructor && m.IsPublic);
             var attach = clock.Methods.Single(m => m.Name == "AttachStop");
@@ -75,7 +75,7 @@ class ThinkingClockPatcher
                 call.Operand = wrapper; count++;
             }
             if (count != 3) throw new Exception("Expected three local decision timer registrations, found " + count);
-            var stats = hooks.MainModule.Types.Single(t => t.FullName == "APXRuntime.Utilities.BattleStatsOverlay");
+            var stats = hooks.MainModule.Types.Single(t => t.FullName == "XingShuRuntime.Utilities.BattleStatsOverlay");
             PatchObserver(module, stats, "Core.Unit.BattleProperty", "OnGoldChanged", "ObserveGold", false);
             PatchObserver(module, stats, "GameLogic.BattleResultLogic", "OnGameFinishS2CServerCallBack", "ObserveSettlement", true);
             PatchProgress(module, enabled.DeclaringType);

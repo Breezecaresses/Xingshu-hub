@@ -15,7 +15,7 @@
 
 ## 检查与安装状态
 
-Windows Release 构建通过。双端候选使用 `tools/prepare_runtime_truth_fix.py` 准备并校验：各551个游戏成员引用、7个反射字段通过，17个其他程序集保持不变。最终候选哈希在本机 `APX-Dev/build/runtime-truth-fix/deployment.json`。游戏运行时不替换文件。
+Windows Release 构建通过。双端候选使用 `tools/prepare_runtime_truth_fix.py` 准备并校验：各551个游戏成员引用、7个反射字段通过，17个其他程序集保持不变。最终候选哈希在本机 `XingShu-Dev/build/runtime-truth-fix/deployment.json`。游戏运行时不替换文件。
 
 安装使用 `tools/install_game_ui_candidate.ps1`，保留旧容器备份，检查游戏已正常退出、原文件哈希和候选哈希；记录文件按版本分别保存，不覆盖 R2 安装记录。运行时实际显示与横向滚动仍需游戏内测试。
 

@@ -20,6 +20,7 @@ pub struct MatchParticipant {
     #[serde(default)] pub coins: Option<i64>,
     #[serde(default)] pub transfer: Option<i64>,
     #[serde(default)] pub turns: Option<i64>,
+    #[serde(default)] pub movement: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -195,7 +196,7 @@ impl GameLibraryStore {
             || !matches!(detail.status.as_str(),"ready"|"error") || detail.error.len()>500 || detail.message.len()>1000 || detail.replay_id.len()>128 || detail.version.len()>64 || detail.stats_error.len()>200 || !matches!(detail.stats_source.as_str(),""|"profile_record"|"replay_settlement")
             || (detail.status=="ready" && (detail.replay_id!=p.detail.replay_id || detail.version!=p.detail.version))
             || detail.rounds.is_some_and(|v|v<0 || v>10000) || detail.duration_seconds.is_some_and(|v|v<0 || v>604800)
-            || detail.participants.len()>16 || detail.participants.iter().any(|v| v.name.chars().count()>100 || v.hero_id<=0 || !(0..=64).contains(&v.rank) || v.level<0 || v.gold<0 || v.player_level<0 || [v.kills,v.deaths,v.damage,v.taken,v.healing,v.coins,v.transfer,v.turns].iter().any(|n|n.is_some_and(|n| !(0..=1_000_000_000_000).contains(&n))))
+            || detail.participants.len()>16 || detail.participants.iter().any(|v| v.name.chars().count()>100 || v.hero_id<=0 || !(0..=64).contains(&v.rank) || v.level<0 || v.gold<0 || v.player_level<0 || [v.kills,v.deaths,v.damage,v.taken,v.healing,v.coins,v.transfer,v.turns,v.movement].iter().any(|n|n.is_some_and(|n| !(0..=1_000_000_000_000).contains(&n))))
             || (detail.status=="ready" && !detail.participants.iter().any(|v|v.player_id==detail.player_id && v.hero_id==detail.hero_id)) {
             return Err(invalid());
         }
@@ -212,7 +213,7 @@ impl GameLibraryStore {
                     for participant in &mut detail.participants {
                         if let Some(p)=old.participants.iter().find(|p|p.player_id==participant.player_id && p.hero_id==participant.hero_id && p.slot==participant.slot) {
                             participant.kills=p.kills;participant.deaths=p.deaths;participant.damage=p.damage;participant.taken=p.taken;
-                            participant.healing=p.healing;participant.coins=p.coins;participant.transfer=p.transfer;participant.turns=p.turns;
+                            participant.healing=p.healing;participant.coins=p.coins;participant.transfer=p.transfer;participant.turns=p.turns;participant.movement=p.movement;
                         }
                     }
                     detail.stats_source=old.stats_source;detail.arena_id=old.arena_id;detail.rounds=old.rounds;detail.duration_seconds=old.duration_seconds;
@@ -337,7 +338,7 @@ mod tests {
     }
     fn ready(mut detail:MatchDetail)->MatchDetail {
         detail.status="ready".into();
-        detail.participants=serde_json::from_value(serde_json::json!([{"playerId":42,"name":"测试","heroId":101,"rank":1,"level":5,"gold":21,"slot":0,"giveUp":false,"playerLevel":5,"kills":2,"deaths":0,"damage":35,"taken":10,"healing":20,"coins":50,"transfer":5,"turns":10}])).unwrap();
+        detail.participants=serde_json::from_value(serde_json::json!([{"playerId":42,"name":"测试","heroId":101,"rank":1,"level":5,"gold":21,"slot":0,"giveUp":false,"playerLevel":5,"kills":2,"deaths":0,"damage":35,"taken":10,"healing":20,"coins":50,"transfer":5,"turns":10,"movement":42}])).unwrap();
         detail.stats_source="replay_settlement".into();
         detail
     }
@@ -399,5 +400,20 @@ mod tests {
         store.save_detail(&reconnect,partial).unwrap();
         let cached=store.match_detail("STEAM_CN",42,1800000000,101,81003).unwrap().unwrap();
         assert_eq!(cached.stats_source,"replay_settlement");assert_eq!(cached.participants[0].damage,Some(35));
+        assert_eq!(cached.participants[0].movement,Some(42));
+    }
+    #[test] fn movement_is_optional_in_old_details_and_validated_in_new_replies() {
+        let store=GameLibraryStore::new(Database::in_memory().unwrap()).unwrap();let s=session("STEAM_CN");
+        store.save(&s,snapshot()).unwrap();
+        let request=store.begin_detail(&s,1800000000,101,81003).unwrap().0;
+        let mut detail=ready(request);
+        let mut legacy=serde_json::to_value(&detail.participants[0]).unwrap();
+        legacy.as_object_mut().unwrap().remove("movement");
+        assert_eq!(serde_json::from_value::<MatchParticipant>(legacy).unwrap().movement,None);
+        detail.participants[0].movement=Some(-1);
+        assert!(store.save_detail(&s,detail.clone()).is_err());
+        detail.participants[0].movement=Some(42);
+        store.save_detail(&s,detail).unwrap();
+        assert_eq!(store.match_detail("STEAM_CN",42,1800000000,101,81003).unwrap().unwrap().participants[0].movement,Some(42));
     }
 }

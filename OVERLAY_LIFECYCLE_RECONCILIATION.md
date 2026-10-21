@@ -3,7 +3,7 @@
 ## 1. Executive Summary & Root Cause Analysis
 
 ### 1.1 The Initial Entry Timing Bug
-Prior to Phase HS4-P1.6R2, users entering a spectator room experienced a defect where floating hand card widgets (`__apx_handcard_widget`) failed to appear automatically upon room entry, requiring a manual toggle sequence (`OFF -> ON`) in the UI to become visible.
+Prior to Phase HS4-P1.6R2, users entering a spectator room experienced a defect where floating hand card widgets (`__xingshu_handcard_widget`) failed to appear automatically upon room entry, requiring a manual toggle sequence (`OFF -> ON`) in the UI to become visible.
 
 **Root Causes Identified:**
 1. **Asynchronous UI Anchor Readiness Race**:
@@ -50,7 +50,7 @@ flowchart TD
 | **6** | **Epoch Changed** | `SpectatorStateStore.RecordSnapshot` (new `epoch`) | `MarkOverlayDirty("SpectatorSessionTransition:Epoch={epoch}")` |
 | **7** | **Hand Snapshot Updated** | `SpectatorStateStore.OnPlayerHandUpdated` | `MarkOverlayDirty("HandSnapshotUpdated:Player={playerId}")` |
 | **8** | **Player Roster Updated** | `SpectatorStateStore.OnPlayerRosterUpdated` | `MarkOverlayDirty("PlayerRosterUpdated")` |
-| **9** | **Scene / Battle UI Rebuilt** | `Update()` container instance swap / `APXSceneWatcher` | `MarkOverlayDirty("BattleUIAppeared:ContainerReady")` |
+| **9** | **Scene / Battle UI Rebuilt** | `Update()` container instance swap / `XingShuSceneWatcher` | `MarkOverlayDirty("BattleUIAppeared:ContainerReady")` |
 | **10** | **Toggle ON** | `HandCardDisplayManager.IsEnabled` setter (`value == true`) | `MarkOverlayDirty("ToggleON")` |
 
 ---
@@ -89,9 +89,9 @@ Only widgets whose anchor is actively attached to the active rendering stage are
 ## 4. Default & Persistent Display Semantics
 
 ### 4.1 Canonical Defaults
-- `APX_HAND_CARD_ENABLED`: Default set to `true` (`APXConfigKeys.HandCardEnabledDefault = true`).
+- `XINGSHU_HAND_CARD_ENABLED`: Default set to `true` (`XingShuConfigKeys.HandCardEnabledDefault = true`).
   Out-of-the-box experience is Always-On.
-- `APX_HAND_CARD_SPECTATOR_AUTO_OPEN`: Default set to `true` (`APXConfigKeys.HandCardSpectatorAutoOpenDefault = true`).
+- `XINGSHU_HAND_CARD_SPECTATOR_AUTO_OPEN`: Default set to `true` (`XingShuConfigKeys.HandCardSpectatorAutoOpenDefault = true`).
 
 ### 4.2 Match-Level Manual OFF vs Next-Session Auto-Open
 1. **Manual Match OFF Retention**:
@@ -105,7 +105,7 @@ Only widgets whose anchor is actively attached to the active rendering stage are
 
 ## 5. Verification & Test Evidence
 
-The deterministic test runner (`tools/SpectatorStoreConformanceRunner/Program.cs`) was executed via Roslyn targetting `.NET 4.0` with full `APX.hooks.dll` integration:
+The deterministic test runner (`tools/SpectatorStoreConformanceRunner/Program.cs`) was executed via Roslyn targetting `.NET 4.0` with full `XingShu.Runtime.dll` integration:
 
 ```text
 ================================================================================
@@ -144,8 +144,8 @@ PHASE HS4-P1.6R2: DETERMINISTIC OVERLAY RECONCILIATION LIFECYCLE TESTS
 [PASS] Event 10: Toggle ON re-arms dirty => Armed via IsEnabled = true setter.
 
 [SCENARIO 9D] Default & Persistent Display Semantics
-[PASS] Default APX_HAND_CARD_ENABLED == true => Default is true (Always-On baseline).
-[PASS] Default APX_HAND_CARD_SPECTATOR_AUTO_OPEN == true => Default is true.
+[PASS] Default XINGSHU_HAND_CARD_ENABLED == true => Default is true (Always-On baseline).
+[PASS] Default XINGSHU_HAND_CARD_SPECTATOR_AUTO_OPEN == true => Default is true.
 [PASS] Manual OFF in current match => User turned overlay OFF.
 [PASS] Manual OFF Respected During Match => In-match card updates do NOT force overlay ON when user manually disabled it.
 [PASS] Zero widgets rendered while manually OFF in-match => Visible=0.
@@ -173,11 +173,11 @@ TESTS FAILED:    0
    - Enforced slot index fallback (0-based and 1-based) and `onStage` verification in `FindHeadButtonForPlayer`.
 2. **`SpectatorStateStore.cs`**:
    - Added canonical `public static event Action OnPlayerRosterUpdated;`. Dispatched on `RecordJoin`, `RecordSnapshot` (when roster expands/changes), and `Reset()`.
-3. **`APXHandCardView.cs`**:
+3. **`XingShuHandCardView.cs`**:
    - Re-armed dirty flag in `OnManualSyncClicked()` via `HandCardDisplayManager.MarkOverlayDirty("ManualSyncUI")`.
    - Displayed live reconciliation progress in `_syncStatusText` (`VisibleWidgetCount/ExpectedVisibleWidgetCount`).
    - Updated UI hint to clarify match-level manual OFF retention and next-session auto-open semantics.
-4. **`APXConfigService.cs` & `APXConfigKeys.cs`**:
+4. **`XingShuConfigService.cs` & `XingShuConfigKeys.cs`**:
    - Set `HandCardEnabledDefault = true`.
    - Set `HandCardSpectatorAutoOpenDefault = true`.
    - Added `GetHandCardEnabled()`, `SetHandCardEnabled()`, `GetHandCardSpectatorAutoOpen()`, `SetHandCardSpectatorAutoOpen()`.

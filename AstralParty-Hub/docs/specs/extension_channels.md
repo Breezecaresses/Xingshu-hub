@@ -26,7 +26,7 @@ Hub 支持给 Steam 国服、Steam 国际服、TapTap Windows、哔哩哔哩和 
   },
   "install": {
     "requiresGameClosed": true,
-    "requiresApxClosed": true,
+    "requiresXingShuClosed": true,
     "backup": true
   },
   "files": [
@@ -40,13 +40,13 @@ Hub 支持给 Steam 国服、Steam 国际服、TapTap Windows、哔哩哔哩和 
 }
 ```
 
-`type` 可选 `apx-plugin`、`mod`、`resource-pack`。`platforms` 可填写 `STEAM_CN`、`STEAM_GLOBAL`、`TAPTAP`、`BILIBILI`、`WEGAME`；只声明实际验证兼容的渠道。省略或留空的旧清单仅按 Steam 国服处理。
+`type` 可选 `xingshu-plugin`、`mod`、`resource-pack`。`platforms` 可填写 `STEAM_CN`、`STEAM_GLOBAL`、`TAPTAP`、`BILIBILI`、`WEGAME`；只声明实际验证兼容的渠道。省略或留空的旧清单仅按 Steam 国服处理。
 
 逻辑路径相对于所选游戏 exe 所在目录解析：
 
 | 清单前缀 | 实际目录 |
 | --- | --- |
-| `apx/plugins/` | `apx/plugins/` |
+| `xingshu/plugins/` | `xingshu/plugins/` |
 | `game/mods/` | `mods/` |
 | `game/resources/` | `resources/` |
 | `hub/data/` | `hub_data/` |
@@ -57,6 +57,6 @@ Hub 不会因为选了国际服而将文件写进国服子目录。同一个包�
 
 ## 查看与卸载
 
-插件页会单独核验本包运行时指纹。`apx/plugins`、`BepInEx/plugins`、`mods`、`resources` 和 `modimg` 中的本地文件会出现在对应列表中，手动安装项只读展示；ZIP 归档不当作已加载模组。
+插件页会单独核验本包运行时指纹。`xingshu/plugins`、`BepInEx/plugins`、`mods`、`resources` 和 `modimg` 中的本地文件会出现在对应列表中，手动安装项只读展示；ZIP 归档不当作已加载模组。
 
 Hub 管理的包可按选中安装位置卸载。卸载仅删除安装记录内且校验一致的文件，若文件已被手动修改会停止。安装前备份继续保留在用户数据目录，可在安装事务/备份页查看；卸载不会自动覆盖回旧文件。

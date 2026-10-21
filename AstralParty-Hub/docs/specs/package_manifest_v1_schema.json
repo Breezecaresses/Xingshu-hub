@@ -18,7 +18,7 @@
         },
         "type": {
           "type": "string",
-          "enum": ["apx-plugin", "mod", "resource-pack"]
+          "enum": ["xingshu-plugin", "mod", "resource-pack"]
         },
         "name": {
           "type": "string",
@@ -60,7 +60,7 @@
             }
           }
         },
-        "apx": {
+        "xingshu": {
           "type": "object",
           "properties": {
             "minVersion": {
@@ -75,12 +75,12 @@
     },
     "install": {
       "type": "object",
-      "required": ["requiresGameClosed", "requiresApxClosed", "backup"],
+      "required": ["requiresGameClosed", "requiresXingShuClosed", "backup"],
       "properties": {
         "requiresGameClosed": {
           "type": "boolean"
         },
-        "requiresApxClosed": {
+        "requiresXingShuClosed": {
           "type": "boolean"
         },
         "backup": {
@@ -99,7 +99,7 @@
           },
           "target": {
             "type": "string",
-            "pattern": "^(apx/plugins/|game/mods/|game/resources/|hub/data/).+"
+            "pattern": "^(xingshu/plugins/|game/mods/|game/resources/|hub/data/).+"
           },
           "sha256": {
             "type": "string",

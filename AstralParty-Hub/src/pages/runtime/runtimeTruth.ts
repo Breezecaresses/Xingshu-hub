@@ -51,7 +51,7 @@ export interface VersionBadgeInfo {
  * Derives authoritative Runtime Trichotomy State according to Project XingShu Truth Architecture.
  *
  * Concepts:
- * 1. selected_plan: Plan configured or selected by user (e.g. APX v1.3.4 Production)
+ * 1. selected_plan: Plan configured or selected by user (e.g. XingShu v1.3.4 Production)
  * 2. installed_runtime: Physical runtime installed on disk in com.unity.addressables/.../__data
  * 3. active_session: Live session inside currently running game process, confirmed ONLY via live TCP Bridge handshake (HELLO_ACK, gamePid, runtimeVersion)
  */
@@ -78,9 +78,9 @@ export function deriveRuntimeTruthState(params: DeriveRuntimeTruthParams): Runti
 
   // 2. Resolve Installed Runtime
   const installedRuntime: InstalledRuntime = params.installedRuntime || {
-    version_id: selectedPlan?.version_id || 'apx-1.3.4',
-    runtime_type: selectedPlan?.runtime_type || 'APX',
-    version_name: selectedPlan?.version_name || 'APX v1.3.4 (Production Core)',
+    version_id: selectedPlan?.version_id || 'xingshu-1.3.4',
+    runtime_type: selectedPlan?.runtime_type || 'XingShu',
+    version_name: selectedPlan?.version_name || 'XingShu v1.3.4 (Production Core)',
     install_path: 'com.unity.addressables/.../__data',
     container_hash: 'sha256:7f8e219ba420d931acbf6e',
     manifest_verified: true,

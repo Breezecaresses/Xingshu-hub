@@ -5,7 +5,7 @@
 ## 界面
 
 - 功能中心采用游戏设置页的布局与粉、黄配色；移除背景斜条，主体和设置卡片采用半透明背景。
-- 滑块使用原游戏四角星与粉色进度素材，裁片来源、原图指纹和裁切坐标见 `APX-Dev/assets/vanilla-ui-r3/official-sources/provenance.json`。素材版权归原游戏权利人所有。
+- 滑块使用原游戏四角星与粉色进度素材，裁片来源、原图指纹和裁切坐标见 `XingShu-Dev/assets/vanilla-ui-r3/official-sources/provenance.json`。素材版权归原游戏权利人所有。
 - 字体优先复用 `FairyGUI.UIConfig.defaultFont` 所指向的游戏字体 `JingNanBoBoHei`，缺字时回退。不分发游戏字体文件。
 - 关闭旧悬浮入口 prefab 中的蓝色装饰 `BallButton/Dot`。
 - 修复倍率大字及彩色浮字预览因字体行高超过文本框而被整行裁切的问题。
@@ -56,10 +56,10 @@
 ## 原生时间加速 10 倍（本地测试）
 
 - 按用户要求，六个快捷档位仍为 0.5、1、1.5、2、3、5 倍；仅滑条的最高可调倍率扩展到 10 倍，范围标题和配置读写限幅同步更新。现有保存的倍率不主动改变。
-- 原生适配器源码 `APX-Dev/external/native-speed-lab/adapter/speedhack_rs/src/lib.rs` 的 `MAX_SPEED` 同步改为 10，IPC 协议版本保持 1。仅调高界面上限会被旧原生组件拒绝，因此 Steam 国服同时安装了重新编译的本地测试组件。
-- 原生组件来源为 `Hirtol/speedhack-rs` 的现有本地适配分支；本次只调整最大倍率。构建：在 `APX-Dev/external/native-speed-lab/adapter` 运行 `cargo +nightly build --release --locked --offline --target-dir ../../../build/native-speed-10x`。
-- `APX-Dev/tools/test_native_ipc_harness.py --dll APX-Dev/build/native-speed-10x/release/version.dll` 的 9 项独立子进程测试通过：旧会话清理、1 倍基线、2 倍、0.5 倍、关闭恢复、重置、错误指令、10 倍实际计时与越界拒绝、正常退出。10 倍 QPC 实测约 10.02 倍；10.01、NaN、无穷和低于下限均被拒绝。
-- 新 `version.dll` SHA-256：`36e7df0fce281c95dccd237760fdc982fba3d56d25883d55ded86b87a0588e20`。原 Steam 文件 SHA-256：`d854d596042a01625f447d2732d7befd80d0ead70cb4c830e5e3088a284c28ae`；安装前已备份，记录位于 `APX-Dev/build/native-speed-10x/deployment.json`。当前仍暂停打包和 Git 发布。
+- 原生适配器源码 `XingShu-Dev/external/native-speed-lab/adapter/speedhack_rs/src/lib.rs` 的 `MAX_SPEED` 同步改为 10，IPC 协议版本保持 1。仅调高界面上限会被旧原生组件拒绝，因此 Steam 国服同时安装了重新编译的本地测试组件。
+- 原生组件来源为 `Hirtol/speedhack-rs` 的现有本地适配分支；本次只调整最大倍率。构建：在 `XingShu-Dev/external/native-speed-lab/adapter` 运行 `cargo +nightly build --release --locked --offline --target-dir ../../../build/native-speed-10x`。
+- `XingShu-Dev/tools/test_native_ipc_harness.py --dll XingShu-Dev/build/native-speed-10x/release/version.dll` 的 9 项独立子进程测试通过：旧会话清理、1 倍基线、2 倍、0.5 倍、关闭恢复、重置、错误指令、10 倍实际计时与越界拒绝、正常退出。10 倍 QPC 实测约 10.02 倍；10.01、NaN、无穷和低于下限均被拒绝。
+- 新 `version.dll` SHA-256：`36e7df0fce281c95dccd237760fdc982fba3d56d25883d55ded86b87a0588e20`。原 Steam 文件 SHA-256：`d854d596042a01625f447d2732d7befd80d0ead70cb4c830e5e3088a284c28ae`；安装前已备份，记录位于 `XingShu-Dev/build/native-speed-10x/deployment.json`。当前仍暂停打包和 Git 发布。
 
 ## 怪物索敌恢复与接入（本地测试）
 

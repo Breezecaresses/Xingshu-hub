@@ -1,18 +1,31 @@
 param([Parameter(Mandatory)][string]$InputDll, [Parameter(Mandatory)][string]$OutputDll, [string]$HooksDll)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
-Add-Type -Path (Join-Path $taskRoot 'APX-Dev/tools/lib/Mono.Cecil.dll')
-Add-Type -Path (Join-Path $taskRoot 'APX-Dev/tools/lib/Mono.Cecil.Rocks.dll')
+Add-Type -Path (Join-Path $taskRoot 'XingShu-Dev/tools/lib/Mono.Cecil.dll')
+Add-Type -Path (Join-Path $taskRoot 'XingShu-Dev/tools/lib/Mono.Cecil.Rocks.dll')
 $taskResolver = [Mono.Cecil.DefaultAssemblyResolver]::new()
 foreach($taskDir in @('references/updated_20261019_verified','references/unity','references/framework','build/bin/Release')) {
-    $taskResolver.AddSearchDirectory((Join-Path $taskRoot ('APX-Dev/' + $taskDir)))
+    $taskResolver.AddSearchDirectory((Join-Path $taskRoot ('XingShu-Dev/' + $taskDir)))
 }
 $taskReadParams = [Mono.Cecil.ReaderParameters]::new()
 $taskReadParams.AssemblyResolver = $taskResolver
 $taskAssembly = [Mono.Cecil.AssemblyDefinition]::ReadAssembly((Resolve-Path -LiteralPath $InputDll).Path, $taskReadParams)
-if (!$HooksDll) { $HooksDll = Join-Path $taskRoot 'APX-Dev/build/bin/Release/APX.hooks.dll' }
+if (!$HooksDll) { $HooksDll = Join-Path $taskRoot 'XingShu-Dev/build/bin/Release/XingShu.Runtime.dll' }
 $taskHooks = [Mono.Cecil.AssemblyDefinition]::ReadAssembly((Resolve-Path -LiteralPath $HooksDll).Path)
-$taskScaler = $taskHooks.MainModule.Types | Where-Object FullName -eq 'APXRuntime.Utilities.ThinkingTime'
+$taskLegacy = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'legacy_runtime_names.json') -Raw | ConvertFrom-Json
+foreach ($taskReference in $taskAssembly.MainModule.AssemblyReferences) {
+    if ($taskReference.Name -eq $taskLegacy.assembly) {
+        $taskReference.Name = $taskHooks.Name.Name
+        $taskReference.Version = $taskHooks.Name.Version
+    }
+}
+foreach ($taskTypeReference in $taskAssembly.MainModule.GetTypeReferences()) {
+    if ($taskTypeReference.Namespace -eq $taskLegacy.runtimeNamespace -or
+        $taskTypeReference.Namespace.StartsWith($taskLegacy.runtimeNamespace + '.', [StringComparison]::Ordinal)) {
+        $taskTypeReference.Namespace = 'XingShuRuntime' + $taskTypeReference.Namespace.Substring($taskLegacy.runtimeNamespace.Length)
+    }
+}
+$taskScaler = $taskHooks.MainModule.Types | Where-Object FullName -eq 'XingShuRuntime.Utilities.ThinkingTime'
 $taskIntMethod = $taskScaler.Methods | Where-Object { $_.Name -eq 'ScaleSeconds' -and $_.ReturnType.FullName -eq 'System.Int32' }
 $taskFloatMethod = $taskScaler.Methods | Where-Object { $_.Name -eq 'ScaleSeconds' -and $_.ReturnType.FullName -eq 'System.Single' }
 if (!$taskIntMethod -or !$taskFloatMethod) { throw 'Thinking-time hooks are missing' }
@@ -26,7 +39,7 @@ foreach($taskType in $taskAssembly.MainModule.Types) {
         $taskTurn = $taskType.FullName -eq 'GameLogic.OperationTimer' -and $taskMethod.Name -eq 'ActionDownTime'
         if (!$taskHero -and !$taskTurn) { continue }
         # Already patched inputs are accepted without stacking multipliers.
-        if ($taskMethod.Body.Instructions | Where-Object { $_.Operand -and $_.Operand.ToString().Contains('APXRuntime.Utilities.ThinkingTime::ScaleSeconds') }) { $taskPatched++; continue }
+        if ($taskMethod.Body.Instructions | Where-Object { $_.Operand -and $_.Operand.ToString().Contains('XingShuRuntime.Utilities.ThinkingTime::ScaleSeconds') }) { $taskPatched++; continue }
         [Mono.Cecil.Rocks.MethodBodyRocks]::SimplifyMacros($taskMethod.Body)
         $taskProcessor = $taskMethod.Body.GetILProcessor()
         foreach($taskInstruction in @($taskMethod.Body.Instructions)) {
@@ -51,10 +64,10 @@ $taskAssembly.Dispose()
 $taskHooks.Dispose()
 $taskClockPatcher = Join-Path (Split-Path -Parent ([IO.Path]::GetFullPath($OutputDll))) 'ThinkingClockPatcher.exe'
 $taskCompiler = 'D:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/Roslyn/csc.exe'
-& $taskCompiler /nologo "/out:$taskClockPatcher" "/reference:$(Join-Path $taskRoot 'APX-Dev/tools/lib/Mono.Cecil.dll')" "/reference:$(Join-Path $taskRoot 'APX-Dev/tools/lib/Mono.Cecil.Rocks.dll')" (Join-Path $PSScriptRoot 'patch_thinking_clock.cs')
+& $taskCompiler /nologo "/out:$taskClockPatcher" "/reference:$(Join-Path $taskRoot 'XingShu-Dev/tools/lib/Mono.Cecil.dll')" "/reference:$(Join-Path $taskRoot 'XingShu-Dev/tools/lib/Mono.Cecil.Rocks.dll')" (Join-Path $PSScriptRoot 'patch_thinking_clock.cs')
 if ($LASTEXITCODE -ne 0) { throw 'Real-clock patcher compilation failed' }
-Copy-Item -LiteralPath (Join-Path $taskRoot 'APX-Dev/tools/lib/Mono.Cecil.dll') -Destination (Join-Path (Split-Path -Parent $taskClockPatcher) 'Mono.Cecil.dll') -Force
-Copy-Item -LiteralPath (Join-Path $taskRoot 'APX-Dev/tools/lib/Mono.Cecil.Rocks.dll') -Destination (Join-Path (Split-Path -Parent $taskClockPatcher) 'Mono.Cecil.Rocks.dll') -Force
+Copy-Item -LiteralPath (Join-Path $taskRoot 'XingShu-Dev/tools/lib/Mono.Cecil.dll') -Destination (Join-Path (Split-Path -Parent $taskClockPatcher) 'Mono.Cecil.dll') -Force
+Copy-Item -LiteralPath (Join-Path $taskRoot 'XingShu-Dev/tools/lib/Mono.Cecil.Rocks.dll') -Destination (Join-Path (Split-Path -Parent $taskClockPatcher) 'Mono.Cecil.Rocks.dll') -Force
 $taskClockOutput = [IO.Path]::GetFullPath($OutputDll) + '.realclock'
 & $taskClockPatcher ([IO.Path]::GetFullPath($OutputDll)) $HooksDll $taskClockOutput $taskRoot
 if ($LASTEXITCODE -ne 0) { throw 'Real-clock decision timer patch failed' }

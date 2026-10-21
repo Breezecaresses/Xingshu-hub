@@ -6,9 +6,9 @@ use astralparty_hub_lib::xing_shu::bridge::server::BridgeServer;
 
 fn get_csharp_runner_path() -> PathBuf {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".into());
-    let candidate1 = Path::new(&manifest_dir).join("../../APX-Dev/build/bin/Release/BridgeTestRunner.exe");
-    let candidate2 = PathBuf::from(r"E:\工作流\星引擎插件\APX-Dev\build\bin\Release\BridgeTestRunner.exe");
-    let candidate3 = Path::new(&manifest_dir).join("../../APX-Dev/tools/BridgeTestRunner/bin/BridgeTestRunner.exe");
+    let candidate1 = Path::new(&manifest_dir).join("../../XingShu-Dev/build/bin/Release/BridgeTestRunner.exe");
+    let candidate2 = PathBuf::from(r"E:\工作流\星引擎插件\XingShu-Dev\build\bin\Release\BridgeTestRunner.exe");
+    let candidate3 = Path::new(&manifest_dir).join("../../XingShu-Dev/tools/BridgeTestRunner/bin/BridgeTestRunner.exe");
 
     for p in &[&candidate1, &candidate2, &candidate3] {
         if let Ok(c) = p.canonicalize() {
@@ -662,8 +662,8 @@ async fn test_case_19_spectator_offline_replay_pipeline() {
 
     // Locate and load expected evidence records from JSONL to verify raw cards at each step
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".into());
-    let candidate1 = Path::new(&manifest_dir).join("../../APX-Dev/tools/spectator_telemetry/evidence_live_hot_spectator_session_proven_20261016.jsonl");
-    let candidate2 = PathBuf::from(r"E:\工作流\星引擎插件\APX-Dev\tools\spectator_telemetry\evidence_live_hot_spectator_session_proven_20261016.jsonl");
+    let candidate1 = Path::new(&manifest_dir).join("../../XingShu-Dev/tools/spectator_telemetry/evidence_live_hot_spectator_session_proven_20261016.jsonl");
+    let candidate2 = PathBuf::from(r"E:\工作流\星引擎插件\XingShu-Dev\tools\spectator_telemetry\evidence_live_hot_spectator_session_proven_20261016.jsonl");
     let evidence_path = if candidate1.exists() { candidate1 } else { candidate2 };
     let evidence_content = std::fs::read_to_string(&evidence_path).expect("Failed to read evidence JSONL");
 

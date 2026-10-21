@@ -177,9 +177,9 @@ function main() {
     'AstralParty-Hub/src/types/platform.ts',
     'AstralParty-Hub/src/types/spectatorAccount.ts',
     'AstralParty-Hub/src/services/spectatorAccountService.ts',
-    'APX-Dev/src/APX.hooks/XingShu/Platform/PlatformProfile.cs',
-    'APX-Dev/src/APX.hooks/XingShu/Platform/PlatformProfiles.Generated.cs',
-    'APX-Dev/tools/generate_platform_profiles_cs.py',
+    'XingShu-Dev/src/XingShu.Runtime/XingShu/Platform/PlatformProfile.cs',
+    'XingShu-Dev/src/XingShu.Runtime/XingShu/Platform/PlatformProfiles.Generated.cs',
+    'XingShu-Dev/tools/generate_platform_profiles_cs.py',
   ];
 
   for (const relPath of targetProductionFiles) {
@@ -200,7 +200,7 @@ function main() {
     path.resolve(repoRoot, 'AstralParty-Hub/src/services'),
     path.resolve(repoRoot, 'AstralParty-Hub/src/types'),
     path.resolve(repoRoot, 'AstralParty-Hub/src-tauri/src/xing_shu'),
-    path.resolve(repoRoot, 'APX-Dev/src/APX.hooks/XingShu'),
+    path.resolve(repoRoot, 'XingShu-Dev/src/XingShu.Runtime/XingShu'),
   ];
 
   function scanDirRecursive(dir: string, fileList: string[] = []): string[] {

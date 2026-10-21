@@ -252,7 +252,7 @@ export function resolvePlatformAuthStrategy(
     flowSteps: [
       `1. 用户自主启动 ${platformName} 官方客户端`,
       '2. 在官方认证界面中完成安全登录（星枢不接触任何账号凭据）',
-      '3. 游戏进程启动并加载 APX Runtime 探针',
+      '3. 游戏进程启动并加载 XingShu Runtime 探针',
       '4. 运行时通过本地回环 TCP (127.0.0.1:25890) 握手并同步当前真实 currentSessionPlayerId',
       '5. 星枢 Hub 自动识别对局与角色绑定关系，开始无损呈现对手全量手牌',
     ],

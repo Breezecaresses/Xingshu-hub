@@ -37,13 +37,13 @@ def main():
     runtime_path = out / "AstralParty.Runtime.original.dll"
     runtime_path.write_bytes(runtime.m_Script.encode("utf8", errors="surrogateescape"))
     bin_dir = out / "bin"
-    subprocess.run([str(shared.MSBUILD), str(ROOT / "APX-Dev/src/APX.hooks/APX.hooks.csproj"),
+    subprocess.run([str(shared.MSBUILD), str(ROOT / "XingShu-Dev/src/XingShu.Runtime/XingShu.Runtime.csproj"),
                     "/t:Rebuild", "/nologo", "/v:q", "/p:Configuration=Release",
                     "/p:AdditionalDefineConstants=XINGSHU_ANDROID_PREVIEW",
                     "/p:AstralPartyRuntimePath=" + str(runtime_path),
                     "/p:OutputPath=" + str(bin_dir) + "/",
                     "/p:IntermediateOutputPath=" + str(out / "obj") + "/"], check=True)
-    hooks_path = bin_dir / "APX.hooks.dll"
+    hooks_path = bin_dir / "XingShu.Runtime.dll"
     hooks = hooks_path.read_bytes()
     subprocess.run(["pwsh", "-NoProfile", "-File", str(ROOT / "tools/check_android_runtime.ps1"),
                     "-HooksDll", str(hooks_path)], check=True)
@@ -56,7 +56,7 @@ def main():
     boot_path = out / "AstralParty.Runtime.bootstrap.dll"
     patched_path = out / "AstralParty.Runtime.dll"
     subprocess.run([str(patcher), str(runtime_path), str(bootstrap), str(boot_path),
-                    shared.sha(runtime_path.read_bytes())], check=True)
+                    shared.sha(runtime_path.read_bytes()), shared.LEGACY['bootstrapType']], check=True)
     subprocess.run(["pwsh", "-NoProfile", "-File", str(ROOT / "tools/patch_thinking_time.ps1"),
                     "-InputDll", str(boot_path), "-OutputDll", str(patched_path),
                     "-HooksDll", str(hooks_path)], check=True)
@@ -70,11 +70,11 @@ def main():
     verified = UnityPy.load(str(candidate))
     after = shared.assets(verified)
     assert set(before) | {99992000} == set(after), "Unexpected assets added/removed"
-    assert after[99992000] == ("APX.hooks.dll", shared.sha(hooks))
+    assert after[99992000] == ("XingShu.Runtime.dll", shared.sha(hooks))
     assert all(after[key] == value for key, value in before.items() if key != runtime_obj.path_id)
     assert all(int(obj.assets_file.target_platform) == 13 for obj in verified.objects)
     manifest = {"platform": "ANDROID_CN", "package": "com.feimo.astralparty",
-                "appVersion": "3.3.0", "runtimeVersion": "1.0.0-android-preview2",
+                "appVersion": "3.3.0", "runtimeVersion": "1.0.0-android-preview4",
                 "originalSha256": shared.sha(original),
                 "candidateSha256": shared.sha(candidate.read_bytes()),
                 "hooksSha256": shared.sha(hooks), "candidate": str(candidate),

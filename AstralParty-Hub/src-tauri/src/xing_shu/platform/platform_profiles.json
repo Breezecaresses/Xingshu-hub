@@ -16,7 +16,7 @@
     "containerSha256": "420FBB1DEE1CEFE7298213EBF5F292B4722D0CB08A2A5E3F96EE94AB4AABDDEF",
     "hookTextAssetPathId": 99992000,
     "hookSignatures": [
-      "APXBootstrap.EnsureRuntimeHost",
+      "XingShuBootstrap.EnsureRuntimeHost",
       "SpectatorEventInterceptor.Initialize",
       "LoopbackTcpTransport.Connect",
       "SpectatorHandStateReducer.ProcessPayload"
@@ -42,7 +42,7 @@
     "containerSha256": "20846D23A75E2F6CE78AE2FFFB661AA4CB02364C45AA27D99FA85FD4F6F3C103",
     "hookTextAssetPathId": 99992000,
     "hookSignatures": [
-      "APXBootstrap.EnsureRuntimeHost",
+      "XingShuBootstrap.EnsureRuntimeHost",
       "SpectatorEventInterceptor.Initialize",
       "LoopbackTcpTransport.Connect",
       "SpectatorHandStateReducer.ProcessPayload"
@@ -70,7 +70,7 @@
     "containerHash": "EA45C939DBC86ACA6950AC757FCABB773A86F9D14FEF6B3D8ED7C49F47D33598",
     "hookTextAssetPathId": 99992000,
     "hookSignatures": [
-      "APXBootstrap.EnsureRuntimeHost",
+      "XingShuBootstrap.EnsureRuntimeHost",
       "SpectatorEventInterceptor.Initialize",
       "LoopbackTcpTransport.Connect",
       "SpectatorHandStateReducer.ProcessPayload"

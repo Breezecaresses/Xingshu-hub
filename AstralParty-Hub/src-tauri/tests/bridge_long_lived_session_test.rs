@@ -11,11 +11,11 @@ use astralparty_hub_lib::xing_shu::bridge::server::BridgeServer;
 
 fn get_csharp_runner_path() -> PathBuf {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".into());
-    let candidate = Path::new(&manifest_dir).join("../../APX-Dev/build/bin/Release/BridgeTestRunner.exe");
+    let candidate = Path::new(&manifest_dir).join("../../XingShu-Dev/build/bin/Release/BridgeTestRunner.exe");
     if candidate.exists() {
         return candidate.canonicalize().unwrap_or(candidate);
     }
-    PathBuf::from(r"E:\工作流\星引擎插件\APX-Dev\build\bin\Release\BridgeTestRunner.exe")
+    PathBuf::from(r"E:\工作流\星引擎插件\XingShu-Dev\build\bin\Release\BridgeTestRunner.exe")
 }
 
 async fn run_csharp_runner(test_id: &str, endpoint: &str, challenge: &str, extra_args: &[&str]) -> (i32, String) {

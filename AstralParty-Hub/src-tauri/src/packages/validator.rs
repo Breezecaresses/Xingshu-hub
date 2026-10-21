@@ -16,7 +16,7 @@ impl ManifestValidator {
 
         if !PermissionsGuard::assert_valid_package_type(&manifest.package.package_type) {
             return Err(HubError::invalid_manifest(format!(
-                "Invalid package type '{}'. Allowed: 'apx-plugin', 'mod', 'resource-pack'",
+                "Invalid package type '{}'. Allowed: 'xingshu-plugin', 'mod', 'resource-pack'",
                 manifest.package.package_type
             )));
         }
@@ -33,7 +33,7 @@ impl ManifestValidator {
             // Validate logical target prefix
             if !PermissionsGuard::assert_valid_logical_prefix(&file.target) {
                 return Err(HubError::invalid_manifest(format!(
-                    "Invalid logical target prefix in '{}'. Must start with 'apx/plugins/', 'game/mods/', 'game/resources/', or 'hub/data/'",
+                    "Invalid logical target prefix in '{}'. Must start with 'xingshu/plugins/', 'game/mods/', 'game/resources/', or 'hub/data/'",
                     file.target
                 )));
             }

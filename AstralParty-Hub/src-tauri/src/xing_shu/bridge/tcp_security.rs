@@ -855,7 +855,7 @@ pub fn verify_tcp_client_identity_with_policy(
                 || normalized_path.contains(r"\target\release")
                 || normalized_path.contains(r"\target\")
                 || normalized_path.contains(r"\build\bin")
-                || normalized_path.contains(r"\apx-dev\")
+                || normalized_path.contains(r"\xingshu-dev\")
                 || normalized_path.contains(r"\temp\")
                 || normalized_path.contains(r"\appdata\local\temp")
                 || normalized_path.contains(r"\programs\python")

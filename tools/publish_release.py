@@ -15,12 +15,19 @@ def main():
     parser.add_argument('--source', type=Path, required=True)
     parser.add_argument('--body', type=Path, required=True)
     parser.add_argument('--repo', default='Breezecaresses/Xingshu-hub')
-    parser.add_argument('--tag', default='v0.1.0-test.20261021.2')
+    parser.add_argument('--tag', default='v0.1.0-test.20261021.3')
+    parser.add_argument('--extra-package', type=Path, action='append', default=[])
     args = parser.parse_args()
     archive = args.package.resolve(strict=True)
     checksum = Path(str(archive) + '.sha256').resolve(strict=True)
     expected = checksum.read_text('utf-8').split()[0]
     assert hashlib.sha256(archive.read_bytes()).hexdigest() == expected, 'ZIP checksum mismatch'
+    upload_paths=[archive,checksum]
+    for extra in args.extra_package:
+        extra=extra.resolve(strict=True)
+        extra_checksum=Path(str(extra)+'.sha256').resolve(strict=True)
+        assert hashlib.sha256(extra.read_bytes()).hexdigest()==extra_checksum.read_text('utf8').split()[0], 'Extra ZIP checksum mismatch'
+        upload_paths.extend([extra,extra_checksum])
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=args.source, text=True).strip()
     tag_commit = subprocess.check_output(['git', 'rev-parse', args.tag + '^{commit}'], cwd=args.source, text=True).strip()
     assert commit == tag_commit, 'Source and release tag differ'
@@ -50,7 +57,7 @@ def main():
         'tag_name': args.tag, 'target_commitish': commit, 'name': '星枢群发测试版 ' + args.tag,
         'body': args.body.read_text('utf-8'), 'draft': True, 'prerelease': True})
     assets = request('GET', api + '/releases/' + str(release['id']) + '/assets')
-    for path in (archive, checksum):
+    for path in upload_paths:
         digest = 'sha256:' + hashlib.sha256(path.read_bytes()).hexdigest()
         asset = next((a for a in assets if a['name'] == path.name), None)
         if asset:
@@ -64,7 +71,7 @@ def main():
         'body': args.body.read_text('utf-8'), 'draft': False, 'prerelease': True, 'make_latest': 'false'})
     confirmed = request('GET', api + '/releases/tags/' + urllib.parse.quote(args.tag, safe=''))
     assert not confirmed['draft'] and confirmed['prerelease']
-    for path in (archive, checksum):
+    for path in upload_paths:
         asset = next(a for a in confirmed['assets'] if a['name'] == path.name)
         assert asset['state'] == 'uploaded' and asset['size'] == path.stat().st_size
     print('PUBLISHED: ' + published['html_url'], flush=True)

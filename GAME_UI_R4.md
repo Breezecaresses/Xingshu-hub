@@ -24,7 +24,7 @@ R4 加入当前操作归属与创建时长快照：
 - Windows Release 构建通过。36项思考计时、进度归属、评分及牌扇检查通过，覆盖旧回调覆盖/清空新条、时长快照、结束后复活、房间清理，以及1、5、10、16、24张牌的边界和逐张命中。
 - Steam 国服、TapTap 各552个游戏成员引用、7个反射字段兼容校验通过；17个其他程序集未变。`tools/verify_thinking_time.ps1` 校验新增的显示归属入口及原有计时和统计入口。
 - 补丁幂等检查通过：对最终 R4 再应用补丁，67038个现有方法体均未变化。
-- 安装使用 `tools/install_game_ui_candidate.ps1`，安装前确认无游戏进程、旧哈希和备份正确。最终候选见本机 `APX-Dev/build/runtime-truth-fix/deployment.json`；成功安装记录保存为 `game-ui-r4-installed.json`，不覆盖 R2。
+- 安装使用 `tools/install_game_ui_candidate.ps1`，安装前确认无游戏进程、旧哈希和备份正确。最终候选见本机 `XingShu-Dev/build/runtime-truth-fix/deployment.json`；成功安装记录保存为 `game-ui-r4-installed.json`，不覆盖 R2。
 - 实际安装时间：2026-10-21 06:28:33（UTC+8）。安装后再次核对两端运行容器和原生组件，共4项安装哈希、4项备份哈希全部一致。Steam 容器 SHA-256：`63bf324d91667daff4edc4ce2fb5ff00de1bb46e10f8706300ed8cca434170e2`；TapTap 容器：`c623fe7e2e1a2251dc435cf8fd782e76303dd112f61efaa8e8db664d064929ed`。
 - 上述为编译、纯逻辑与补丁检查。叠牌观感、悬停操作和切回合/出牌时进度条的实际表现仍需对局复测。
 

@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $taskRoot = 'E:\工作流\星引擎插件'
-$updateDir = Join-Path $taskRoot 'APX-Dev\build\runtime-truth-fix'
+$updateDir = Join-Path $taskRoot 'XingShu-Dev\build\runtime-truth-fix'
 $source = Join-Path $taskRoot 'AstralParty-Hub\src-tauri\target\release\xingshu-hub.exe'
 $target = Join-Path $taskRoot 'AstralParty-Hub\release\XingShu\Hub\xingshu-hub.exe'
 if ((Get-Item -LiteralPath $source).LastWriteTime -lt (Get-Item -LiteralPath (Join-Path $taskRoot 'AstralParty-Hub\dist\index.html')).LastWriteTime) { throw 'Hub build is not finished' }

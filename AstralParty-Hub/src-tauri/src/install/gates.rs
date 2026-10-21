@@ -64,7 +64,7 @@ pub struct ActiveChildGate;
 
 impl ActiveChildGate {
     pub fn check(_manifest: &HubPackageManifestV1, _target_root: &Path) -> HubResult<()> {
-        // Section 37: PHASE 0 defines the gate interface; full APX active directory check will activate once protocol confirmed.
+        // Section 37: PHASE 0 defines the gate interface; full XingShu active directory check will activate once protocol confirmed.
         Ok(())
     }
 }

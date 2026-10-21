@@ -309,7 +309,7 @@ try {
       bundleId: '6cc68f014947b66dea74130802768a37',
       containerSha256: '105E39705202C5DC125063D2A9412FB0573E61213906C731827F14660C996C10',
       hookTextAssetPathId: 99992000,
-      hookSignatures: ['APXBootstrap.EnsureRuntimeHost', 'SpectatorEventInterceptor.Initialize'],
+      hookSignatures: ['XingShuBootstrap.EnsureRuntimeHost', 'SpectatorEventInterceptor.Initialize'],
       compatibilityStatus: 'VERIFIED',
       lastVerifiedAt: '2026-10-17T00:00:00Z',
     };

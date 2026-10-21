@@ -87,9 +87,9 @@ function runTest(name: string, fn: () => void): void {
 
 const mockVersions: RuntimeVersion[] = [
   {
-    version_id: 'apx-1.3.4',
-    runtime_type: 'APX',
-    version_name: 'APX v1.3.4 (Production Core)',
+    version_id: 'xingshu-1.3.4',
+    runtime_type: 'XingShu',
+    version_name: 'XingShu v1.3.4 (Production Core)',
     is_installed: true,
     is_active: true,
     install_date: '2026-10-15',
@@ -115,9 +115,9 @@ const mockVersions: RuntimeVersion[] = [
 ];
 
 const mockInstalledRuntime: InstalledRuntime = {
-  version_id: 'apx-1.3.4',
-  runtime_type: 'APX',
-  version_name: 'APX v1.3.4 (Production Core)',
+  version_id: 'xingshu-1.3.4',
+  runtime_type: 'XingShu',
+  version_name: 'XingShu v1.3.4 (Production Core)',
   install_path: 'com.unity.addressables/.../__data',
   container_hash: 'sha256:7f8e219ba420d931acbf6e',
   manifest_verified: true,
@@ -146,7 +146,7 @@ runTest('Test 1: Status is "已就绪 / 游戏未运行" when game is closed', (
   };
 
   const state = deriveRuntimeTruthState({
-    selectedVersionId: 'apx-1.3.4',
+    selectedVersionId: 'xingshu-1.3.4',
     versions: mockVersions,
     installedRuntime: mockInstalledRuntime,
     gameProcess,
@@ -162,10 +162,10 @@ runTest('Test 1: Status is "已就绪 / 游戏未运行" when game is closed', (
   assertStrictEqual(state.active_session.handshake_status, HANDSHAKE_DISCONNECTED, 'handshake_status is DISCONNECTED');
 
   // Verify version matrix badges
-  const badgeApx = getVersionItemBadge(mockVersions[0], state, true);
-  assertStrictEqual(badgeApx.label, '【已就绪】', 'Selected plan badge is 【已就绪】');
-  assertStrictEqual(badgeApx.isLiveActive, false, 'badgeApx.isLiveActive is false');
-  assert(!badgeApx.label.includes('正在运行'), 'Selected plan badge strictly does NOT say 正在运行');
+  const badgeXingShu = getVersionItemBadge(mockVersions[0], state, true);
+  assertStrictEqual(badgeXingShu.label, '【已就绪】', 'Selected plan badge is 【已就绪】');
+  assertStrictEqual(badgeXingShu.isLiveActive, false, 'badgeXingShu.isLiveActive is false');
+  assert(!badgeXingShu.label.includes('正在运行'), 'Selected plan badge strictly does NOT say 正在运行');
 
   const badgeBep = getVersionItemBadge(mockVersions[1], state, true);
   assertStrictEqual(badgeBep.label, '【已安装】', 'Unselected installed badge is 【已安装】');
@@ -202,7 +202,7 @@ runTest('Test 2: Status is "等待 Runtime 连接" when game running without han
   };
 
   const state = deriveRuntimeTruthState({
-    selectedVersionId: 'apx-1.3.4',
+    selectedVersionId: 'xingshu-1.3.4',
     versions: mockVersions,
     installedRuntime: mockInstalledRuntime,
     gameProcess,
@@ -219,10 +219,10 @@ runTest('Test 2: Status is "等待 Runtime 连接" when game running without han
   assertStrictEqual(state.active_session.handshake_status, HANDSHAKE_HELLO_PENDING, 'handshake_status is HELLO_PENDING');
 
   // Verify version badge
-  const badgeApx = getVersionItemBadge(mockVersions[0], state, true);
-  assertStrictEqual(badgeApx.label, '【已安装 / 等待连接】', 'Selected plan badge shows 【已安装 / 等待连接】');
-  assertStrictEqual(badgeApx.isLiveActive, false, 'isLiveActive is false');
-  assert(!badgeApx.label.includes('正在运行'), 'Selected plan badge does NOT say 正在运行');
+  const badgeXingShu = getVersionItemBadge(mockVersions[0], state, true);
+  assertStrictEqual(badgeXingShu.label, '【已安装 / 等待连接】', 'Selected plan badge shows 【已安装 / 等待连接】');
+  assertStrictEqual(badgeXingShu.isLiveActive, false, 'isLiveActive is false');
+  assert(!badgeXingShu.label.includes('正在运行'), 'Selected plan badge does NOT say 正在运行');
 });
 
 // -----------------------------------------------------------------------------
@@ -244,14 +244,14 @@ runTest('Test 3: Status is "当前会话活跃 (PID)" when game running with ver
     tcpConnected: true,
     protocolVersion: '0.1',
     gamePid: 9527,
-    runtimeVersion: 'apx-1.3.4',
+    runtimeVersion: 'xingshu-1.3.4',
     lastHeartbeatTimestamp: Date.now(),
     lastHeartbeatLatencyMs: 0.35,
     activeTransport: 'LOOPBACK_TCP',
   };
 
   const state = deriveRuntimeTruthState({
-    selectedVersionId: 'apx-1.3.4',
+    selectedVersionId: 'xingshu-1.3.4',
     versions: mockVersions,
     installedRuntime: mockInstalledRuntime,
     gameProcess,
@@ -267,10 +267,10 @@ runTest('Test 3: Status is "当前会话活跃 (PID)" when game running with ver
   assertStrictEqual(state.overall_status_display, '当前会话活跃 (PID: 9527)', 'overall_status_display contains PID 9527');
 
   // Verify version badge
-  const badgeApx = getVersionItemBadge(mockVersions[0], state, true);
-  assertStrictEqual(badgeApx.label, '【当前会话活跃 (PID: 9527)】', 'Active version row displays 【当前会话活跃 (PID: 9527)】');
-  assertStrictEqual(badgeApx.isLiveActive, true, 'badgeApx.isLiveActive is true');
-  assertStrictEqual(badgeApx.badgeClass, 'badge badge-success', 'Badge is badge-success');
+  const badgeXingShu = getVersionItemBadge(mockVersions[0], state, true);
+  assertStrictEqual(badgeXingShu.label, '【当前会话活跃 (PID: 9527)】', 'Active version row displays 【当前会话活跃 (PID: 9527)】');
+  assertStrictEqual(badgeXingShu.isLiveActive, true, 'badgeXingShu.isLiveActive is true');
+  assertStrictEqual(badgeXingShu.badgeClass, 'badge badge-success', 'Badge is badge-success');
 
   // Verify bridge and game process display helpers
   const bridgeDisp3 = getBridgeStateDisplay(state.bridge_state, true);
@@ -303,7 +303,7 @@ runTest('Test 4: Legacy RC1.1 condition displays legacy warning', () => {
   };
 
   const stateA = deriveRuntimeTruthState({
-    selectedVersionId: 'apx-1.3.4',
+    selectedVersionId: 'xingshu-1.3.4',
     versions: mockVersions,
     installedRuntime: mockInstalledRuntime,
     gameProcess,
@@ -326,7 +326,7 @@ runTest('Test 4: Legacy RC1.1 condition displays legacy warning', () => {
   };
 
   const stateB = deriveRuntimeTruthState({
-    selectedVersionId: 'apx-1.3.4',
+    selectedVersionId: 'xingshu-1.3.4',
     versions: mockVersions,
     installedRuntime: mockInstalledRuntime,
     gameProcess,
@@ -345,7 +345,7 @@ runTest('Test 4: Legacy RC1.1 condition displays legacy warning', () => {
   };
 
   const stateC = deriveRuntimeTruthState({
-    selectedVersionId: 'apx-1.3.4',
+    selectedVersionId: 'xingshu-1.3.4',
     versions: mockVersions,
     installedRuntime: mockInstalledRuntime,
     gameProcess,

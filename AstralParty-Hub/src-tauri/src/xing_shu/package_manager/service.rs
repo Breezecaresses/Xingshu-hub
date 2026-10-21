@@ -4,7 +4,7 @@ use tracing::info;
 
 use crate::domain::error::{HubError, HubResult};
 use crate::xing_shu::package_manager::adapter::{
-    ApmmPackageAdapter, IPackageFormatAdapter, LegacyApxAdapter, XspkgV1Adapter,
+    ApmmPackageAdapter, IPackageFormatAdapter, LegacyXingShuAdapter, XspkgV1Adapter,
 };
 use crate::xing_shu::package_manager::format::{XspkgManifest, XspkgType};
 
@@ -33,7 +33,7 @@ impl XingShuPackageManager {
         Self {
             adapters: vec![
                 Box::new(XspkgV1Adapter),
-                Box::new(LegacyApxAdapter),
+                Box::new(LegacyXingShuAdapter),
                 Box::new(ApmmPackageAdapter),
             ],
         }
@@ -60,7 +60,7 @@ impl XingShuPackageManager {
 
         Err(HubError::new(
             "UNSUPPORTED_PACKAGE_FORMAT",
-            format!("No adapter recognized package format for '{}'. Supported extensions: .xspkg, .apx, .apmm, .zip", filename),
+            format!("No adapter recognized package format for '{}'. Supported extensions: .xspkg, .xingshu, .apmm, .zip", filename),
             "PACKAGE",
         ))
     }

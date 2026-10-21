@@ -5,9 +5,9 @@ import shutil
 
 ROOT = Path(__file__).resolve().parents[1]
 FOLDERS = [
-    'APX-Dev/src/APX.hooks', 'APX-Dev/assets/vanilla-ui-r3',
-    'APX-Dev/tools/MatchLifecycleTests',
-    'APX-Dev/tools/RuntimeBootstrap',
+    'XingShu-Dev/src/XingShu.Runtime', 'XingShu-Dev/assets/vanilla-ui-r3',
+    'XingShu-Dev/tools/MatchLifecycleTests',
+    'XingShu-Dev/tools/RuntimeBootstrap',
     'AstralParty-Hub/src', 'AstralParty-Hub/src-tauri/src',
     'AstralParty-Hub/src-tauri/tests', 'AstralParty-Hub/src-tauri/capabilities',
     'AstralParty-Hub/src-tauri/icons', 'AstralParty-Hub/public',
@@ -17,12 +17,12 @@ FILES = [
     'card_names_zh_cn_official.json', 'runtime_card_registry.generated.json',
     'HAND_TRUTH_SOURCE_ARCHITECTURE.md', 'OVERLAY_LIFECYCLE_RECONCILIATION.md', 'GAME_UI_R1.md', 'GAME_UI_R2.md', 'GAME_UI_R3.md', 'GAME_UI_R4.md', 'MONSTER_TARGETING.md',
     'AUTO_FOLLOW_PROTOCOL.md', 'AUTO_FOLLOW_STATE_MACHINE.md',
-    'APX-Dev/tools/build.ps1', 'APX-Dev/tools/generate_platform_profiles_cs.py',
-    'APX-Dev/tools/TestMonsterTargetRunner.cs', 'APX-Dev/tools/TestMonsterTargetContextRunner.cs',
-    'APX-Dev/tools/test_monster_targeting.ps1',
-    'APX-Dev/tools/test_decision_stats.ps1', 'APX-Dev/tools/test_native_ipc_harness.py',
-    'APX-Dev/tools/generate_canonical_card_registries.py',
-    'APX-Dev/tools/build_game_ui_skin.py', 'APX-Dev/tools/generate_ui_payloads.py',
+    'XingShu-Dev/tools/build.ps1', 'XingShu-Dev/tools/generate_platform_profiles_cs.py',
+    'XingShu-Dev/tools/TestMonsterTargetRunner.cs', 'XingShu-Dev/tools/TestMonsterTargetContextRunner.cs',
+    'XingShu-Dev/tools/test_monster_targeting.ps1',
+    'XingShu-Dev/tools/test_decision_stats.ps1', 'XingShu-Dev/tools/test_native_ipc_harness.py',
+    'XingShu-Dev/tools/generate_canonical_card_registries.py',
+    'XingShu-Dev/tools/build_game_ui_skin.py', 'XingShu-Dev/tools/generate_ui_payloads.py',
     'AstralParty-Hub/package.json', 'AstralParty-Hub/package-lock.json',
     'AstralParty-Hub/index.html', 'AstralParty-Hub/vite.config.ts',
     'AstralParty-Hub/tsconfig.json', 'AstralParty-Hub/tsconfig.node.json',
@@ -35,12 +35,13 @@ FILES = [
     'tools/patch_thinking_time.ps1', 'tools/verify_thinking_time.ps1',
     'tools/patch_thinking_clock.cs', 'tools/install_game_ui_r2.ps1', 'tools/install_game_ui_candidate.ps1',
     'tools/prepare_runtime_truth_fix.py', 'tools/install_runtime_truth_fix.ps1',
-    'tools/patch_taptap_runtime.cs',
+    'tools/patch_taptap_runtime.cs', 'tools/legacy_runtime_names.json',
     'tools/check_runtime_compatibility.ps1',
     'tools/prepare_android_runtime.py', 'tools/android_runtime_device.py',
     'tools/check_android_runtime.ps1', 'ANDROID_COMPATIBILITY.md',
     'tools/install_hub_watch_join_fix.ps1', 'tools/export_source_repo.py',
-    'tools/GroupTestInstaller.cs', 'tools/package_group_test.py', 'tools/publish_release.py', 'GROUP_DISTRIBUTION_20261021_2.md',
+    'tools/GroupTestInstaller.cs', 'tools/package_group_test.py', 'tools/package_android_preview.py', 'tools/publish_release.py', 'GROUP_DISTRIBUTION_20261021_2.md', 'GROUP_DISTRIBUTION_20261021_3.md',
+    'tools/AndroidPreviewInstaller.cs', 'XingShu-Dev/tools/test_preference_migration.ps1',
 ]
 SKIP_DIRS = {'.git', 'bin', 'obj', 'target', 'node_modules', '__pycache__', 'dist', 'release'}
 SKIP_SUFFIXES = {'.dll', '.exe', '.pdb', '.bundle', '.7z', '.zip', '.rar', '.log', '.pyc', '.tsbuildinfo'}
@@ -78,7 +79,7 @@ def main():
         if destination not in target.resolve().parents:
             raise SystemExit('Target escaped source checkout')
         target.parent.mkdir(parents=True, exist_ok=True)
-        if source.suffix.lower() in {'.cs', '.rs', '.ts', '.tsx', '.json', '.css', '.ps1', '.py', '.md', '.toml', '.html'}:
+        if source.suffix.lower() in {'.cs', '.rs', '.ts', '.tsx', '.json', '.css', '.ps1', '.py', '.md', '.toml', '.html', '.lock'}:
             normalized = b'\n'.join(line.rstrip(b'\r') for line in source.read_bytes().split(b'\n'))
             existing = target.read_bytes() if target.exists() else b''
             previous = b'\n'.join(line.rstrip(b'\r') for line in existing.split(b'\n'))
@@ -116,13 +117,13 @@ def main():
 
 星枢 Hub（React / Tauri / Rust）与游戏 Runtime（C#）的当前源码。
 
-此目录是独立 Git 源码仓库，来自正在调试的工作区；原工作区及其 APX-Dev Git 历史保持原样。后续在原工作区修改时，运行 `python tools/export_source_repo.py <本仓库路径>` 同步源码，再审阅 Git 差异。
+此目录是独立 Git 源码仓库，来自正在调试的工作区；原工作区及其 XingShu-Dev Git 历史保持原样。后续在原工作区修改时，运行 `python tools/export_source_repo.py <本仓库路径>` 同步源码，再审阅 Git 差异。
 
 ## 构建
 
 Hub：进入 `AstralParty-Hub`，执行 `npm ci`、`npm run tauri -- build --no-bundle`。需要 Node.js、Rust、Windows C++ 构建工具与 WebView2。
 
-Runtime：执行 `APX-Dev/tools/build.ps1 -Configuration Release`，需要 Visual Studio MSBuild、Python。从自己的合法游戏安装提取对应版本 `AstralParty.Runtime.dll`，放入项目文件默认的 `APX-Dev/references/updated_20261019_verified/`，或通过 `AstralPartyRuntimePath` 属性指定；其余引用位于 `APX-Dev/references/{unity,framework,thirdparty}`。图标位于 `APX-Dev/assets/vanilla-ui-r3`。Cecil 补丁工具另需 Mono.Cecil 与 Mono.Cecil.Rocks 放入 `APX-Dev/tools/lib`。本仓库不包含游戏程序集、游戏容器、账号凭据或运行日志。
+Runtime：执行 `XingShu-Dev/tools/build.ps1 -Configuration Release`，需要 Visual Studio MSBuild、Python。从自己的合法游戏安装提取对应版本 `AstralParty.Runtime.dll`，放入项目文件默认的 `XingShu-Dev/references/updated_20261019_verified/`，或通过 `AstralPartyRuntimePath` 属性指定；其余引用位于 `XingShu-Dev/references/{unity,framework,thirdparty}`。图标位于 `XingShu-Dev/assets/vanilla-ui-r3`。Cecil 补丁工具另需 Mono.Cecil 与 Mono.Cecil.Rocks 放入 `XingShu-Dev/tools/lib`。本仓库不包含游戏程序集、游戏容器、账号凭据或运行日志。
 
 部署脚本仍包含本机已验证的游戏路径，其他电脑使用前应修改并验证目标位置。跨平台启动按账号中心绑定和对应 exe 设置路由；Steam / TapTap 有本机测试环境，其他平台尚无实机验证。
 
@@ -132,7 +133,7 @@ Runtime：执行 `APX-Dev/tools/build.ps1 -Configuration Release`，需要 Visua
 
 十倍思考时间修改选人及本地操作计时；不能据此承诺服务端强制截止也延长十倍。免登录全量手牌、远程独立账号池尚未实现。
 
-自动化回归：`npm run test:resolver`、`npm run test:auto-follow`、`npm run test:runtime-truth-closure`；Rust `cargo test --lib local_watcher` 及 `cargo test --lib configured_platform_match_end_releases_only_the_spectator`。C# 独立生命周期测试位于 `APX-Dev/tools/MatchLifecycleTests`。
+自动化回归：`npm run test:resolver`、`npm run test:auto-follow`、`npm run test:runtime-truth-closure`；Rust `cargo test --lib local_watcher` 及 `cargo test --lib configured_platform_match_end_releases_only_the_spectator`。C# 独立生命周期测试位于 `XingShu-Dev/tools/MatchLifecycleTests`。
 ''')
     print(f'Exported {count} source files, {size / 1024 / 1024:.2f} MiB to {destination}')
 

@@ -75,22 +75,22 @@ impl DiagnosticRuleEngine {
             });
         }
 
-        // Rule 3: APX presence check
-        if snapshot.apx_detected {
+        // Rule 3: XingShu presence check
+        if snapshot.xingshu_detected {
             items.push(DiagnosticItem {
-                rule_id: "APX_DETECTED".into(),
-                title: "APX Runtime Environment Active".into(),
+                rule_id: "XINGSHU_DETECTED".into(),
+                title: "XingShu Runtime Environment Active".into(),
                 severity: "OK".into(),
-                description: format!("APX runtime loader located at {}", snapshot.apx_path.as_deref().unwrap_or("game directory")),
+                description: format!("XingShu runtime loader located at {}", snapshot.xingshu_path.as_deref().unwrap_or("game directory")),
                 recommendation: None,
             });
         } else {
             items.push(DiagnosticItem {
-                rule_id: "APX_NOT_FOUND".into(),
-                title: "APX Runtime Not Detected".into(),
+                rule_id: "XINGSHU_NOT_FOUND".into(),
+                title: "XingShu Runtime Not Detected".into(),
                 severity: "INFO".into(),
-                description: "APX runtime loader not found in game directory. Standard mods and manual plugins can still be managed.".into(),
-                recommendation: Some("Install the APX runtime package to enable advanced in-game plugins.".into()),
+                description: "XingShu runtime loader not found in game directory. Standard mods and manual plugins can still be managed.".into(),
+                recommendation: Some("Install the XingShu runtime package to enable advanced in-game plugins.".into()),
             });
         }
 

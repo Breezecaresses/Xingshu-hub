@@ -36,7 +36,7 @@ pub struct DataEnvelope<T> {
 pub struct ProviderMetadata {
     pub id: String,
     pub name: String,
-    pub provider_type: String, // "OfficialApi", "LocalGame", "LocalLog", "APXRuntime", "ImportedData"
+    pub provider_type: String, // "OfficialApi", "LocalGame", "LocalLog", "XingShuRuntime", "ImportedData"
     pub version: String,
     pub description: String,
 }

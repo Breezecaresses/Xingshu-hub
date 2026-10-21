@@ -186,10 +186,10 @@ runGate(3, 'Runtime 21026–21029 cards match', () => {
 // Gate 4: No manual duplicate card table in C#
 // =============================================================================
 runGate(4, 'No manual duplicate card table in C#', () => {
-  const csharpDir = path.resolve(repoRoot, 'APX-Dev/src/APX.hooks');
-  assert(fs.existsSync(csharpDir), 'Gate 4: APX.hooks directory exists');
+  const csharpDir = path.resolve(repoRoot, 'XingShu-Dev/src/XingShu.Runtime');
+  assert(fs.existsSync(csharpDir), 'Gate 4: XingShu.Runtime directory exists');
 
-  // Recursively inspect all .cs files in APX.hooks
+  // Recursively inspect all .cs files in XingShu.Runtime
   function getAllCsFiles(dir: string): string[] {
     let results: string[] = [];
     const list = fs.readdirSync(dir, { withFileTypes: true });
@@ -224,13 +224,13 @@ runGate(4, 'No manual duplicate card table in C#', () => {
   }
 
   // Verify TrackedCard uses official GetCardConfigure()
-  const trackedCardFile = path.resolve(csharpDir, 'APXRuntime/Utilities/TrackedCard.cs');
+  const trackedCardFile = path.resolve(csharpDir, 'XingShuRuntime/Utilities/TrackedCard.cs');
   assert(fs.existsSync(trackedCardFile), 'Gate 4: TrackedCard.cs exists');
   const trackedContent = fs.readFileSync(trackedCardFile, 'utf-8');
   assert(trackedContent.includes('GetCardConfigure'), 'Gate 4: TrackedCard uses official GetCardConfigure()');
 
   // Verify HandCardDisplayManager uses TrackedCard
-  const displayMgr = path.resolve(csharpDir, 'APXRuntime/Utilities/HandCardDisplayManager.cs');
+  const displayMgr = path.resolve(csharpDir, 'XingShuRuntime/Utilities/HandCardDisplayManager.cs');
   assert(fs.existsSync(displayMgr), 'Gate 4: HandCardDisplayManager.cs exists');
   const mgrContent = fs.readFileSync(displayMgr, 'utf-8');
   assert(mgrContent.includes('TrackedCard'), 'Gate 4: HandCardDisplayManager uses TrackedCard');

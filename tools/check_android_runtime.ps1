@@ -1,7 +1,7 @@
 param([Parameter(Mandatory)][string]$HooksDll)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
-Add-Type -Path (Join-Path $taskRoot 'APX-Dev/tools/lib/Mono.Cecil.dll')
+Add-Type -Path (Join-Path $taskRoot 'XingShu-Dev/tools/lib/Mono.Cecil.dll')
 $taskAssembly = [Mono.Cecil.AssemblyDefinition]::ReadAssembly((Resolve-Path -LiteralPath $HooksDll).Path)
 foreach ($taskType in $taskAssembly.MainModule.GetTypeReferences()) {
     if ($taskType.FullName -in @('System.Diagnostics.Process', 'System.Diagnostics.ProcessStartInfo', 'System.Console')) {
@@ -18,5 +18,16 @@ foreach ($taskType in (Get-TaskTypes $taskAssembly.MainModule.Types)) {
 }
 $taskHost = $taskAssembly.MainModule.Types | Where-Object FullName -eq 'XingShu.Runtime.XingShuRuntimeHost'
 $taskVersion = ($taskHost.Fields | Where-Object Name -eq 'RuntimeVersion').Constant
-if ($taskVersion -ne '1.0.0-android-preview2') { throw "Unexpected preview version: $taskVersion" }
-Write-Output "PASS: Android preview identity; no Process/Console references or native imports"
+if ($taskVersion -ne '1.0.0-android-preview4') { throw "Unexpected preview version: $taskVersion" }
+$taskClock = $taskAssembly.MainModule.Types | Where-Object FullName -eq 'XingShuRuntime.Utilities.ThinkingClock'
+$taskClockSource = $taskClock.Methods | Where-Object Name -eq 'RealSeconds'
+if (!($taskClockSource.Body.Instructions | Where-Object { $_.Operand -and $_.Operand.ToString().Contains('System.DateTime::get_UtcNow') })) {
+    throw 'Android thinking clock is missing its real-time source'
+}
+$taskClient = $taskAssembly.MainModule.Types | Where-Object FullName -eq 'XingShu.Bridge.XingShuBridgeClient'
+$taskStart = $taskClient.Methods | Where-Object Name -eq 'Start'
+if ($taskStart.Body.Instructions | Where-Object { $_.Operand -and $_.Operand.ToString().Contains('System.Threading.Thread::') }) {
+    throw 'Android preview still starts the desktop bridge connection thread'
+}
+Write-Output 'PASS: Android preview identity; real-time clock; desktop bridge paused; no Process/Console references or native imports'
+$taskAssembly.Dispose()

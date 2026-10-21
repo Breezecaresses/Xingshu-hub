@@ -247,8 +247,8 @@ export const DiagnosticsPage: React.FC = () => {
                 <span>{isZh ? '运行时快照' : 'Runtime Snapshot'}</span>
               </h2>
               <div className="code-box">
-                <div><strong>{isZh ? '运行时存在' : 'APX Present'}:</strong> {report.snapshot.apx_detected ? (isZh ? '是' : 'Yes') : (isZh ? '否' : 'No')}</div>
-                <div><strong>{isZh ? '运行时路径' : 'APX Path'}:</strong> {report.snapshot.apx_path || (isZh ? '无' : 'None')}</div>
+                <div><strong>{isZh ? '运行时存在' : 'XingShu Present'}:</strong> {report.snapshot.xingshu_detected ? (isZh ? '是' : 'Yes') : (isZh ? '否' : 'No')}</div>
+                <div><strong>{isZh ? '运行时路径' : 'XingShu Path'}:</strong> {report.snapshot.xingshu_path || (isZh ? '无' : 'None')}</div>
                 <div style={{ marginTop: 8 }}>
                   <strong>{isZh ? '近期事务数' : 'Recent Transactions'}:</strong> {report.snapshot.recent_transactions.length}
                 </div>

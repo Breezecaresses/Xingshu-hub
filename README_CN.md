@@ -20,7 +20,9 @@
 
 ## 群发测试包
 
-当前[群发测试包](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261021.2)标记为预发布，不作为正式稳定版。完整解压 ZIP 后运行“星枢安装助手.exe”，支持 Steam 国服、TapTap 3.3.0 / 资源026。手牌挂件默认整体60%，可调40%–120%。已知边界见[本次说明](GROUP_DISTRIBUTION_20261021_2.md)，包中不附带仅限本地验证的原生变速原型。
+当前[群发测试包](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261021.3)标记为预发布，不作为正式稳定版。完整解压 ZIP 后运行“星枢安装助手.exe”，支持 Steam 国服、TapTap 3.3.0 / 资源026。手牌挂件默认整体60%，可调40%–120%。已知边界见[本次说明](GROUP_DISTRIBUTION_20261021_3.md)，包中不附带仅限本地验证的原生变速原型。
+
+本版补充手机、电脑和 Hub 的移动步数统计，并统一维护源码与运行时命名。安卓预览包另附电脑 ADB 一键安装/还原助手，当前仅在 MuMu 5 号实例验证，纯手机独立安装器尚未提供。
 
 ---
 
@@ -30,7 +32,7 @@
 
 项目由两大部分构成：
 1. **AstralParty-Hub（星枢控制台）**：基于 Tauri 2 + Rust + React 19 构建的现代化桌面管理中枢。提供账号隔离管理、运行时生命周期监管、本地回环通信中继以及自动化观战跟房控制。
-2. **APX Runtime（游戏增强运行时）**：注入游戏进程的 C# Unity 增强模块。提供浮动状态卡牌悬浮窗、HUD 挂件、对局统计、自适应生命周期调和以及基于权威数据源的手牌真值镜像。
+2. **XingShu Runtime（游戏增强运行时）**：注入游戏进程的 C# Unity 增强模块。提供浮动状态卡牌悬浮窗、HUD 挂件、对局统计、自适应生命周期调和以及基于权威数据源的手牌真值镜像。
 
 ---
 
@@ -78,7 +80,7 @@ flowchart TD
         AccountMgr <--> FSM
     end
 
-    subgraph RuntimeSpectator["APX Runtime (已绑定的观战客户端)"]
+    subgraph RuntimeSpectator["XingShu Runtime (已绑定的观战客户端)"]
         SpecHook["WatchLogic 拦截挂钩"]
         SpecStore["SpectatorStateStore (权威手牌快照)"]
         SpecBridge["Bridge Client (Loopback TCP)"]
@@ -86,7 +88,7 @@ flowchart TD
         SpecStore --> SpecBridge
     end
 
-    subgraph RuntimeMain["APX Runtime (已绑定的主游戏客户端)"]
+    subgraph RuntimeMain["XingShu Runtime (已绑定的主游戏客户端)"]
         MainBridge["Bridge Client (Loopback TCP)"]
         TruthSource["HandTruthSource 权威数据源判定"]
         Reconcile["Overlay 生命周期自适应调和"]
@@ -133,8 +135,8 @@ flowchart TD
 │   │   ├── src/xing_shu/       # 本地 TCP Bridge 服务端、协议编解码、观战流
 │   │   └── Cargo.toml          # Rust 依赖配置
 │   └── package.json            # 前端依赖配置
-├── APX-Dev/                    # 游戏内 C# 运行时模块
-│   ├── src/APX.hooks/          # APX 核心逻辑 (HandTruthSource, UI 挂件, 协议客户端)
+├── XingShu-Dev/                    # 游戏内 C# 运行时模块
+│   ├── src/XingShu.Runtime/          # XingShu 核心逻辑 (HandTruthSource, UI 挂件, 协议客户端)
 │   ├── tools/                  # MSBuild 构建脚本、生命周期测试与引导工具
 │   └── assets/                 # 游戏内 UI 资产与图标 (vanilla-ui-r3)
 ├── tools/                      # 自动化工具集 (注册表生成、补丁脚本、源码同步)
@@ -175,22 +177,22 @@ npm run tauri -- build --no-bundle
 
 ---
 
-### 2. APX Runtime (C# 游戏运行时)
+### 2. XingShu Runtime (C# 游戏运行时)
 
 #### 环境要求
 - 支持 C# 11 的 Visual Studio MSBuild；项目使用游戏引用程序集，目标框架为 .NET Framework 4.0
 - Python 3.x
-- Mono.Cecil 及 Mono.Cecil.Rocks（放置于 `APX-Dev/tools/lib`）
+- Mono.Cecil 及 Mono.Cecil.Rocks（放置于 `XingShu-Dev/tools/lib`）
 
 #### 依赖准备
 从合法的自身游戏客户端提取对应版本的 `AstralParty.Runtime.dll`，放置于项目默认路径：
-`APX-Dev/references/updated_20261019_verified/`（或在生成配置中通过 `AstralPartyRuntimePath` MSBuild 属性指定）。
-其余依赖程序集按需要配置于 `APX-Dev/references/{unity,framework,thirdparty}`。
+`XingShu-Dev/references/updated_20261019_verified/`（或在生成配置中通过 `AstralPartyRuntimePath` MSBuild 属性指定）。
+其余依赖程序集按需要配置于 `XingShu-Dev/references/{unity,framework,thirdparty}`。
 
 #### 构建步骤
 ```powershell
 # 执行编译脚本
-.\APX-Dev\tools\build.ps1 -Configuration Release
+.\XingShu-Dev\tools\build.ps1 -Configuration Release
 ```
 
 ---

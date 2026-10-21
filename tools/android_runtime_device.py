@@ -60,13 +60,16 @@ def main():
     if adb("get-state") != "device":
         raise RuntimeError("Device is not ready")
     package_info = shell("dumpsys", "package", PACKAGE)
-    if "versionName=" + manifest["appVersion"] not in package_info:
+    version = re.search(r"^\s*versionName=(\S+)\s*$", package_info, re.MULTILINE)
+    if version is None or version.group(1) != manifest["appVersion"]:
         raise RuntimeError("Game app version differs from the verified candidate")
     current_sha = remote_sha(target)
     vanilla = manifest["originalSha256"]
     candidate_sha = manifest["candidateSha256"]
     if args.action == "install":
         source = Path(manifest["candidate"])
+        if not source.is_absolute():
+            source = args.manifest.resolve().parent / source
         if sha(source) != candidate_sha:
             raise RuntimeError("Candidate hash differs from manifest")
         if current_sha != vanilla:

@@ -114,9 +114,9 @@ fn installer_path(package: &Path) -> Option<PathBuf> {
 pub fn inventory(db: &Database, game: &GameInstallation) -> HubResult<ExtensionInventory> {
     let root = game_root(game)?;
     let repo = ExtensionRepository::new(db.clone());
-    let mut out = ExtensionInventory { entries: vec![], plugin_directory: root.join("apx/plugins").display().to_string(),
+    let mut out = ExtensionInventory { entries: vec![], plugin_directory: root.join("xingshu/plugins").display().to_string(),
         mod_directory: root.join("mods").display().to_string(), resource_directory: root.join("resources").display().to_string(), warnings: vec![], installer_available: package_root().is_some() };
-    for (id, name, version, path, manifest, category) in repo.list_plugins()?.into_iter().map(|p| (p.plugin_id,p.name,p.installed_version,p.install_path,p.manifest_json,"apx-plugin"))
+    for (id, name, version, path, manifest, category) in repo.list_plugins()?.into_iter().map(|p| (p.plugin_id,p.name,p.installed_version,p.install_path,p.manifest_json,"xingshu-plugin"))
         .chain(repo.list_mods()?.into_iter().map(|p| (p.mod_id,p.name,p.installed_version,p.install_path,p.manifest_json,"mod"))) {
         let Some(path) = path else { continue };
         if !Path::new(&path).starts_with(&root) { continue; }
@@ -135,13 +135,13 @@ pub fn inventory(db: &Database, game: &GameInstallation) -> HubResult<ExtensionI
             let installed = hash.eq_ignore_ascii_case(runtime["sha256"].as_str().unwrap_or_default());
             if installed {
                 out.entries.insert(0, ExtensionEntry { id: "builtin.runtime".into(), package_id: "xingshu.runtime.core".into(),
-                    name: "星枢运行时与内置功能".into(), category: "apx-plugin".into(), version: runtime["version"].as_str().map(String::from),
+                    name: "星枢运行时与内置功能".into(), category: "xingshu-plugin".into(), version: runtime["version"].as_str().map(String::from),
                     path: path.display().to_string(), source: "游戏文件 SHA256 核验".into(), status: "文件已核验".into(),
                     description: "包含观战手牌、角色与战绩同步、功能中心及本地计时。内置功能随运行时一起更新，请在游戏中查看启用状态。".into(), managed: false });
             } else { out.warnings.push("当前游戏资源与本版运行时指纹不同；不将其视为已安装最新版。请使用群测助手检查。".into()); }
         }
     }
-    for (directory, category) in [("apx/plugins", "apx-plugin"), ("BepInEx/plugins", "apx-plugin"), ("mods", "mod"), ("resources", "resource-pack"), ("modimg", "resource-pack")] {
+    for (directory, category) in [("xingshu/plugins", "xingshu-plugin"), ("BepInEx/plugins", "xingshu-plugin"), ("mods", "mod"), ("resources", "resource-pack"), ("modimg", "resource-pack")] {
         let dir = root.join(directory);
         let files = match std::fs::read_dir(&dir) { Ok(f) => f, Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue, Err(e) => { out.warnings.push(format!("无法读取 {}：{}", dir.display(), e)); continue } };
         for file in files.take(200) {
@@ -149,8 +149,8 @@ pub fn inventory(db: &Database, game: &GameInstallation) -> HubResult<ExtensionI
             let path = file.path();
             if file.file_type().map(|t| t.is_symlink()).unwrap_or(true) { continue; }
             if out.entries.iter().any(|e| Path::new(&e.path).starts_with(&path) || path.starts_with(Path::new(&e.path))) { continue; }
-            if category == "apx-plugin" && !path.is_dir() && path.extension().and_then(|e| e.to_str()) != Some("dll") { continue; }
-            let archive = matches!(path.extension().and_then(|e| e.to_str()), Some("zip" | "xspkg" | "apx"));
+            if category == "xingshu-plugin" && !path.is_dir() && path.extension().and_then(|e| e.to_str()) != Some("dll") { continue; }
+            let archive = matches!(path.extension().and_then(|e| e.to_str()), Some("zip" | "xspkg" | "xingshu"));
             out.entries.push(ExtensionEntry { id: format!("local:{}", path.display()), package_id: String::new(), name: file.file_name().to_string_lossy().into(), category: category.into(),
                 version: None, path: path.display().to_string(), source: "本地目录扫描".into(), status: if archive { "本地归档 · 未验证安装" } else { "本地文件 · 加载状态待确认" }.into(), description: "由外部工具或手动放入；星枢只展示检测到的文件，不推断它是否已加载。".into(), managed: false });
         }
@@ -212,7 +212,7 @@ mod tests {
             "schemaVersion":1,
             "package":{"id":"tests.scoped-mod","type":"mod","name":"隔离测试","version":version,"publisher":"fixture"},
             "compatibility":{"game":{"appId":"2622000","platforms":platforms}},
-            "install":{"requiresGameClosed":true,"requiresApxClosed":true,"backup":true},
+            "install":{"requiresGameClosed":true,"requiresXingShuClosed":true,"backup":true},
             "files":[{"source":"payload/settings.ini","target":"game/mods/scoped-test/settings.ini","sha256":hex::encode(Sha256::digest(content)),"size":content.len()}]
         });
         zip.start_file("manifest.json", opts).unwrap();

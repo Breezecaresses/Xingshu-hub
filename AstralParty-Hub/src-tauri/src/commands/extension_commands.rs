@@ -38,7 +38,7 @@ pub async fn uninstall_extension(
 ) -> HubResult<()> {
     let game = crate::extension_center::get_game(&center.db, &installation_id)?;
     let inventory = crate::extension_center::inventory(&center.db, &game)?;
-    if !inventory.entries.iter().any(|e| e.id == extension_id && e.managed && (e.category == "apx-plugin") == is_plugin) {
+    if !inventory.entries.iter().any(|e| e.id == extension_id && e.managed && (e.category == "xingshu-plugin") == is_plugin) {
         return Err(crate::domain::error::HubError::security_violation("扩展不属于所选安装位置。"));
     }
     let root = crate::extension_center::game_root(&game)?;

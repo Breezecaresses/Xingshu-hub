@@ -36,10 +36,11 @@ impl PackageParser {
         }
 
         // 3. Deserialize and validate
-        let manifest: HubPackageManifestV1 = serde_json::from_str(&manifest_str).map_err(|e| {
+        let mut manifest: HubPackageManifestV1 = serde_json::from_str(&manifest_str).map_err(|e| {
             HubError::invalid_manifest(format!("Failed to parse manifest.json: {e}"))
         })?;
 
+        super::legacy_names::normalize(&mut manifest);
         ManifestValidator::validate(&manifest)?;
 
         // 4. Verify that all declared sources actually exist inside the archive

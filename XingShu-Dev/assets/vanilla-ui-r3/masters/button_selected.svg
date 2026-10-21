@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="64" viewBox="0 0 192 64">
+  <defs>
+    <linearGradient id="btn_sel_bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#B2F848"/>
+      <stop offset="100%" stop-color="#9EEB30"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="188" height="60" rx="14" ry="14" fill="url(#btn_sel_bg)" stroke="#D4FFA0" stroke-width="1.2"/>
+</svg>

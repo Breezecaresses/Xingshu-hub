@@ -72,7 +72,7 @@ export const ImportPackagePage: React.FC = () => {
             type="text"
             className="form-input"
             style={{ flex: 1 }}
-            placeholder={isZh ? '输入扩展包绝对路径 (支持 .xspkg, .zip, .apx 等)' : 'Enter absolute path to .xspkg or .zip package'}
+            placeholder={isZh ? '输入扩展包绝对路径 (支持 .xspkg, .zip, .xingshu 等)' : 'Enter absolute path to .xspkg or .zip package'}
             value={zipPath}
             onChange={(e) => { setZipPath(e.target.value); setManifest(null); setTransaction(null); }}
             onKeyDown={(e) => e.key === 'Enter' && handleInspect()}

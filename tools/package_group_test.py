@@ -62,7 +62,7 @@ def verify_installer(package, profiles, release):
             (fixture / platform['ExeName']).write_bytes(b'installer fixture; not executable')
             target = fixture / platform['BundleRelativePath']
             target.parent.mkdir(parents=True)
-            baseline = ROOT / 'APX-Dev/build/runtime-truth-fix' / platform['Id'] / ('__data.before.' + profile['containerSha256'].lower()[:12])
+            baseline = ROOT / 'XingShu-Dev/build/runtime-truth-fix' / platform['Id'] / ('__data.before.' + profile['containerSha256'].lower()[:12])
             shutil.copy2(baseline, target)
             original = sha(target)
             invoke(exe, '--check', platform['Id'], fixture)
@@ -113,14 +113,14 @@ def verify_installer(package, profiles, release):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--version', default='0.1.0-test.20261021.2')
+    parser.add_argument('--version', default='0.1.0-test.20261021.3')
     parser.add_argument('--source-commit', required=True)
     args = parser.parse_args()
     if not all(c.isascii() and (c.isalnum() or c in '.-') for c in args.version):
         raise SystemExit('Invalid version')
     if not re.fullmatch('[0-9a-f]{40}', args.source_commit):
         raise SystemExit('Expected the full verified source commit SHA')
-    version_source = (ROOT / 'APX-Dev/src/APX.hooks/XingShu/Runtime/XingShuRuntimeHost.cs').read_text('utf-8')
+    version_source = (ROOT / 'XingShu-Dev/src/XingShu.Runtime/XingShu/Runtime/XingShuRuntimeHost.cs').read_text('utf-8')
     runtime_version = re.search(r'#else\s+public const string RuntimeVersion = "([^"]+)"', version_source).group(1)
     hub_version = json.loads((ROOT / 'AstralParty-Hub/package.json').read_text('utf-8'))['version']
     publish = ROOT / '发布包'
@@ -142,7 +142,7 @@ def main():
     (stage / 'Hub').mkdir()
     shutil.copy2(hub, stage / 'Hub/xingshu-hub.exe')
     profiles = json.loads((ROOT / 'AstralParty-Hub/src-tauri/src/xing_shu/platform/platform_profiles.json').read_text('utf-8'))
-    deployment = json.loads((ROOT / 'APX-Dev/build/runtime-truth-fix/deployment.json').read_text('utf-8'))
+    deployment = json.loads((ROOT / 'XingShu-Dev/build/runtime-truth-fix/deployment.json').read_text('utf-8'))
     release = {'FormatVersion': 1, 'Version': args.version, 'HubSha256': sha(hub),
                'SourceCommit': args.source_commit, 'RuntimeVersion': runtime_version, 'HubVersion': hub_version,
                'ExtensionManagementChannels': ['STEAM_CN', 'STEAM_GLOBAL', 'TAPTAP', 'BILIBILI', 'WEGAME'],
@@ -197,6 +197,7 @@ Hub 扩展目录管理：Steam 国服、Steam 国际服、TapTap Windows、哔�
 角色中心展示 37 条官方角色配置，其中 2 条名称、技能和立绘尚未完整发布，单列为“官方预更新”，未提供的内容显示待更新，不算作未持有的已上线角色。
 角色、皮肤、羁绊与档案采用立绘详情布局；卡牌提供完整竖版大图、效果详情及原生动态异画。特殊异化与场地效果归入地图与场地，筹码另有图鉴。
 历史对战按账号保存，可点开单场阵容、结算数据与星枢评分。PVE 显示胜负，PVP 显示名次；结算金币保留展示且不参与评分，辅助转账 20 以上有额外贡献权重。没有返回的指标显示“—”。
+手机、电脑插件、统计挂件及 Hub 历史详情均增加“移动步数”；局内显示已确认累计步数，结算及回放使用服务器 MovePoint 数据校准。旧历史缺少步数时显示“—”，重新读取可补齐可用的回放结算。
 包管理器、运行时插件、游戏模组共用“渠道与安装位置”，导入时务必选中正确目录。支持声明渠道的 .xspkg / .zip 包；旧包未声明渠道时仅按 Steam 国服处理。
 星枢运行时页也按此渠道和目录显示实际游戏进程、文件指纹核验及当前连接上报版本；磁盘安装状态与正在运行的版本分开显示。
 运行时插件页会核验本版内置运行时；其他 DLL 和模组、modimg 卡面资源从实际目录扫描。手动安装项只展示文件，不假定已加载，也不提供删除按钮。
@@ -253,13 +254,13 @@ F1 / 悬浮球：功能中心。Ctrl+Shift+H：手牌面板。十倍思考时间
 
 更新：
 • 37条角色配置，含2个官方预更新角色；角色、卡牌、动态异画、筹码与地图详情。
-• 对局详情与评分：PVE显示胜负，辅助转账提高权重，结算金币保留且不计分。
+• 手机、电脑和Hub对局详情补充移动步数，结算后校准。
 • 五渠道独立目录，插件和模组实际扫描；其他渠道未附带运行时。
-• 粉黄半透明界面与游戏字体，所有挂件统一设计。
+• 粉黄挂件与触屏适配；“静态立绘”改为“模组加载”，页内“立绘替换”。
 • 叠放长卡、悬停详情，默认60%，整体大小可调。
 • 地图击飞、怪物冷却与10格索敌提示。
 • 十倍思考不随加速变快，修复进度条旧计时覆盖。
-• 保留选目标时的镜头移动与缩放；原生接口最高10倍，本包不附原型组件。
+• 源码和运行时文件统一星枢命名，保留旧设置；安卓预览包另附。
 
 使用反馈：同房／换房连续两局换牌、观战退房再跟房、自然结算退出、收牌／星币／治疗致谢。
 完整手牌需登录官方观战端；十倍计时受服务端限制。

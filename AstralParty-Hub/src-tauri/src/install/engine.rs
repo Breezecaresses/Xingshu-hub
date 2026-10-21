@@ -40,7 +40,7 @@ impl InstallEngine {
     pub fn resolve_logical_target(game_root: &Path, logical_target: &str) -> HubResult<PathBuf> {
         let clean = logical_target.replace('\\', "/");
         crate::security::path_guard::PathGuard::sanitize_relative_path(&clean)?;
-        let target = [("apx/plugins/", "apx/plugins"), ("game/mods/", "mods"), ("game/resources/", "resources"), ("hub/data/", "hub_data")]
+        let target = [("xingshu/plugins/", "xingshu/plugins"), ("game/mods/", "mods"), ("game/resources/", "resources"), ("hub/data/", "hub_data")]
             .iter().find_map(|(prefix, directory)| clean.strip_prefix(prefix).map(|rel| game_root.join(directory).join(rel)))
             .ok_or_else(|| HubError::invalid_manifest(format!("Unrecognized logical prefix in '{logical_target}'")))?;
         crate::security::path_guard::PathGuard::ensure_within_root(game_root, &target)
@@ -112,7 +112,7 @@ impl InstallEngine {
         // Step 1: Safety Gates
         self.log_step(&tx_id, 1, "SAFETY_GATES", "RUNNING")?;
         PathSafetyGate::check(&manifest)?;
-        CatalogGate::check(&manifest, &["apx/plugins/", "game/mods/", "game/resources/", "hub/data/"])?;
+        CatalogGate::check(&manifest, &["xingshu/plugins/", "game/mods/", "game/resources/", "hub/data/"])?;
         ProcessGate::check_target(Path::new(game_installation.executable_path.as_deref().unwrap_or_default()))?;
         
         let total_size: u64 = manifest.files.iter().map(|f| f.size).sum();
@@ -202,7 +202,7 @@ impl InstallEngine {
         self.log_step(&tx_id, 5, "POST_VERIFY", "PASSED")?;
 
         // Step 7: Record installed extension entity
-        if pkg_type == "apx-plugin" {
+        if pkg_type == "xingshu-plugin" {
             let plugin = Plugin {
                 plugin_id: pkg_id.clone(),
                 name: manifest.package.name.clone(),

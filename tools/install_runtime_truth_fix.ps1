@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $taskRoot = 'E:\工作流\星引擎插件'
-$updateDir = Join-Path $taskRoot 'APX-Dev\build\runtime-truth-fix'
+$updateDir = Join-Path $taskRoot 'XingShu-Dev\build\runtime-truth-fix'
 $hubSource = Join-Path $taskRoot 'AstralParty-Hub\src-tauri\target\release\xingshu-hub.exe'
 $hubTarget = Join-Path $taskRoot 'AstralParty-Hub\release\XingShu\Hub\xingshu-hub.exe'
 $steamExe = 'E:\Steam\steamapps\common\Astral Party\8vJXn6CN\AstralParty_CN.exe'

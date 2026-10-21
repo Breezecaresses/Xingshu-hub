@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="24" viewBox="0 0 128 24">
-  <defs>
-    <linearGradient id="sf_grad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#20C8E8"/>
-      <stop offset="100%" stop-color="#A6F23A"/>
-    </linearGradient>
-  </defs>
-  <rect x="1.5" y="1.5" width="125" height="21" rx="10" ry="10" fill="url(#sf_grad)"/>
-</svg>

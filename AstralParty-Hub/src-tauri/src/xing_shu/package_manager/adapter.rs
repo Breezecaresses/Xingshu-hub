@@ -83,31 +83,31 @@ impl IPackageFormatAdapter for XspkgV1Adapter {
     }
 }
 
-// 2. Legacy APX Adapter (.apx)
-pub struct LegacyApxAdapter;
+// 2. Legacy XingShu Adapter (.xingshu)
+pub struct LegacyXingShuAdapter;
 
-impl IPackageFormatAdapter for LegacyApxAdapter {
+impl IPackageFormatAdapter for LegacyXingShuAdapter {
     fn format_name(&self) -> &str {
-        "Legacy APX Plugin Package (.apx)"
+        "Legacy XingShu Plugin Package (.xingshu)"
     }
 
     fn can_handle(&self, filename: &str) -> bool {
-        filename.to_lowercase().ends_with(".apx")
+        filename.to_lowercase().ends_with(".xingshu")
     }
 
     fn inspect(&self, path: &Path) -> HubResult<XspkgManifest> {
         let file = File::open(path).map_err(|e| {
-            HubError::new("PACKAGE_OPEN_ERROR", format!("Cannot open .apx package {}: {e}", path.display()), "PACKAGE")
+            HubError::new("PACKAGE_OPEN_ERROR", format!("Cannot open .xingshu package {}: {e}", path.display()), "PACKAGE")
         })?;
         let mut archive = ZipArchive::new(file).map_err(|e| {
-            HubError::new("INVALID_ZIP_ARCHIVE", format!("Invalid .apx archive: {e}"), "PACKAGE")
+            HubError::new("INVALID_ZIP_ARCHIVE", format!("Invalid .xingshu archive: {e}"), "PACKAGE")
         })?;
 
         let (manifest_str, entry_filename) = {
-            if let Ok(mut entry) = archive.by_name("apx.json") {
+            if let Ok(mut entry) = archive.by_name("xingshu.json") {
                 let mut s = String::new();
                 entry.read_to_string(&mut s).ok();
-                (s, "apx.json")
+                (s, "xingshu.json")
             } else if let Ok(mut entry) = archive.by_name("plugin.json") {
                 let mut s = String::new();
                 entry.read_to_string(&mut s).ok();
@@ -115,7 +115,7 @@ impl IPackageFormatAdapter for LegacyApxAdapter {
             } else {
                 return Err(HubError::new(
                     "MISSING_LEGACY_MANIFEST",
-                    "Legacy .apx package missing apx.json or plugin.json",
+                    "Legacy .xingshu package missing xingshu.json or plugin.json",
                     "PACKAGE",
                 ));
             }
@@ -126,12 +126,12 @@ impl IPackageFormatAdapter for LegacyApxAdapter {
         })?;
 
         let package_id = val.get("id").or_else(|| val.get("plugin_id"))
-            .and_then(|v| v.as_str()).unwrap_or("legacy.apx.plugin").to_string();
+            .and_then(|v| v.as_str()).unwrap_or("legacy.xingshu.plugin").to_string();
         let name = val.get("name").or_else(|| val.get("title"))
-            .and_then(|v| v.as_str()).unwrap_or("Legacy APX Plugin").to_string();
+            .and_then(|v| v.as_str()).unwrap_or("Legacy XingShu Plugin").to_string();
         let version = val.get("version").and_then(|v| v.as_str()).unwrap_or("1.0.0").to_string();
         let author = val.get("author").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string();
-        let description = val.get("description").and_then(|v| v.as_str()).unwrap_or("Migrated from legacy APX package format.").to_string();
+        let description = val.get("description").and_then(|v| v.as_str()).unwrap_or("Migrated from legacy XingShu package format.").to_string();
         let entry_dll = val.get("entry_dll").or_else(|| val.get("dll")).and_then(|v| v.as_str()).map(|s| s.to_string());
 
         let checksum = calculate_file_sha256(path)?;
@@ -151,7 +151,7 @@ impl IPackageFormatAdapter for LegacyApxAdapter {
             permissions: vec!["runtime_hook".into()],
             checksum_sha256: Some(checksum),
             signature: None,
-            legacy_format_origin: Some("apx_v0_legacy".into()),
+            legacy_format_origin: Some("xingshu_v0_legacy".into()),
         })
     }
 }
@@ -225,10 +225,10 @@ mod tests {
         assert!(xspkg.can_handle("test.XSPKG"));
         assert!(!xspkg.can_handle("my_mod.zip"));
 
-        let apx = LegacyApxAdapter;
-        assert!(apx.can_handle("legacy.apx"));
-        assert!(apx.can_handle("plugin.APX"));
-        assert!(!apx.can_handle("legacy.xspkg"));
+        let xingshu = LegacyXingShuAdapter;
+        assert!(xingshu.can_handle("legacy.xingshu"));
+        assert!(xingshu.can_handle("plugin.XingShu"));
+        assert!(!xingshu.can_handle("legacy.xspkg"));
 
         let apmm = ApmmPackageAdapter;
         assert!(apmm.can_handle("costume.apmm"));

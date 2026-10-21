@@ -1,4 +1,4 @@
-"""Export official offline encyclopedia from restored Unity configuration, never patched APX tables.
+"""Export official offline encyclopedia from restored Unity configuration, never patched XingShu tables.
 
 Run export_catalog_schema.ps1 first. Schemas come from Cecil metadata, not guessed field offsets.
 """
@@ -118,7 +118,7 @@ def decode(data, typ):
 
 
 def extract():
-    for path in sorted((ROOT / 'APX/CN_STEAM/3.3.0/restore').rglob('__data')):
+    for path in sorted((ROOT / 'XingShu/CN_STEAM/3.3.0/restore').rglob('__data')):
         if path.stat().st_size > 3_000_000:
             continue
         tables = {}
@@ -137,7 +137,7 @@ def main():
     sys.stdout.reconfigure(encoding='utf-8')
     tables, source = extract()
     # Retain decoded source only in build cache, not a runtime dependency.
-    cache = ROOT / 'APX-Dev/build/catalog'
+    cache = ROOT / 'XingShu-Dev/build/catalog'
     cache.mkdir(parents=True, exist_ok=True)
     (cache / 'tables.json').write_text(json.dumps(tables, ensure_ascii=False, indent=2), 'utf-8')
     loc = {k: {r['Id']: r.get('Simplified', '') for r in v.get('Locals', [])} for k, v in tables.items() if k.startswith('STR')}
@@ -252,7 +252,7 @@ def main():
 
 @lru_cache(maxsize=1)
 def addressable_catalog():
-    sys.path.insert(0,str(ROOT/'APX-Dev/tools'))
+    sys.path.insert(0,str(ROOT/'XingShu-Dev/tools'))
     from build_card_asset_inventory_v2 import parse_catalog
     aa=Path('E:/steam/steamapps/common/Astral Party/8vJXn6CN/AstralParty_CN_Data/StreamingAssets/aa')
     keys,entries,buckets=parse_catalog(str(aa/'catalog.bundle'))

@@ -1,0 +1,5 @@
+{
+  "assembly": "APX.hooks",
+  "runtimeNamespace": "APXRuntime",
+  "bootstrapType": "APX.APXUpdatedBootstrap"
+}
