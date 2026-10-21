@@ -69,7 +69,10 @@ internal static class GroupTest
         if (Hash(manifest) != PackageIdentity.ManifestSha256)
             throw new InvalidOperationException("发布包清单校验失败，请重新完整解压原始压缩包。");
         Release = Json.Deserialize<ReleaseInfo>(File.ReadAllText(manifest, Encoding.UTF8));
-        if (Release == null || Release.FormatVersion != 1 || Release.Platforms == null || Release.Platforms.Length != 2)
+        if (Release == null || Release.FormatVersion != 1 || Release.Platforms == null ||
+            Release.Platforms.Length < 1 || Release.Platforms.Length > 2 ||
+            Release.Platforms.Any(p => p == null || (p.Id != "STEAM_CN" && p.Id != "TAPTAP")) ||
+            Release.Platforms.Select(p => p.Id).Distinct().Count() != Release.Platforms.Length)
             throw new InvalidOperationException("不支持的发布包格式。");
     }
 

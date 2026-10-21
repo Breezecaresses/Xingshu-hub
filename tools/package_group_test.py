@@ -66,6 +66,10 @@ def verify_installer(package, profiles, release):
             shutil.copy2(baseline, target)
             original = sha(target)
             invoke(exe, '--check', platform['Id'], fixture)
+            if len(release['Platforms']) == 1:
+                other = 'TAPTAP' if platform['Id'] == 'STEAM_CN' else 'STEAM_CN'
+                invoke(exe, '--install', other, fixture, ok=False)
+                assert sha(target) == original, 'Single-channel package changed another channel'
             invoke(exe, '--check-closed', platform['Id'], fixture)
             invoke(exe, '--install', platform['Id'], fixture)
             assert sha(target) == platform['PayloadSha256']
