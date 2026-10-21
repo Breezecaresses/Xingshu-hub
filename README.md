@@ -1,4 +1,4 @@
-# XingShu (星枢)
+# XingShu (星枢)【吉星派对游戏助手】
 
 <p align="center">
   <strong>Multi-client game enhancement runtime and cross-process control hub for Astral Party</strong>
