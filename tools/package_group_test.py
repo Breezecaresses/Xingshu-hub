@@ -115,6 +115,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--version', default='0.1.0-test.20261021.3')
     parser.add_argument('--source-commit', required=True)
+    parser.add_argument('--platform', choices=['all','STEAM_CN','TAPTAP'], default='all')
     args = parser.parse_args()
     if not all(c.isascii() and (c.isalnum() or c in '.-') for c in args.version):
         raise SystemExit('Invalid version')
@@ -125,7 +126,8 @@ def main():
     hub_version = json.loads((ROOT / 'AstralParty-Hub/package.json').read_text('utf-8'))['version']
     publish = ROOT / '发布包'
     publish.mkdir(exist_ok=True)
-    name = 'XingShu_' + args.version
+    channel = {'all':'','STEAM_CN':'Steam_','TAPTAP':'TapTap_'}[args.platform]
+    name = 'XingShu_' + channel + args.version
     destination = publish / name
     archive = publish / (name + '.zip')
     if destination.exists() or archive.exists():
@@ -150,6 +152,8 @@ def main():
     for profile in profiles:
         platform = profile['platformId']
         if platform not in ('STEAM_CN', 'TAPTAP'):
+            continue
+        if args.platform != 'all' and platform != args.platform:
             continue
         prepared = next(p for p in deployment if p['platform'] == platform)
         source = Path(prepared['candidate'])
@@ -178,9 +182,10 @@ def main():
                     '/reference:System.Web.Extensions.dll', '/out:' + str(stage / '星枢安装助手.exe'),
                     str(ROOT / 'tools/GroupTestInstaller.cs'), str(identity)], check=True)
     identity.unlink()
+    channel_label = '、'.join(p['Label'] for p in release['Platforms'])
     (stage / '先读我.txt').write_text(f'''星枢 XingShu 群发测试版 {args.version}
 适配：Windows 10/11 64 位，吉星派对 3.3.0 / 资源 026。
-运行时安装文件：Steam 国服和 TapTap Windows 版。
+本下载项包含的运行时：{channel_label}。其他端请下载同一 Release 的对应 Assets。
 Hub 扩展目录管理：Steam 国服、Steam 国际服、TapTap Windows、哔哩哔哩、WeGame；支持同渠道保存多个安装位置。后面三个渠道本版未附带经过验证的运行时安装文件。
 
 安装（不需要 Git、Python、Node.js 或 Rust）
@@ -207,7 +212,7 @@ Hub 扩展目录管理：Steam 国服、Steam 国际服、TapTap Windows、哔�
 插件与测试
 F1 / 悬浮球：功能中心。Ctrl+Shift+H：手牌面板。十倍思考时间与自动致谢请在功能设置中开启。
 本包包含启动修复、头像旁手牌挂件跨局清理、Hub 等待页清理、观战结束退房逻辑、选人/回合/筹码的本地十倍计时和自动致谢修复。
-运行时 1.0.0-game-ui-r5：粉黄功能中心、半透明框架、游戏字体与星形入口统一设计。手牌挂件采用交错叠放长卡，支持10张以上同排、悬停抬牌查看详情，默认整体60%，可在手牌监视页调节40%–120%，自动保存。挂件标题可拖动、收起、选择P1–P4，设置按钮直达调节页。
+运行时 {runtime_version}：粉黄功能中心、半透明框架、游戏字体与星形入口统一设计。手牌挂件采用交错叠放长卡，支持10张以上同排、悬停抬牌查看详情，默认整体60%，可在手牌监视页调节40%–120%，自动保存。挂件标题可拖动、收起、选择P1–P4，设置按钮直达调节页。
 对局统计挂件与功能中心共用详情布局，展示击杀、死亡、输出、承伤、治疗、累计金币、转账、行动回合及结算金币；无数据保留“—”，结算评分按星枢规则计算。
 地图上的击飞预测使用清晰分段颜色和底板；怪物技能冷却仅在地图显示，战斗中概率与名字横向显示。怪物索敌按最大10格估算候选目标，未知岔路保留候选，仅作提示，不修改游戏AI。
 十倍思考时间使用真实时钟，避免被倍速加快；底部进度条按当前操作归属更新，避免旧计时和转发显示反复覆盖。原生加速滑条0.25–10倍、快捷按钮最高5倍；原生接口保留，组件需另行提供。游戏内加速可直接使用。
@@ -248,7 +253,7 @@ F1 / 悬浮球：功能中心。Ctrl+Shift+H：手牌面板。十倍思考时间
     digest = sha(archive)
     (publish / (name + '.zip.sha256')).write_text(digest + '  ' + archive.name + '\n', encoding='utf-8')
     group_note = f'''星枢群发测试版 {args.version}
-适配吉星派对3.3.0／资源026，含Steam国服、TapTap Windows运行时。
+适配吉星派对3.3.0／资源026，本下载项包含{channel_label}运行时。
 
 安装：完整解压，先看“先读我.txt”。退出游戏，用“星枢安装助手.exe”选择实际游戏程序安装；主端、观战端分别安装。支持备份还原及旧群测版升级。
 

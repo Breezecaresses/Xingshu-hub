@@ -43,7 +43,7 @@ FILES = [
     'tools/install_hub_watch_join_fix.ps1', 'tools/export_source_repo.py',
     'tools/GroupTestInstaller.cs', 'tools/package_group_test.py', 'tools/package_android_preview.py', 'tools/publish_release.py', 'GROUP_DISTRIBUTION_20261021_2.md', 'GROUP_DISTRIBUTION_20261021_3.md',
     'tools/AndroidPreviewInstaller.cs', 'XingShu-Dev/tools/test_preference_migration.ps1',
-    'tools/build_android_installer.py', 'ANDROID_PHONE_INSTALL.md',
+    'tools/build_android_installer.py', 'ANDROID_PHONE_INSTALL.md', 'GROUP_DISTRIBUTION_20261022_2.md',
     'XingShu-Dev/tools/test_assist_ball.ps1',
 ]
 SKIP_DIRS = {'.git', '.gradle', 'build', 'bin', 'obj', 'target', 'node_modules', '__pycache__', 'dist', 'release'}
@@ -82,7 +82,7 @@ def main():
         if destination not in target.resolve().parents:
             raise SystemExit('Target escaped source checkout')
         target.parent.mkdir(parents=True, exist_ok=True)
-        if source.suffix.lower() in {'.cs', '.rs', '.ts', '.tsx', '.json', '.css', '.ps1', '.py', '.md', '.toml', '.html', '.lock'}:
+        if source.suffix.lower() in {'.cs', '.rs', '.ts', '.tsx', '.json', '.css', '.ps1', '.py', '.md', '.toml', '.html', '.lock', '.java', '.gradle', '.xml', '.aidl', '.txt', '.c', '.cpp', '.h'}:
             normalized = b'\n'.join(line.rstrip(b'\r') for line in source.read_bytes().split(b'\n'))
             existing = target.read_bytes() if target.exists() else b''
             previous = b'\n'.join(line.rstrip(b'\r') for line in existing.split(b'\n'))

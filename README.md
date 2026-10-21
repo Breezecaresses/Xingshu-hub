@@ -20,9 +20,9 @@
 
 ## Group distribution build
 
-The current [group distribution build](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261021.3) is a prerelease, not the first stable version. Extract the complete ZIP and run `星枢安装助手.exe`. Supports Steam CN and TapTap 3.3.0 / resource 026. The hand dock defaults to 60% overall size, adjustable from 40% to 120%. See [build notes](GROUP_DISTRIBUTION_20261021_3.md) for known limitations. The local-only native speed prototype is excluded.
+The current [group distribution build](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.2) is a prerelease, not the first stable version. Assets provide separate Steam CN, TapTap Windows, and Android downloads. For desktop, extract the matching ZIP and run `星枢安装助手.exe`. Supports Steam CN and TapTap 3.3.0 / resource 026. The hand dock defaults to 60% overall size, adjustable from 40% to 120%. See [build notes](GROUP_DISTRIBUTION_20261022_2.md) for known limitations. The local-only native speed prototype is excluded.
 
-The separate [Android preview and phone installer](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.1) includes a phone APK, a Windows ADB helper, and manual replacement files. The phone helper requires Shizuku to be started and authorized first; see the [phone installation guide](ANDROID_PHONE_INSTALL.md). The Windows game bundle above is unchanged.
+The Android phone helper now pairs and connects to local wireless debugging inside its own APK. Android 11+ users can install, update, and restore using only their phone, without a computer or Shizuku notifications. Existing Shizuku installations remain optional. See the [phone installation guide](ANDROID_PHONE_INSTALL.md). Windows runtime r6 is retained and split into channel-specific assets; desktop ADB and manual Android files are also available.
 
 ---
 
@@ -64,7 +64,7 @@ See [extension channel documentation](AstralParty-Hub/docs/specs/extension_chann
 
 `1.0.0-android-preview5` has been tested with the TapTap MuMu Android 12 game client (3.3.0, resource 026), including runtime loading, touch entry, and phone-helper installation/restore. The mobile button defaults to 64 UI units with a minimum of 48 and independent adjustment. Automatic edge hiding now persists correctly and leaves a tappable strip. Menu and text scaling remain independent; desktop defaults are unchanged.
 
-Physical devices, including Xiaomi 14 Pro and 15, still need permission and gesture validation. Ordinary APK permissions do not grant access to another app's Android/data; the phone helper uses user-authorized Shizuku, with a computer ADB fallback for restricted systems. The desktop bridge is paused on Android, and future server integration remains unimplemented. This is not an Android Hub APK. See [Android compatibility and device deployment](ANDROID_COMPATIBILITY.md) for the tested scope and build/restore commands.
+Xiaomi 14 Pro (Android 16 / HyperOS 3) passed in-APK pairing, local connection, directory checks, official restore, and plugin installation, with device hashes independently verified. System wireless-debugging authorization is still required; Shizuku is optional. Xiaomi 15, other devices, and extended gesture/background scenarios have not been individually verified. The desktop bridge is paused on Android, and future server integration remains unimplemented. This is not an Android Hub APK. See [Android compatibility and device deployment](ANDROID_COMPATIBILITY.md) for the tested scope and build/restore commands.
 
 ## 🏗️ Architecture Overview
 

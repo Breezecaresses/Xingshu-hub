@@ -20,9 +20,9 @@
 
 ## 群发测试包
 
-当前[群发测试包](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261021.3)标记为预发布，不作为正式稳定版。完整解压 ZIP 后运行“星枢安装助手.exe”，支持 Steam 国服、TapTap 3.3.0 / 资源026。手牌挂件默认整体60%，可调40%–120%。已知边界见[本次说明](GROUP_DISTRIBUTION_20261021_3.md)，包中不附带仅限本地验证的原生变速原型。
+当前[群发测试包](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.2)标记为预发布，不作为正式稳定版。Assets 分别提供 Steam 国服、TapTap Windows 和手机安卓下载项，选择对应版本。电脑端完整解压 ZIP 后运行“星枢安装助手.exe”，支持 Steam 国服、TapTap 3.3.0 / 资源026。手牌挂件默认整体60%，可调40%–120%。已知边界见[本次说明](GROUP_DISTRIBUTION_20261022_2.md)，包中不附带仅限本地验证的原生变速原型。
 
-本版补充手机、电脑和 Hub 的移动步数统计，并统一维护源码与运行时命名。最新[安卓预览与手机安装助手](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.1)另行提供，不改动上述 Windows 包；包含手机 APK、电脑 ADB 助手及手动替换文件。手机安装需要先启动并授权 Shizuku，步骤见[手机安装说明](ANDROID_PHONE_INSTALL.md)。
+本版保留手机、电脑和 Hub 的移动步数统计与统一星枢命名，电脑 Runtime 沿用 r6。安卓手机助手新增内置无线调试配对与连接，Android 11+ 可在手机上独立安装、更新和还原，无需电脑或 Shizuku 通知；步骤见[手机安装说明](ANDROID_PHONE_INSTALL.md)。同时保留电脑 ADB 助手和手动替换文件。
 
 ---
 
@@ -64,7 +64,7 @@ GitHub 仓库用于保存源码和版本记录。当前仍需在本机运行 Hub
 
 `1.0.0-android-preview5` 在 TapTap 内置 MuMu 的 Android 12 游戏客户端（3.3.0、资源 026）验证了运行时加载、触屏入口及手机助手安装/还原。手机悬浮球默认 64、最小 48 个界面单位，可单独调整；修复自动收起设置，并保留可点击的露出区域。菜单与文字缩放保持独立，桌面默认尺寸保持原样。
 
-小米 14 Pro、15 等实机的权限与手势仍需验证。普通 APK 不能直接取得其他应用 Android/data 的读写权，手机助手使用经过用户授权的 Shizuku；受系统限制时可用电脑 ADB。安卓桌面网桥暂时停用，未来服务器接口保留；当前没有安卓 Hub APK。完整验证范围和构建命令见[安卓兼容说明](ANDROID_COMPATIBILITY.md)。
+小米 14 Pro（Android 16 / HyperOS 3）已完成手机 APK 内配对、连接、目录检查、原版还原和星枢安装，文件哈希独立核验通过。普通 APK 仍需用户在系统内授权无线调试；已有 Shizuku 也可选用。小米 15、其他设备及长时间手势/后台场景尚未逐一验证。安卓桌面网桥暂时停用，未来服务器接口保留；当前没有安卓 Hub APK。完整验证范围和构建命令见[安卓兼容说明](ANDROID_COMPATIBILITY.md)。
 
 ## 🏗️ 架构概览
 

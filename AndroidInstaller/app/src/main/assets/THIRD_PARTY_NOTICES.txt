@@ -1,0 +1,25 @@
+星枢手机安装助手 — 开源组件
+
+LibADB Android 3.1.1 — Copyright 2021 Muntashir Al-Islam.
+采用 Apache-2.0 授权，部分文件另含 BSD-3-Clause / MIT。
+源码：AndroidInstaller/localadb；UPSTREAM.json 记录来源、校验与本地修改。
+
+SPAKE2 Java / Android 2.2.1 — Copyright 2021 Muntashir Al-Islam.
+LGPL-3.0。ED25519 Java 代码另含 CC0 来源；原文件保留相应声明。
+完整对应源码及原生子模块：AndroidInstaller/third_party/spake2-source。
+本助手使用固定版本 AAR；可以用修改后的库重新编译本助手。
+本项目不限制为调试这些开源库修改而进行的逆向工程。
+
+Conscrypt Android 2.5.3 — Conscrypt Contributors，Apache-2.0。
+随附 conscrypt-NOTICE.txt 保留 BoringSSL 等组件声明。
+Bouncy Castle 1.81 — The Legion of the Bouncy Castle Inc.，Bouncy Castle Licence（MIT 风格）。
+Shizuku API / Provider 13.1.5 — Rikka Apps，Apache-2.0。
+AndroidX Annotation 1.9.1 — The Android Open Source Project，Apache-2.0。
+
+完整许可见 APK assets/licenses/。本助手对应应用源码、构建说明和依赖版本：
+https://github.com/Breezecaresses/Xingshu-hub/tree/main/AndroidInstaller
+https://github.com/MuntashirAkon/spake2-java/tree/2.2.1
+https://github.com/google/conscrypt/tree/2.5.3
+https://github.com/bcgit/bc-java/tree/r1rv81
+
+游戏资源版权归原权利人。

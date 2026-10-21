@@ -1,0 +1,11 @@
+{
+  "version": "2.2.1",
+  "javaSource": "https://github.com/MuntashirAkon/spake2-java/tree/2.2.1",
+  "javaArchiveSha256": "c3f46fe17d5078613ab319d431fcb7a03b88b64d7cd377f6c0ed14f925053e53",
+  "native": {
+    "sha": "0d15933e5ba3e662cb01245a7ac0dc9fca3eac31",
+    "source": "https://codeload.github.com/MuntashirAkon/spake2-c/zip/0d15933e5ba3e662cb01245a7ac0dc9fca3eac31",
+    "archiveSha256": "0f1ae5da428e4f8ddea49e0e33dcfe07d2ac2114443793b8508bdc4dd48e1eec"
+  },
+  "modifications": "None. Source supplied for the pinned Maven AAR and relinking."
+}

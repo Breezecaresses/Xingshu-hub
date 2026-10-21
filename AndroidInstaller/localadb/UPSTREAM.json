@@ -1,0 +1,12 @@
+{
+  "source": "https://codeload.github.com/MuntashirAkon/libadb-android/zip/refs/tags/3.1.1",
+  "tag": "3.1.1",
+  "archiveSha256": "8cdb9b909991ab96da211b293175357345c9d727a22221f36b8d573da7bb1de8",
+  "licenseChoice": "Apache-2.0",
+  "localChanges": [
+    "Bound pairing socket connect/read timeouts; clean failed sockets and pairing state.",
+    "Bound ADB socket connect, stream OPEN and close waits; handle early OPEN acknowledgements.",
+    "Drain peer-closed streams before EOF and wake blocked reads/writes.",
+    "Suppress peer identity debug logging."
+  ]
+}
