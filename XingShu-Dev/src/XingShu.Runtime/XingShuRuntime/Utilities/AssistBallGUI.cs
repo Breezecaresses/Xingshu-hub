@@ -317,6 +317,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 	private float _dragStartTime;
 
 	private float _lastToggleTime = -1f;
+	private float _lastBallInteraction;
 	private float _hoverTimer = 0f;
 
 	private int _cachedActionCount = -1;
@@ -565,26 +566,16 @@ internal sealed class AssistBallGUI : MonoBehaviour
 	{
 		try
 		{
-			if (XingShuMobileUIHelper.IsMobile)
-			{
-				_autoHide = false;
-				_visible = true;
-			}
-			else
-			{
-				_autoHide = XingShuConfigService.GetBool(XingShuConfigKeys.AssistAutoHide, XingShuConfigKeys.AssistAutoHideDefault);
-				_visible = true;
-			}
+			_autoHide = XingShuConfigService.GetBool(XingShuConfigKeys.AssistAutoHide, XingShuConfigKeys.AssistAutoHideDefault);
+			_visible = true;
 			float defaultSize = XingShuMobileUIHelper.IsMobile ? XingShuConfigKeys.AssistSizeMobileDefault : XingShuConfigKeys.AssistSizeDesktopDefault;
 			_ballSize = XingShuConfigService.GetFloat(XingShuConfigKeys.AssistSize, defaultSize);
-			_ballSize = XingShuMobileUIHelper.FiniteClamp(_ballSize, XingShuConfigKeys.AssistSizeMin, XingShuConfigKeys.AssistSizeMax, defaultSize);
-			if (XingShuMobileUIHelper.IsMobile && !XingShuConfigService.HasKey(XingShuConfigKeys.AssistMobileCompactDefaultApplied))
+			bool migrateSize = XingShuMobileUIHelper.IsMobile && !XingShuConfigService.HasKey(XingShuConfigKeys.AssistMobileSizeV2Applied);
+			_ballSize = AssistBallPolicy.Size(_ballSize, XingShuMobileUIHelper.IsMobile, migrateSize);
+			if (migrateSize)
 			{
-				// Migrate the old 64-unit default once; preserve custom sizes and later edits.
-				if (Mathf.Approximately(_ballSize, XingShuConfigKeys.AssistSizeDesktopDefault))
-					_ballSize = defaultSize;
 				XingShuConfigService.SetFloat(XingShuConfigKeys.AssistSize, _ballSize);
-				XingShuConfigService.SetBool(XingShuConfigKeys.AssistMobileCompactDefaultApplied, true);
+				XingShuConfigService.SetBool(XingShuConfigKeys.AssistMobileSizeV2Applied, true);
 				XingShuConfigService.Save();
 			}
 			_ballAlpha = XingShuConfigService.GetFloat(XingShuConfigKeys.AssistAlpha, XingShuConfigKeys.AssistAlphaDefault);
@@ -629,6 +620,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 	internal void SetAutoHide(bool enable)
 	{
 		_autoHide = enable;
+		_lastBallInteraction = Time.unscaledTime;
 		float effectiveScale = EffectiveScale;
 		float canvasW = (float)Screen.width / effectiveScale;
 		float leftEdgeX = -canvasW + _ballSize * 0.5f;
@@ -682,13 +674,13 @@ internal sealed class AssistBallGUI : MonoBehaviour
 				_hotkey = XingShuConfigKeys.AssistHotkeyDefault;
 			}
 			XingShuConfigService.SetKeyCode(XingShuConfigKeys.AssistHotkey, _hotkey);
+			XingShuConfigService.SetBool(XingShuConfigKeys.AssistAutoHide, _autoHide);
 			if (XingShuMobileUIHelper.IsMobile)
 			{
 				XingShuMobileUIHelper.UserScaleMultiplier = _uiScale;
 			}
 			else
 			{
-				XingShuConfigService.SetBool(XingShuConfigKeys.AssistAutoHide, _autoHide);
 				XingShuConfigService.SetFloat(XingShuConfigKeys.AssistDesktopScale, _uiScale);
 			}
 			XingShuConfigService.Save();
@@ -1209,7 +1201,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 						_sizeSlider = transform13.Find("Slider")?.GetComponent<Slider>();
 						if (_sizeSlider != null)
 						{
-							_sizeSlider.minValue = 36f;
+							_sizeSlider.minValue = XingShuMobileUIHelper.IsMobile ? XingShuConfigKeys.AssistSizeMobileMin : XingShuConfigKeys.AssistSizeMin;
 							_sizeSlider.maxValue = 200f;
 							_sizeSlider.SetValueWithoutNotify(_ballSize);
 							_sizeSlider.onValueChanged.AddListener(delegate(float v)
@@ -1839,6 +1831,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 	private void Update()
 	{
 		SyncLayout();
+		UpdateFallbackDock();
 
 		// 互斥门禁: 当新功能中心打开时，强制关闭旧功能助手菜单 (Simultaneous Visible: 0)
 		if (_menuOpen && XingShuRuntime.UI.XingShuUICenter.IsOpen)
@@ -1891,7 +1884,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			float canvasW = (float)Screen.width / effectiveScale;
 			float canvasH = (float)Screen.height / effectiveScale;
 			// 严格保证在各分辨率和缩放倍率下，微露条物理像素为 20px (安全范围 16px ~ 24px)
-			float revealStrip = Mathf.Clamp(20f / effectiveScale, 16f / effectiveScale, 24f / effectiveScale);
+			float revealStrip = AssistBallPolicy.Reveal(_ballSize, effectiveScale, XingShuMobileUIHelper.IsMobile);
 
 			float leftEdgeX = -canvasW + _ballSize * 0.5f;
 			float rightEdgeX = -_ballSize * 0.5f;
@@ -1904,12 +1897,14 @@ internal sealed class AssistBallGUI : MonoBehaviour
 				_ballPos.x = (_dockSide == AssistDockSide.Left) ? leftEdgeX : rightEdgeX;
 			}
 
-			float normalX = (_dockSide == AssistDockSide.Left) ? leftEdgeX : ((_dockSide == AssistDockSide.Right) ? rightEdgeX : _ballPos.x);
+			float normalX = (_dockSide == AssistDockSide.Left) ? leftEdgeX : ((_dockSide == AssistDockSide.Right) ? rightEdgeX : Mathf.Clamp(_ballPos.x, leftEdgeX, rightEdgeX));
 			float hiddenX = (_dockSide == AssistDockSide.Left) ? (-canvasW + revealStrip - _ballSize * 0.5f) : ((_dockSide == AssistDockSide.Right) ? (_ballSize * 0.5f - revealStrip) : _ballPos.x);
 			float targetY = Mathf.Clamp(_ballPos.y, -canvasH + _ballSize * 0.5f, -_ballSize * 0.5f);
 
 			// 鼠标悬停、菜单展开或功能中心打开时自动唤出全显
-			bool shouldHide = _autoHide && _dockSide != AssistDockSide.None && !_isHoveringUGUI && !_menuOpen && (XingShuRuntime.UI.XingShuUICenter.Instance == null || !XingShuRuntime.UI.XingShuUICenter.IsOpen);
+			bool shouldHide = AssistBallPolicy.ShouldHide(_autoHide, _dockSide != AssistDockSide.None,
+				XingShuMobileUIHelper.IsMobile, _isDragging, _isHoveringUGUI,
+				_menuOpen || XingShuRuntime.UI.XingShuUICenter.IsOpen, Time.unscaledTime, _lastBallInteraction);
 			Vector2 targetPos = new Vector2(shouldHide ? hiddenX : normalX, targetY);
 
 			_ballButtonRt.anchoredPosition = Vector2.Lerp(_ballButtonRt.anchoredPosition, targetPos, Time.unscaledDeltaTime * 15f);
@@ -1992,6 +1987,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			if (e.button == PointerEventData.InputButton.Left)
 			{
 				_pointerId = e.pointerId;
+				_lastBallInteraction = Time.unscaledTime;
 				_isDragging = true;
 				_hasMoved = false;
 				_dragStartMousePos = e.position;
@@ -1999,6 +1995,23 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			}
 			// Track B (Phase 2D-7D): 移除旧版右键菜单入口，右键不触发 ToggleMenu (no-op)
 		}
+	}
+
+	private void UpdateFallbackDock()
+	{
+		if (_isUGUIMode || !_autoHide || _isDragging) return;
+		Rect bounds = LayoutBounds;
+		if (_dockSide == AssistDockSide.None)
+			_dockSide = _ballRect.center.x < bounds.center.x ? AssistDockSide.Left : AssistDockSide.Right;
+		bool hide = AssistBallPolicy.ShouldHide(true, true, XingShuMobileUIHelper.IsMobile,
+			false, !XingShuMobileUIHelper.IsMobile && _ballRect.Contains(GetEventGUIPosition(null)),
+			_menuOpen || XingShuRuntime.UI.XingShuUICenter.IsOpen, Time.unscaledTime, _lastBallInteraction);
+		float reveal = AssistBallPolicy.Reveal(_ballSize, EffectiveScale, XingShuMobileUIHelper.IsMobile);
+		float target = _dockSide == AssistDockSide.Left
+			? (hide ? reveal - _ballSize : bounds.xMin)
+			: (hide ? Screen.width / EffectiveScale - reveal : bounds.xMax - _ballSize);
+		_ballRect.x = Mathf.Lerp(_ballRect.x, target, Time.unscaledDeltaTime * 15f);
+		_ballRect.y = Mathf.Clamp(_ballRect.y, bounds.yMin, bounds.yMax - _ballRect.height);
 	}
 
 	internal void PointerDrag(PointerEventData e)
@@ -2055,7 +2068,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 
 	internal void PointerEnter(PointerEventData e)
 	{
-		_isHoveringUGUI = true;
+		_isHoveringUGUI = !XingShuMobileUIHelper.IsMobile && e.pointerId < 0;
 	}
 
 	internal void PointerExit(PointerEventData e)
@@ -2130,6 +2143,8 @@ internal sealed class AssistBallGUI : MonoBehaviour
 
 	internal void CancelPointer()
 	{
+		if (_isDragging) _lastBallInteraction = Time.unscaledTime;
+		if (XingShuMobileUIHelper.IsMobile) _isHoveringUGUI = false;
 		if (_imguiControlId != 0 && GUIUtility.hotControl == _imguiControlId)
 		{
 			GUIUtility.hotControl = 0;
@@ -2326,6 +2341,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 		}
 		else if ((current.type == EventType.MouseUp || current.type == EventType.TouchUp) && _isDragging)
 		{
+			_lastBallInteraction = Time.unscaledTime;
 			_isDragging = false;
 			if (GUIUtility.hotControl == controlID)
 			{
@@ -2341,6 +2357,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			}
 			else
 			{
+				_dockSide = AssistDockSide.None;
 				_ballPos = new Vector2(_ballRect.x, _ballRect.y);
 				SaveConfig();
 			}
@@ -2348,7 +2365,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 		}
 
 		// 保证悬浮入口完整留在安全屏幕区域内 (Screen Clamp)
-		_ballRect = ClampBallToScreen(_ballRect, layoutBounds);
+		if (!_autoHide || _isDragging) _ballRect = ClampBallToScreen(_ballRect, layoutBounds);
 
 		Color color = GUI.color;
 		GUI.color = new Color(1f, 1f, 1f, _ballAlpha);
@@ -2530,7 +2547,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 				textColor = new Color(0.85f, 0.88f, 0.94f)
 			}
 		});
-		float num3 = GUILayout.HorizontalSlider(_ballSize, 36f, 200f);
+		float num3 = GUILayout.HorizontalSlider(_ballSize, XingShuMobileUIHelper.IsMobile ? XingShuConfigKeys.AssistSizeMobileMin : XingShuConfigKeys.AssistSizeMin, XingShuConfigKeys.AssistSizeMax);
 		if (Mathf.Abs(num3 - _ballSize) > 0.5f)
 		{
 			SetBallSize(num3);
@@ -3002,7 +3019,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 
 	private void SetBallSize(float value)
 	{
-		_ballSize = XingShuMobileUIHelper.FiniteClamp(value, 36f, 200f, 64f);
+		_ballSize = AssistBallPolicy.Size(value, XingShuMobileUIHelper.IsMobile, false);
 		SyncLayout(force: true);
 		UpdateSettingsUI();
 	}

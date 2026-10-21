@@ -136,7 +136,11 @@ internal static class XingShuConfigKeys
 
 	internal const float AssistSizeDesktopDefault = 64.0f;
 
-	internal const float AssistSizeMobileDefault = 44.0f;
+	internal const float AssistSizeMobileDefault = 64.0f;
+
+	internal const float AssistSizeMobileMin = 48.0f;
+
+	internal const string AssistMobileSizeV2Applied = "XINGSHU_ASSIST_MOBILE_SIZE_V2_APPLIED";
 
 	internal const string AssistMobileCompactDefaultApplied = "XINGSHU_ASSIST_MOBILE_COMPACT_DEFAULT_APPLIED";
 

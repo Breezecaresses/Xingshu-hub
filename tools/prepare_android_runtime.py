@@ -74,7 +74,7 @@ def main():
     assert all(after[key] == value for key, value in before.items() if key != runtime_obj.path_id)
     assert all(int(obj.assets_file.target_platform) == 13 for obj in verified.objects)
     manifest = {"platform": "ANDROID_CN", "package": "com.feimo.astralparty",
-                "appVersion": "3.3.0", "runtimeVersion": "1.0.0-android-preview4",
+                "appVersion": "3.3.0", "runtimeVersion": "1.0.0-android-preview5",
                 "originalSha256": shared.sha(original),
                 "candidateSha256": shared.sha(candidate.read_bytes()),
                 "hooksSha256": shared.sha(hooks), "candidate": str(candidate),

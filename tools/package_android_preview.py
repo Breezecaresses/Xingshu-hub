@@ -15,6 +15,8 @@ def main():
     parser.add_argument('--manifest',type=Path,required=True)
     parser.add_argument('--version',required=True)
     parser.add_argument('--source-commit',required=True)
+    parser.add_argument('--phone-apk',type=Path,required=True)
+    parser.add_argument('--vanilla',type=Path,required=True)
     args=parser.parse_args()
     import re
     if not re.fullmatch('[a-f0-9]{40}',args.source_commit): raise SystemExit('Expected full source commit')
@@ -22,6 +24,10 @@ def main():
     candidate=Path(manifest['candidate'])
     assert sha(candidate)==manifest['candidateSha256']
     assert manifest['platform']=='ANDROID_CN' and manifest['nativeLibraries']==[]
+    assert sha(args.vanilla)==manifest['originalSha256']
+    with zipfile.ZipFile(args.phone_apk) as apk:
+        assert hashlib.sha256(apk.read('assets/candidate.__data')).hexdigest()==manifest['candidateSha256']
+        assert hashlib.sha256(apk.read('assets/vanilla.__data')).hexdigest()==manifest['originalSha256']
     name='XingShu_Android_'+args.version
     publish=ROOT/'发布包'; publish.mkdir(exist_ok=True)
     destination=publish/name
@@ -35,6 +41,15 @@ def main():
     shutil.copy2(ROOT/'tools/android_runtime_device.py',destination/'android_runtime_device.py')
     shutil.copy2(ROOT/'ANDROID_COMPATIBILITY.md',destination/'兼容性说明.md')
     shutil.copy2(ROOT/'LICENSE',destination/'LICENSE.txt')
+    shutil.copy2(args.phone_apk,destination/'星枢手机安装助手.apk')
+    shutil.copy2(ROOT/'ANDROID_PHONE_INSTALL.md',destination/'手机安装与手动替换.md')
+    manual=destination/'手动替换'; manual.mkdir()
+    shutil.copy2(candidate,manual/'__data')
+    shutil.copy2(args.vanilla,manual/'官方原版.__data')
+    shutil.copy2(ROOT/'ANDROID_PHONE_INSTALL.md',manual/'替换说明.md')
+    (manual/'文件校验.json').write_text(json.dumps({**manifest,
+        'candidate':'__data','vanilla':'官方原版.__data',
+        'supportedPreviousSha256':['3d94697f4dc6d64c2cb5fcca56339090f54e920cd7dab6de7bcc1912347e5a0f']},ensure_ascii=False,indent=2)+'\n',encoding='utf8')
     compiler=Path(r'D:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/Roslyn/csc.exe')
     installer=destination/'星枢安卓安装助手.exe'
     subprocess.run([str(compiler),'/nologo','/target:winexe','/out:'+str(installer),
@@ -43,12 +58,21 @@ def main():
     subprocess.run([str(installer),'--verify-package'],check=True)
     (destination/'先读我.txt').write_text(f'''星枢安卓预览 {args.version}
 适配游戏 com.feimo.astralparty 3.3.0，已在 TapTap 内置 MuMu 5 号实例验证。
-这是外部托管程序集缓存预览，不是独立 APK，也不是 Windows 安装文件。
-真机、其他游戏资源版本及系统受限的 Android/data 目录尚未验证。
+包含手机 APK 安装助手、电脑 ADB 安装助手与手动替换文件。
+手机 APK 是独立安装工具，配合已启动并授权的 Shizuku 使用，不替换游戏 APK。
+小米 14 Pro、15 等机型的最终权限行为仍需实机确认；其他游戏资源版本不适用。
 
-本版：手机对局统计与统计挂件补充移动步数，服务器结算后校准。
-功能页改名为“模组加载”，页内称“立绘替换”；运行时文件统一星枢命名。
-保留粉黄界面、缩放及触屏叠放手牌。桌面网桥暂不启动，未来服务器查看手牌的接入结构保留。
+本版：安卓悬浮球默认大小 64、最小 48，旧默认 44 自动迁移为 64。
+修复自动隐藏设置不生效和触屏残留悬停；启用贴边隐藏后闲置 2 秒收起，保留可点击露出区域。
+保留粉黄界面、移动步数、模组加载、触屏叠放手牌；桌面网桥仍暂停。
+
+手机安装：
+1. 安装“星枢手机安装助手.apk”。从 Shizuku 官方渠道安装并启动 Shizuku，首次按指南无线调试配对。
+2. 在官方游戏更新资源并进过大厅后正常退出。打开星枢安装助手，连接并授权 Shizuku。
+3. 检查游戏与目录权限，再点击“安装 / 更新星枢”。需要撤销时点击“还原官方原版”。
+4. 支持原版、本版和已验证预览 4。未知资源禁止覆盖；请先通过官方资源修复恢复。
+5. 普通 APK 无法直接绕过 Android/data 限制；Shizuku 授权后仍被系统拒绝时请使用电脑 ADB。
+详细步骤、手动文件位置、系统权限处理见“手机安装与手动替换.md”。
 
 安装（电脑连接手机，需已安装 Android platform-tools；不需要 Python）：
 1. 在官方游戏中完成资源更新并进过一次大厅，正常退出。
@@ -60,7 +84,7 @@ def main():
 
 还原：选择原设备，点击“还原原版”。备份在 %LOCALAPPDATA%/XingShu/AndroidBackups 中，请保留。
 游戏仍在运行时助手会拒绝替换，请正常退出后重试。资源版本不匹配时使用官方游戏修复，再更新并重进大厅。
-备用 Python 命令行工具也保留在包内；纯手机独立 APK 安装器尚未提供。
+备用 Python 命令行工具也保留在包内。手机与电脑安装记录分别保存；跨工具出现未知版本提示时先还原原版。
 
 十倍思考仍受服务端截止限制。MuMu 曾出现一次原生音频引擎崩溃，未确认原因；完整已知边界见兼容性说明。
 源码：https://github.com/Breezecaresses/Xingshu-hub
@@ -71,9 +95,16 @@ def main():
     assert all('apx' not in str(p.relative_to(destination)).lower() for p in entries)
     (destination/'SHA256SUMS.txt').write_text(''.join(f'{sha(p)}  {p.relative_to(destination).as_posix()}\n' for p in entries),encoding='utf8')
     with zipfile.ZipFile(archive,'x',zipfile.ZIP_DEFLATED,compresslevel=9) as output:
-        for file in sorted(destination.iterdir()): output.write(file,Path(name)/file.name)
+        for file in sorted(destination.rglob('*')):
+            if file.is_file(): output.write(file,Path(name)/file.relative_to(destination))
     with zipfile.ZipFile(archive) as output: assert output.testzip() is None
     Path(str(archive)+'.sha256').write_text(sha(archive)+'  '+archive.name+'\n',encoding='utf8')
     print(f'READY: {archive}\nSIZE: {archive.stat().st_size/1024/1024:.2f} MiB\nSHA256: {sha(archive)}')
+    manual_archive=publish/('XingShu_Android_Manual_'+args.version+'.zip')
+    with zipfile.ZipFile(manual_archive,'x',zipfile.ZIP_DEFLATED,compresslevel=9) as output:
+        for file in sorted(manual.iterdir()): output.write(file,Path(manual_archive.stem)/file.name)
+    with zipfile.ZipFile(manual_archive) as output: assert output.testzip() is None
+    Path(str(manual_archive)+'.sha256').write_text(sha(manual_archive)+'  '+manual_archive.name+'\n',encoding='utf8')
+    print(f'MANUAL: {manual_archive}\nSHA256: {sha(manual_archive)}')
 
 if __name__=='__main__': main()

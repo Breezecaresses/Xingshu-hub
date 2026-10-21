@@ -366,7 +366,7 @@ namespace XingShuRuntime.UI
             svRt.anchoredPosition = new Vector2(-24f, -126f);
             svRt.sizeDelta = new Vector2(80f, 20f);
 
-            _assistSizeSlider = XingShuUIFactory.CreateSlider(cardGo, "SizeSlider", 36f, 200f, initSize, OnAssistSizeSliderChanged);
+            _assistSizeSlider = XingShuUIFactory.CreateSlider(cardGo, "SizeSlider", XingShuMobileUIHelper.IsMobile ? XingShuConfigKeys.AssistSizeMobileMin : XingShuConfigKeys.AssistSizeMin, XingShuConfigKeys.AssistSizeMax, initSize, OnAssistSizeSliderChanged);
             RectTransform ssRt = _assistSizeSlider.GetComponent<RectTransform>();
             ssRt.anchorMin = new Vector2(0f, 1f);
             ssRt.anchorMax = new Vector2(1f, 1f);

@@ -53,7 +53,7 @@ lerna-debug.log*
 *.pdb
 
 # ------------------------------------------
-# .NET / C# / MSBuild (APX-Dev)
+# .NET / C# / MSBuild (XingShu-Dev)
 # ------------------------------------------
 **/bin/
 **/obj/

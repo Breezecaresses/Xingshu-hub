@@ -5,6 +5,7 @@ import shutil
 
 ROOT = Path(__file__).resolve().parents[1]
 FOLDERS = [
+    'AndroidInstaller',
     'XingShu-Dev/src/XingShu.Runtime', 'XingShu-Dev/assets/vanilla-ui-r3',
     'XingShu-Dev/tools/MatchLifecycleTests',
     'XingShu-Dev/tools/RuntimeBootstrap',
@@ -42,8 +43,10 @@ FILES = [
     'tools/install_hub_watch_join_fix.ps1', 'tools/export_source_repo.py',
     'tools/GroupTestInstaller.cs', 'tools/package_group_test.py', 'tools/package_android_preview.py', 'tools/publish_release.py', 'GROUP_DISTRIBUTION_20261021_2.md', 'GROUP_DISTRIBUTION_20261021_3.md',
     'tools/AndroidPreviewInstaller.cs', 'XingShu-Dev/tools/test_preference_migration.ps1',
+    'tools/build_android_installer.py', 'ANDROID_PHONE_INSTALL.md',
+    'XingShu-Dev/tools/test_assist_ball.ps1',
 ]
-SKIP_DIRS = {'.git', 'bin', 'obj', 'target', 'node_modules', '__pycache__', 'dist', 'release'}
+SKIP_DIRS = {'.git', '.gradle', 'build', 'bin', 'obj', 'target', 'node_modules', '__pycache__', 'dist', 'release'}
 SKIP_SUFFIXES = {'.dll', '.exe', '.pdb', '.bundle', '.7z', '.zip', '.rar', '.log', '.pyc', '.tsbuildinfo'}
 
 def initialize_file(path, content):
@@ -73,7 +76,7 @@ def main():
         relative = source.relative_to(ROOT)
         if any(part in SKIP_DIRS for part in relative.parts) or source.suffix.lower() in SKIP_SUFFIXES:
             continue
-        if source.name.startswith('.env') or 'credentials' in source.name.lower():
+        if source.name.startswith('.env') or 'credentials' in source.name.lower() or source.name == 'local.properties' or source.suffix.lower() in {'.jks', '.keystore', '.apk'}:
             continue
         target = destination / relative
         if destination not in target.resolve().parents:

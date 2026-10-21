@@ -64,7 +64,8 @@ def main():
             assert asset.get('digest') == digest and asset['size'] == path.stat().st_size, 'Existing draft asset differs'
         else:
             upload = release['upload_url'].split('{', 1)[0] + '?name=' + urllib.parse.quote(path.name)
-            asset = request('POST', upload, path.read_bytes(), 'application/zip' if path.suffix == '.zip' else 'text/plain')
+            content_types={'.zip':'application/zip','.apk':'application/vnd.android.package-archive'}
+            asset = request('POST', upload, path.read_bytes(), content_types.get(path.suffix,'text/plain'))
             assert asset.get('digest') == digest and asset['size'] == path.stat().st_size, 'Uploaded asset mismatch'
         print('Verified upload: ' + path.name, flush=True)
     published = request('PATCH', api + '/releases/' + str(release['id']), {
