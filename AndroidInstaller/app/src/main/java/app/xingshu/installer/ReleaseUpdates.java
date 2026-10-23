@@ -14,8 +14,11 @@ final class ReleaseUpdates {
     static final String REPO="Breezecaresses/Xingshu-hub", RELEASES="https://github.com/"+REPO+"/releases";
     static final class Update {
         final JSONObject manifest;
+        // A locator from the same release, never an integrity or version authority.
+        final long androidAssetId;
         String checkWarning="";
-        Update(JSONObject m) { manifest=m; }
+        Update(JSONObject m) { this(m,0); }
+        Update(JSONObject m,long assetId) { manifest=m; androidAssetId=assetId; }
         long code() throws Exception { return manifest.getLong("sequence"); }
         String version() throws Exception { return manifest.getString("version"); }
         String notes() throws Exception { return manifest.getString("notes"); }
@@ -42,19 +45,41 @@ final class ReleaseUpdates {
         if(m.getJSONObject("android").getLong("versionCode")!=m.getLong("sequence"))throw new IOException("安卓版本号不一致");
         return m;
     }
+    static final class NetworkFailure extends IOException {
+        NetworkFailure(IOException cause) { super(cause.getMessage(),cause); }
+    }
+    interface AssetRequest<T> { T open(String address) throws Exception; }
+    static String assetApiAddress(long id) {
+        if(id<=0)throw new IllegalArgumentException("发布文件编号无效");
+        return "https://api.github.com/repos/"+REPO+"/releases/assets/"+id;
+    }
+    static <T> T preferAsset(long id,String browserAddress,AssetRequest<T> request,Runnable fallback) throws Exception {
+        if(id>0) {
+            try { return request.open(assetApiAddress(id)); }
+            catch(IOException error) {
+                // Validation failures never select another source. Both requests share the caller's budget.
+                if(!(error instanceof NetworkFailure)&&!(error instanceof SocketTimeoutException))throw error;
+                fallback.run();
+            }
+        }
+        return request.open(browserAddress);
+    }
     private static HttpsURLConnection connect(String address) throws Exception { return connect(address,30000,60000,null); }
     private static HttpsURLConnection connect(String address,int connectTimeout,int readTimeout,CheckDeadline budget) throws Exception {
+        boolean binary=address.startsWith("https://api.github.com/repos/"+REPO+"/releases/assets/");
         for(int i=0;i<6;i++) {
             URL url=new URL(address); String host=url.getHost();
-            if(!url.getProtocol().equals("https") || (url.getPort()!=-1&&url.getPort()!=443) ||
+            if(!url.getProtocol().equals("https") || url.getUserInfo()!=null || (url.getPort()!=-1&&url.getPort()!=443) ||
                !(host.equals("github.com")||host.equals("api.github.com")||host.equals("release-assets.githubusercontent.com")||host.equals("objects.githubusercontent.com")))throw new IOException("更新地址不属于官方发布服务");
             HttpsURLConnection c=(HttpsURLConnection)url.openConnection(); c.setInstanceFollowRedirects(false);
             c.setConnectTimeout(budget==null?connectTimeout:budget.limitMillis(connectTimeout));
             c.setReadTimeout(budget==null?readTimeout:budget.limitMillis(readTimeout)); c.setRequestProperty("User-Agent","XingShu-Android-Updater/1");
+            c.setRequestProperty("Accept",binary?"application/octet-stream":host.equals("api.github.com")?"application/vnd.github+json":"*/*");
+            c.setRequestProperty("X-GitHub-Api-Version","2022-11-28");
             int status;
-            try { status=c.getResponseCode(); } catch(Exception e) { c.disconnect(); throw e; }
+            try { status=c.getResponseCode(); } catch(IOException e) { c.disconnect(); throw new NetworkFailure(e); }
             if(status>=300&&status<400) { address=new URL(url,c.getHeaderField("Location")).toString(); c.disconnect(); continue; }
-            if(status!=200) { c.disconnect(); throw new IOException(status==403?"更新服务访问受限，请稍后重试":"更新服务返回 "+status); }
+            if(status!=200) { c.disconnect(); throw new NetworkFailure(new IOException(status==403?"更新服务访问受限，请稍后重试":"更新服务返回 "+status)); }
             return c;
         }
         throw new IOException("更新下载重定向次数过多");
@@ -66,11 +91,12 @@ final class ReleaseUpdates {
     private static String fetch(String url,int max,CheckDeadline budget) throws Exception {
         // Metadata is small. Fail an unavailable endpoint promptly; APK transfers retain longer idle timeouts.
         HttpsURLConnection c=connect(url,10000,15000,budget);
-        try(InputStream in=c.getInputStream()) {
+        try(InputStream in=networkStream(c)) {
             ByteArrayOutputStream out=new ByteArrayOutputStream(); byte[] b=new byte[16384]; int n;
             while(true) {
                 c.setReadTimeout(budget.limitMillis(15000));
-                n=in.read(b); if(n==-1)break;
+                try { n=in.read(b); } catch(IOException error) { throw new NetworkFailure(error); }
+                if(n==-1)break;
                 if(out.size()+n>max)throw new IOException("更新响应超过大小限制");
                 out.write(b,0,n);
             }
@@ -78,9 +104,20 @@ final class ReleaseUpdates {
             return new String(out.toByteArray(),StandardCharsets.UTF_8);
         }finally { c.disconnect(); }
     }
+    private static InputStream networkStream(HttpsURLConnection connection) throws IOException {
+        try { return connection.getInputStream(); } catch(IOException error) { throw new NetworkFailure(error); }
+    }
+    private static long findAssetId(JSONArray assets,String name) throws Exception {
+        for(int i=0;i<assets.length();i++) {
+            JSONObject asset=assets.getJSONObject(i);
+            if(name.equals(asset.getString("name")))return Math.max(0,asset.optLong("id",0));
+        }
+        return 0;
+    }
     interface Certificate { InputStream open() throws Exception; }
     interface CheckListener { void stage(String label); }
     static String failureMessage(Exception error) {
+        if(error instanceof NetworkFailure&&error.getCause() instanceof Exception)return failureMessage((Exception)error.getCause());
         if(error instanceof SocketTimeoutException)return "连接或读取官方更新服务超时，请检查网络后重试。";
         if(error instanceof UnknownHostException)return "无法解析官方更新服务地址，请检查网络和 DNS 后重试。";
         return error.getMessage()==null?error.getClass().getSimpleName():error.getMessage();
@@ -104,10 +141,19 @@ final class ReleaseUpdates {
             if(!found)continue;
             listener.stage("正在读取 "+tag.substring(1)+" 的签名更新清单…");
             String envelope;
-            try { envelope=fetch(RELEASES+"/download/"+tag+"/xingshu-update.json",300000,budget); }
-            catch(IOException networkError) { return partialResult(best,networkError); }
+            try {
+                envelope=preferAsset(findAssetId(assets,"xingshu-update.json"),RELEASES+"/download/"+tag+"/xingshu-update.json",
+                    address -> fetch(address,300000,budget),() -> listener.stage("官方文件接口暂不可用，正在尝试发布页下载入口…"));
+            } catch(IOException networkError) {
+                if(!(networkError instanceof NetworkFailure)&&!(networkError instanceof SocketTimeoutException))throw networkError;
+                return partialResult(best,networkError);
+            }
             listener.stage("正在校验官方更新清单…");
-            try(InputStream cert=certificate.open()) { Update update=new Update(verify(envelope,tag,cert)); if(best==null||update.code()>best.code())best=update; }
+            try(InputStream cert=certificate.open()) {
+                JSONObject manifest=verify(envelope,tag,cert);
+                Update update=new Update(manifest,findAssetId(assets,manifest.getJSONObject("android").getString("asset")));
+                if(best==null||update.code()>best.code())best=update;
+            }
         }
         return best;
     }
@@ -135,7 +181,8 @@ final class ReleaseUpdates {
         JSONObject asset=update.manifest.getJSONObject("android");
         String address=RELEASES+"/download/"+update.manifest.getString("tag")+"/"+asset.getString("asset");
         File partial=new File(directory,"update.download"), target=new File(directory,"update.apk");
-        HttpsURLConnection c=connect(address);
+        // Fallback is limited to opening the response, before any bytes or integrity checks.
+        HttpsURLConnection c=preferAsset(update.androidAssetId,address,ReleaseUpdates::connect,() -> {});
         try {
             long size=asset.getLong("size"); String hash;
             if(c.getContentLengthLong()>=0&&c.getContentLengthLong()!=size)throw new IOException("更新文件大小不符");
