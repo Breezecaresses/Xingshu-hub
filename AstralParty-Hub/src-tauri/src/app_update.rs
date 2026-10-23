@@ -64,10 +64,11 @@ pub async fn prepare_app_update(state: State<'_, AppUpdater>, preview: bool, seq
     Ok(result)
 }
 #[tauri::command]
-pub async fn apply_app_update(app: tauri::AppHandle, state: State<'_, AppUpdater>) -> HubResult<()> {
+pub async fn apply_app_update(app: tauri::AppHandle, state: State<'_, AppUpdater>, android: State<'_, crate::android_installer::AndroidInstaller>) -> HubResult<()> {
     let _guard = state.gate.try_lock().map_err(|_| error("已有更新任务正在处理。"))?;
     let cache = state.prepared.lock().await.clone().ok_or_else(|| error("请先下载并校验更新。"))?;
     let root = package_root()?;
+    let _phone_guard = android.pause_for_app_update().await?;
     let (dir, exe) = worker()?;
     let mut command = Command::new(exe);
     command.arg("--apply").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());

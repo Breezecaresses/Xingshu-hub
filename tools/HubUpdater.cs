@@ -186,6 +186,13 @@ internal static class HubUpdater {
         }
     }
     static string Cache() { string p=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"XingShu","Updates",Guid.NewGuid().ToString("N")); Directory.CreateDirectory(p); return p; }
+    static void CheckPackageProcesses(string root, int parentPid) {
+        foreach(var p in Process.GetProcesses())try {
+            if(p.Id!=Process.GetCurrentProcess().Id && p.Id!=parentPid &&
+                p.MainModule.FileName.StartsWith(Path.GetFullPath(root)+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))
+                throw new IOException("本包内程序仍在运行："+p.ProcessName+"（PID "+p.Id+"）。请等待安装任务完成并关闭配套程序，再重试更新。");
+        } catch(System.ComponentModel.Win32Exception) {} catch(InvalidOperationException) {}
+    }
     static void Print(object value) { Console.WriteLine(Json.Serialize(value)); Console.Out.Flush(); }
     [STAThread] static int Main(string[] args) {
         // A GUI parent has no console code page. Always use the same UTF-8 IPC as Rust.
@@ -207,14 +214,14 @@ internal static class HubUpdater {
                 // A process-held lock prevents two workers writing the same package.
                 string lockfile=Path.Combine(root,".xingshu-update.lock"); NoLinks(lockfile);
                 using(var gate=new FileStream(lockfile,FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None)) {
+                    // Reject occupied files while the original Hub is still open.
+                    CheckPackageProcesses(root,pid);
                     Print(new { ready=true });
                     sentReady=true;
                     if(!parent.WaitForExit(45000))throw new Exception("Hub 未退出，取消本次更新");
                     parentExited=true;
                     // Do not overwrite another running Hub or maintenance worker from this package.
-                    foreach(var p in Process.GetProcesses())try { if(p.Id!=Process.GetCurrentProcess().Id && p.Id!=pid &&
-                        p.MainModule.FileName.StartsWith(Path.GetFullPath(root)+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))throw new IOException("仍有本包内程序在运行，请退出后重试"); }
-                        catch(System.ComponentModel.Win32Exception) {} catch(InvalidOperationException) {}
+                    CheckPackageProcesses(root,pid);
                     Apply(root,stage,files,Path.Combine(root,".xingshu-updates",DateTime.UtcNow.ToString("yyyyMMddHHmmss")+"-"+Guid.NewGuid().ToString("N")),0);
                 }
                 Process.Start(new ProcessStartInfo(original) { WorkingDirectory=Path.GetDirectoryName(original),UseShellExecute=false }); return 0;

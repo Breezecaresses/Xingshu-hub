@@ -21,6 +21,32 @@ pub struct AndroidInstaller {
     gate: Arc<Mutex<()>>,
 }
 
+impl AndroidInstaller {
+    /// Hold the same gate used by phone writes through the entire update handoff.
+    /// Only stop the verified ADB supplied by this portable package.
+    pub async fn pause_for_app_update(&self) -> HubResult<tokio::sync::OwnedMutexGuard<()>> {
+        use sysinfo::{ProcessRefreshKind, RefreshKind, System, UpdateKind};
+        let guard = self.gate.clone().try_lock_owned()
+            .map_err(|_| error("手机安装或连接操作尚未完成，请等待后再更新 Hub。"))?;
+        let root = match package_root() { Ok(root) => root, Err(_) => return Ok(guard) };
+        let info = manifest(&root)?;
+        let adb = adb_path(&root, &info.files)?;
+        let normalize = crate::xing_shu::bridge::tcp_security::normalize_path_for_comparison;
+        let expected = normalize(&adb);
+        let prefix = normalize(&root) + "\\";
+        let system = System::new_with_specifics(RefreshKind::nothing().with_processes(
+            ProcessRefreshKind::nothing().with_exe(UpdateKind::Always)));
+        let paths: Vec<_> = system.processes().values().filter_map(|p| p.exe()).map(normalize).collect();
+        if paths.iter().any(|p| p.starts_with(&prefix) && p != &expected) {
+            return Err(error("配套手机安装程序仍在运行，请等待安装或还原完成，并关闭该程序后再更新 Hub。"));
+        }
+        if paths.iter().any(|p| p == &expected) {
+            execute(&adb, &["kill-server"], None, 15).await?;
+        }
+        Ok(guard)
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct BridgeManifest {
@@ -393,6 +419,14 @@ pub async fn android_installer_action(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn software_update_cannot_interrupt_an_android_operation() {
+        let state = AndroidInstaller::default();
+        let active_write = state.gate.lock().await;
+        assert!(state.pause_for_app_update().await.is_err());
+        drop(active_write);
+        assert!(state.gate.try_lock().is_ok());
+    }
     #[test]
     fn distinguishes_usb_wireless_unauthorized_and_offline() {
         let parsed = parse_devices(
