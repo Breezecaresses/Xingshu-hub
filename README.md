@@ -30,9 +30,9 @@ Offline checks are complete. Live online validation is pending, and Spine/WebM p
 
 ## Group distribution build
 
-The current [group distribution build](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.2) is a prerelease, not the first stable version. Assets are grouped by desktop and Android. The desktop ZIP includes both Steam CN and TapTap Windows; extract it and run `星枢安装助手.exe`. Supports Steam CN and TapTap 3.3.0 / resource 026. The hand dock defaults to 60% overall size, adjustable from 40% to 120%. See [build notes](docs/records/GROUP_DISTRIBUTION_20261022_2.md) for known limitations. The local-only native speed prototype is excluded.
+Future [releases](https://github.com/Breezecaresses/Xingshu-hub/releases) will temporarily offer two installation downloads: `XingShu_Desktop_<version>.zip` for Windows and `XingShu_Android_<version>.apk` for Android. Verified desktop channels share one ZIP and are selected inside the installer. The phone APK contains both the helper and its runtime payload. Extract the complete desktop ZIP before running `星枢安装助手.exe`. Separate Android tool/manual ZIPs will no longer be published; checksums and signed update metadata remain auxiliary assets. See the [packaging policy](docs/guides/RELEASE_PACKAGING.md). Historical downloads retain their original contents and validation notes.
 
-The Android phone helper now pairs and connects to local wireless debugging inside its own APK. Android 11+ users can install, update, and restore using only their phone, without a computer or Shizuku notifications. Existing Shizuku installations remain optional. See the [phone installation guide](docs/guides/ANDROID_PHONE_INSTALL.md). Windows runtime r6 is retained and split into channel-specific assets; desktop ADB and manual Android files are also available.
+The Android phone helper pairs and connects to local wireless debugging inside its own APK. Android 11+ users can install, update, and restore using only their phone, without a computer or Shizuku notifications. Existing Shizuku installations remain optional. See the [phone installation guide](docs/guides/ANDROID_PHONE_INSTALL.md). The desktop Hub ZIP retains the companion components needed to install, update, or restore a connected phone.
 
 ---
 

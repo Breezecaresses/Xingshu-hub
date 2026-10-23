@@ -1,4 +1,4 @@
-"""Package the verified Android cache preview separately from the Windows installer."""
+"""Stage one verified phone APK; optionally retain legacy archives for local troubleshooting."""
 import argparse
 import hashlib
 import json
@@ -18,9 +18,11 @@ def main():
     parser.add_argument('--source-commit',required=True)
     parser.add_argument('--phone-apk',type=Path,required=True)
     parser.add_argument('--vanilla',type=Path,required=True)
+    parser.add_argument('--legacy-archives',action='store_true',help='Also generate legacy tool/manual ZIPs for local troubleshooting, not release Assets')
     args=parser.parse_args()
     import re
     if not re.fullmatch('[a-f0-9]{40}',args.source_commit): raise SystemExit('Expected full source commit')
+    if not re.fullmatch(r'[0-9A-Za-z][0-9A-Za-z.\-]{0,79}',args.version): raise SystemExit('Invalid version')
     manifest=json.loads(args.manifest.read_text('utf8'))
     candidate=Path(manifest['candidate'])
     assert sha(candidate)==manifest['candidateSha256']
@@ -31,6 +33,15 @@ def main():
         assert hashlib.sha256(apk.read('assets/vanilla.__data')).hexdigest()==manifest['originalSha256']
     name='XingShu_Android_'+args.version
     publish=ROOT/'发布包'; publish.mkdir(exist_ok=True)
+    phone_asset=publish/(name+'.apk')
+    phone_checksum=Path(str(phone_asset)+'.sha256')
+    if phone_asset.exists() or phone_checksum.exists(): raise SystemExit('This phone package already exists; choose a new version')
+    shutil.copy2(args.phone_apk,phone_asset)
+    assert sha(phone_asset)==sha(args.phone_apk), 'Copied phone APK did not verify'
+    phone_checksum.write_text(sha(phone_asset)+'  '+phone_asset.name+'\n',encoding='utf8')
+    print(f'PHONE: {phone_asset}\nSHA256: {sha(phone_asset)}')
+    if not args.legacy_archives:
+        return
     destination=publish/name
     archive=publish/(name+'.zip')
     assert not destination.exists() and not archive.exists(), 'Choose a new version'

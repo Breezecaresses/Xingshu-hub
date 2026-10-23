@@ -16,9 +16,12 @@ def main():
     parser.add_argument('--body', type=Path, required=True)
     parser.add_argument('--repo', default='Breezecaresses/Xingshu-hub')
     parser.add_argument('--tag', default='v0.1.0-test.20261021.3')
-    parser.add_argument('--extra-package', type=Path, action='append', default=[])
+    parser.add_argument('--android', '--extra-package', dest='extra_package', type=Path, action='append', required=True,
+                        help='The single Android phone APK; no separate tool/manual ZIPs are published')
     parser.add_argument('--update-manifest', type=Path, help='Signed xingshu-update.json for both application updaters')
     args = parser.parse_args()
+    if args.package.suffix.lower() != '.zip' or len(args.extra_package) != 1 or args.extra_package[0].suffix.lower() != '.apk':
+        parser.error('Publish exactly one desktop ZIP and one Android APK')
     archive = args.package.resolve(strict=True)
     checksum = Path(str(archive) + '.sha256').resolve(strict=True)
     expected = checksum.read_text('utf-8').split()[0]
@@ -27,7 +30,7 @@ def main():
     for extra in args.extra_package:
         extra=extra.resolve(strict=True)
         extra_checksum=Path(str(extra)+'.sha256').resolve(strict=True)
-        assert hashlib.sha256(extra.read_bytes()).hexdigest()==extra_checksum.read_text('utf8').split()[0], 'Extra ZIP checksum mismatch'
+        assert hashlib.sha256(extra.read_bytes()).hexdigest()==extra_checksum.read_text('utf8').split()[0], 'Android APK checksum mismatch'
         upload_paths.extend([extra,extra_checksum])
     if args.update_manifest:
         from prepare_update_release import verify_envelope, verify_assets
@@ -66,6 +69,10 @@ def main():
         'tag_name': args.tag, 'target_commitish': commit, 'name': '星枢群发测试版 ' + args.tag,
         'body': args.body.read_text('utf-8'), 'draft': True, 'prerelease': True})
     assets = request('GET', api + '/releases/' + str(release['id']) + '/assets')
+    packages = {archive.name, args.extra_package[0].name}
+    unexpected = [a['name'] for a in assets if Path(a['name']).suffix.lower() in {'.zip', '.apk'} and a['name'] not in packages]
+    if unexpected:
+        raise SystemExit('Draft contains extra packages; keep only the desktop ZIP and Android APK before publishing: ' + ', '.join(unexpected))
     for path in upload_paths:
         digest = 'sha256:' + hashlib.sha256(path.read_bytes()).hexdigest()
         asset = next((a for a in assets if a['name'] == path.name), None)

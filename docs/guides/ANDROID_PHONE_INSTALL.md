@@ -1,5 +1,7 @@
 # 手机安装与手动替换
 
+后续手机版只发布一个 `XingShu_Android_<版本>.apk`，内含手机安装助手和对应插件，不再另发工具 ZIP 或手动替换 ZIP。电脑端各渠道合在另一个 `XingShu_Desktop_<版本>.zip` 中；电脑 Hub 连接手机安装的入口保留。完整约定见[发布下载项](RELEASE_PACKAGING.md)。
+
 适配 `com.feimo.astralparty` 官方 3.3.0 及已验证的资源缓存。普通 APK 的“所有文件访问”权限不能直接获得其他应用 `Android/data` 目录的读写权。此限制不只见于小米；不同 Android / 澎湃 OS 版本仍可能有额外限制。
 
 ## 手机安装助手（推荐，纯手机完成）

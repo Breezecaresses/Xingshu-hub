@@ -56,7 +56,7 @@ FILES = [
     'tools/prepare_update_release.py', 'tools/test_app_updates.py', 'APP_UPDATES_20261023.md', 'CHANNEL_COMPATIBILITY_20261023.md',
     'XingShu-Dev/tools/test_assist_ball.ps1', 'XingShu-Dev/tools/test_mobile_slider.ps1', 'XingShu-Dev/tools/test_mobile_widgets.ps1',
     'NATIVE_WINDOWS.md', 'tools/build_native_hub.py', 'tools/test_native_core.py',
-    'tools/migrate_native_host.py', 'tools/export_map_guides.py', 'tools/catalog_schema.json',
+    'tools/migrate_native_host.py', 'tools/export_map_guides.py', 'tools/catalog_schema.json', 'docs/guides/RELEASE_PACKAGING.md',
 ]
 SKIP_DIRS = {'.git', '.gradle', 'build', 'bin', 'obj', 'target', 'node_modules', '__pycache__', 'dist', 'release'}
 SKIP_SUFFIXES = {'.dll', '.exe', '.pdb', '.bundle', '.7z', '.zip', '.rar', '.log', '.pyc', '.tsbuildinfo'}

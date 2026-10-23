@@ -30,9 +30,9 @@
 
 ## 群发测试包
 
-当前[群发测试包](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.2)标记为预发布，不作为正式稳定版。Assets 按电脑端和安卓端提供下载项；电脑端 ZIP 同时包含 Steam 国服与 TapTap Windows。电脑端完整解压 ZIP 后运行“星枢安装助手.exe”，支持 Steam 国服、TapTap 3.3.0 / 资源026。手牌挂件默认整体60%，可调40%–120%。已知边界见[本次说明](docs/records/GROUP_DISTRIBUTION_20261022_2.md)，包中不附带仅限本地验证的原生变速原型。
+后续[发布页](https://github.com/Breezecaresses/Xingshu-hub/releases)暂时只提供两个安装包：电脑端 `XingShu_Desktop_<版本>.zip`、安卓手机 `XingShu_Android_<版本>.apk`。电脑各渠道合在同一个 ZIP 内选择；手机 APK 内含安装助手与对应插件。电脑端完整解压后运行“星枢安装助手.exe”。不再单独发布手机工具或手动替换 ZIP，校验文件与签名更新清单仍保留。具体约定见[发布下载项](docs/guides/RELEASE_PACKAGING.md)。旧版本内容与验证范围以各版本记录为准。
 
-本版保留手机、电脑和 Hub 的移动步数统计与统一星枢命名，电脑 Runtime 沿用 r6。安卓手机助手新增内置无线调试配对与连接，Android 11+ 可在手机上独立安装、更新和还原，无需电脑或 Shizuku 通知；步骤见[手机安装说明](docs/guides/ANDROID_PHONE_INSTALL.md)。同时保留电脑 ADB 助手和手动替换文件。
+安卓手机助手支持内置无线调试配对与连接，Android 11+ 可在手机上独立安装、更新和还原，无需电脑或 Shizuku 通知；步骤见[手机安装说明](docs/guides/ANDROID_PHONE_INSTALL.md)。电脑 Hub 包内仍保留连接手机安装、更新和还原所需的配套组件。
 
 ---
 

@@ -179,7 +179,7 @@ def main():
     hub_version = json.loads((ROOT / 'AstralParty-Hub/package.json').read_text('utf-8'))['version']
     publish = ROOT / '发布包'
     publish.mkdir(exist_ok=True)
-    channel = {'all':'','STEAM_CN':'Steam_','TAPTAP':'TapTap_','BILIBILI':'Bilibili_','WEGAME':'WeGame_'}[args.platform]
+    channel = {'all':'Desktop_','STEAM_CN':'Steam_','TAPTAP':'TapTap_','BILIBILI':'Bilibili_','WEGAME':'WeGame_'}[args.platform]
     name = 'XingShu_' + channel + args.version
     destination = publish / name
     archive = publish / (name + '.zip')
