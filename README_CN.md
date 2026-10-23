@@ -1,5 +1,7 @@
 # 星枢 (XingShu)
 
+[项目文档与验证记录](docs/README.md)
+
 <p align="center">
   <strong>AstralParty（吉星派对）多端游戏增强运行时与跨进程控制枢纽</strong>
 </p>
@@ -20,17 +22,17 @@
 
 ## Windows 原生迁移候选版（暂缓）
 
-2026-10-22：按用户决定暂停原生迁移，当前继续使用 React / Tauri Hub 与 R7 游戏插件。候选源码和本地 ZIP 保留，未覆盖现有程序；当前后台验证结果和实战待办见 [R7 验证清单](R7_VERIFICATION_20261022.md)。
+2026-10-22：按用户决定暂停原生迁移，当前继续使用 React / Tauri Hub 与 R7 游戏插件。候选源码和本地 ZIP 保留，未覆盖现有程序；当前后台验证结果和实战待办见 [R7 验证清单](docs/records/R7_VERIFICATION_20261022.md)。
 
 `0.2.0-native1` 已在本地构建，界面使用 WPF / .NET 10，核心使用不含 Tauri / WebView 的 Rust 构建。已迁入 18 个页面，新增地图攻略、角色养成详情和原生观战跟随。旧版源码和发布包仍保留，当前候选版尚未上传或替换测试包。
 
-已完成离线验收；真实在线观战尚未验收，Spine/WebM 播放及完整托管管理界面仍待迁移。构建、使用及验证范围见 [原生版说明](NATIVE_WINDOWS.md)。
+已完成离线验收；真实在线观战尚未验收，Spine/WebM 播放及完整托管管理界面仍待迁移。构建、使用及验证范围见 [原生版说明](docs/guides/NATIVE_WINDOWS.md)。
 
 ## 群发测试包
 
-当前[群发测试包](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.2)标记为预发布，不作为正式稳定版。Assets 按电脑端和安卓端提供下载项；电脑端 ZIP 同时包含 Steam 国服与 TapTap Windows。电脑端完整解压 ZIP 后运行“星枢安装助手.exe”，支持 Steam 国服、TapTap 3.3.0 / 资源026。手牌挂件默认整体60%，可调40%–120%。已知边界见[本次说明](GROUP_DISTRIBUTION_20261022_2.md)，包中不附带仅限本地验证的原生变速原型。
+当前[群发测试包](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.2)标记为预发布，不作为正式稳定版。Assets 按电脑端和安卓端提供下载项；电脑端 ZIP 同时包含 Steam 国服与 TapTap Windows。电脑端完整解压 ZIP 后运行“星枢安装助手.exe”，支持 Steam 国服、TapTap 3.3.0 / 资源026。手牌挂件默认整体60%，可调40%–120%。已知边界见[本次说明](docs/records/GROUP_DISTRIBUTION_20261022_2.md)，包中不附带仅限本地验证的原生变速原型。
 
-本版保留手机、电脑和 Hub 的移动步数统计与统一星枢命名，电脑 Runtime 沿用 r6。安卓手机助手新增内置无线调试配对与连接，Android 11+ 可在手机上独立安装、更新和还原，无需电脑或 Shizuku 通知；步骤见[手机安装说明](ANDROID_PHONE_INSTALL.md)。同时保留电脑 ADB 助手和手动替换文件。
+本版保留手机、电脑和 Hub 的移动步数统计与统一星枢命名，电脑 Runtime 沿用 r6。安卓手机助手新增内置无线调试配对与连接，Android 11+ 可在手机上独立安装、更新和还原，无需电脑或 Shizuku 通知；步骤见[手机安装说明](docs/guides/ANDROID_PHONE_INSTALL.md)。同时保留电脑 ADB 助手和手动替换文件。
 
 ---
 
@@ -64,7 +66,7 @@ GitHub 仓库用于保存源码和版本记录。当前仍需在本机运行 Hub
 - 运行时、包管理器、插件与模组按五个渠道和实际安装目录管理，支持同渠道多个位置；手动文件仅展示检测状态。
 - 运行时页分别展示文件校验、实际进程与已确认连接上报的版本。本版安装文件覆盖 Steam 国服和 TapTap Windows，其他渠道仍待运行时实测。
 - Hub 侧栏、设置页与插件 F1 功能中心均附项目来源。当前桌面运行时版本为 `1.0.0-game-ui-r1`。
-- 游戏内功能中心采用半透明无条纹框架、游戏字体与官方星形滑块，修复彩色浮字预览；选目标时保留原版平移及自定义缩放，拉远后名字与指向线缩小。实测范围及仍待确认的项目见[界面与镜头验证记录](GAME_UI_R1.md)。
+- 游戏内功能中心采用半透明无条纹框架、游戏字体与官方星形滑块，修复彩色浮字预览；选目标时保留原版平移及自定义缩放，拉远后名字与指向线缩小。实测范围及仍待确认的项目见[界面与镜头验证记录](docs/records/GAME_UI_R1.md)。
 
 扩展渠道声明、目录映射及管理边界见[扩展包说明](AstralParty-Hub/docs/specs/extension_channels.md)。游戏美术、配置及资源版权归原权利人所有，不随本项目代码的 MIT 许可证重新授权。
 
@@ -72,7 +74,7 @@ GitHub 仓库用于保存源码和版本记录。当前仍需在本机运行 Hub
 
 `1.0.0-android-preview5` 在 TapTap 内置 MuMu 的 Android 12 游戏客户端（3.3.0、资源 026）验证了运行时加载、触屏入口及手机助手安装/还原。手机悬浮球默认 64、最小 48 个界面单位，可单独调整；修复自动收起设置，并保留可点击的露出区域。菜单与文字缩放保持独立，桌面默认尺寸保持原样。
 
-小米 14 Pro（Android 16 / HyperOS 3）已完成手机 APK 内配对、连接、目录检查、原版还原和星枢安装，文件哈希独立核验通过。普通 APK 仍需用户在系统内授权无线调试；已有 Shizuku 也可选用。小米 15、其他设备及长时间手势/后台场景尚未逐一验证。安卓桌面网桥暂时停用，未来服务器接口保留；当前没有安卓 Hub APK。完整验证范围和构建命令见[安卓兼容说明](ANDROID_COMPATIBILITY.md)。
+小米 14 Pro（Android 16 / HyperOS 3）已完成手机 APK 内配对、连接、目录检查、原版还原和星枢安装，文件哈希独立核验通过。普通 APK 仍需用户在系统内授权无线调试；已有 Shizuku 也可选用。小米 15、其他设备及长时间手势/后台场景尚未逐一验证。安卓桌面网桥暂时停用，未来服务器接口保留；当前没有安卓 Hub APK。完整验证范围和构建命令见[安卓兼容说明](docs/guides/ANDROID_COMPATIBILITY.md)。
 
 ## 🏗️ 架构概览
 
@@ -209,10 +211,10 @@ npm run tauri -- build --no-bundle
 
 ## 📚 详细设计文档
 
-- [AUTO_FOLLOW_PROTOCOL.md](AUTO_FOLLOW_PROTOCOL.md) — 自动跟房本地 TCP 通信协议详细规范
-- [AUTO_FOLLOW_STATE_MACHINE.md](AUTO_FOLLOW_STATE_MACHINE.md) — 自动跟房 11 状态机设计与转移矩阵
-- [HAND_TRUTH_SOURCE_ARCHITECTURE.md](HAND_TRUTH_SOURCE_ARCHITECTURE.md) — 手牌真值单源架构与防伪造卡牌设计
-- [OVERLAY_LIFECYCLE_RECONCILIATION.md](OVERLAY_LIFECYCLE_RECONCILIATION.md) — 浮动挂件生命周期自适应调和规范
+- [AUTO_FOLLOW_PROTOCOL.md](docs/guides/AUTO_FOLLOW_PROTOCOL.md) — 自动跟房本地 TCP 通信协议详细规范
+- [AUTO_FOLLOW_STATE_MACHINE.md](docs/guides/AUTO_FOLLOW_STATE_MACHINE.md) — 自动跟房 11 状态机设计与转移矩阵
+- [HAND_TRUTH_SOURCE_ARCHITECTURE.md](docs/guides/HAND_TRUTH_SOURCE_ARCHITECTURE.md) — 手牌真值单源架构与防伪造卡牌设计
+- [OVERLAY_LIFECYCLE_RECONCILIATION.md](docs/guides/OVERLAY_LIFECYCLE_RECONCILIATION.md) — 浮动挂件生命周期自适应调和规范
 - [local-managed-watcher.md](AstralParty-Hub/docs/local-managed-watcher.md) — 本机托管观战工作单元技术说明
 
 ---

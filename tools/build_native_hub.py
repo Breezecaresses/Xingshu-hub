@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import zipfile
+from project_paths import project_document
 
 ROOT=Path(__file__).resolve().parents[1]
 HUB=ROOT/'AstralParty-Hub'
@@ -49,7 +50,7 @@ def main():
         run([args.dotnet,'publish','XingShu.Native.csproj','-c','Release','-r','win-x64','--self-contained',str(args.self_contained).lower(),'-o',out,'--nologo'],HUB/'native-windows')
     (out/'Core').mkdir(exist_ok=True);shutil.copy2(HUB/'src-tauri/target/release/xingshu-core.exe',out/'Core/xingshu-core.exe')
     assets(out)
-    shutil.copy2(ROOT/'NATIVE_WINDOWS.md',out/'NATIVE_WINDOWS.md')
+    shutil.copy2(project_document(ROOT,'NATIVE_WINDOWS.md'),out/'NATIVE_WINDOWS.md')
     (out/'README.txt').write_text('星枢 Hub · Windows 原生候选版 0.2.0-native1\n\n运行 xingshu-hub.exe。请保留 Core 和 Assets 目录。\n首次切换前正常退出旧 Hub；原生版不会关闭其他进程或强占游戏通信。\n账号与战绩沿用 %APPDATA%\\com.xingshu.hub 数据库；原生设置单独保存。\n--offline 可仅浏览离线资料。首次连接游戏时请在账号页明确绑定账号。\n\n本版使用 WPF 和 Rust，不携带 WebView、React 或网页开发服务器。\n地图攻略按来源标注：森秋幻境含实战速查，其余地图为各自的配置机制与任务。\n自动跟随已接入并通过离线检查，真实在线观战尚未验收。\nSpine/WebM 播放和完整托管管理页尚未迁入；详情见 NATIVE_WINDOWS.md。\n本压缩包只含 Hub，不安装电脑或安卓游戏插件。\n','utf-8-sig')
     manifest={'version':'0.2.0-native1','ui':'WPF','core':'Rust','webview':False,'selfContained':args.self_contained,
         'files':[{'path':p.relative_to(out).as_posix(),'size':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(out.rglob('*')) if p.is_file() and p.name!='native-manifest.json']}

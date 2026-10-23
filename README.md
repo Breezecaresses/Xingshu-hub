@@ -1,5 +1,7 @@
 # XingShu (星枢)【吉星派对游戏助手】
 
+[项目文档与验证记录](docs/README.md)
+
 <p align="center">
   <strong>Multi-client game enhancement runtime and cross-process control hub for Astral Party</strong>
 </p>
@@ -20,17 +22,17 @@
 
 ## Windows native migration candidate (on hold)
 
-2026-10-22: Native migration is on hold at the user's request. The existing React / Tauri Hub and R7 game runtime remain the active baseline. Native sources and the local ZIP are preserved without replacing the installed app. See the [R7 verification checklist](R7_VERIFICATION_20261022.md) for background checks and pending live acceptance.
+2026-10-22: Native migration is on hold at the user's request. The existing React / Tauri Hub and R7 game runtime remain the active baseline. Native sources and the local ZIP are preserved without replacing the installed app. See the [R7 verification checklist](docs/records/R7_VERIFICATION_20261022.md) for background checks and pending live acceptance.
 
 The locally built `0.2.0-native1` candidate uses WPF / .NET 10 for its interface and a Rust core built without Tauri or WebView. It includes 18 native pages, map guides, character progression details, and spectator following. The previous UI and published packages remain available; this candidate has not been uploaded or substituted for the group build.
 
-Offline checks are complete. Live online validation is pending, and Spine/WebM playback plus the full LocalManaged management UI remain to be migrated. See [native build and validation notes](NATIVE_WINDOWS.md).
+Offline checks are complete. Live online validation is pending, and Spine/WebM playback plus the full LocalManaged management UI remain to be migrated. See [native build and validation notes](docs/guides/NATIVE_WINDOWS.md).
 
 ## Group distribution build
 
-The current [group distribution build](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.2) is a prerelease, not the first stable version. Assets are grouped by desktop and Android. The desktop ZIP includes both Steam CN and TapTap Windows; extract it and run `星枢安装助手.exe`. Supports Steam CN and TapTap 3.3.0 / resource 026. The hand dock defaults to 60% overall size, adjustable from 40% to 120%. See [build notes](GROUP_DISTRIBUTION_20261022_2.md) for known limitations. The local-only native speed prototype is excluded.
+The current [group distribution build](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.2) is a prerelease, not the first stable version. Assets are grouped by desktop and Android. The desktop ZIP includes both Steam CN and TapTap Windows; extract it and run `星枢安装助手.exe`. Supports Steam CN and TapTap 3.3.0 / resource 026. The hand dock defaults to 60% overall size, adjustable from 40% to 120%. See [build notes](docs/records/GROUP_DISTRIBUTION_20261022_2.md) for known limitations. The local-only native speed prototype is excluded.
 
-The Android phone helper now pairs and connects to local wireless debugging inside its own APK. Android 11+ users can install, update, and restore using only their phone, without a computer or Shizuku notifications. Existing Shizuku installations remain optional. See the [phone installation guide](ANDROID_PHONE_INSTALL.md). Windows runtime r6 is retained and split into channel-specific assets; desktop ADB and manual Android files are also available.
+The Android phone helper now pairs and connects to local wireless debugging inside its own APK. Android 11+ users can install, update, and restore using only their phone, without a computer or Shizuku notifications. Existing Shizuku installations remain optional. See the [phone installation guide](docs/guides/ANDROID_PHONE_INSTALL.md). Windows runtime r6 is retained and split into channel-specific assets; desktop ADB and manual Android files are also available.
 
 ---
 
@@ -64,7 +66,7 @@ See [the local watcher notes](AstralParty-Hub/docs/local-managed-watcher.md) for
 - Runtime, packages, plugins, and mods use five channels and explicit installation directories, including multiple locations per channel. Externally installed files show detection status only.
 - Runtime management separates file verification, the actual game process, and the version reported by a confirmed connection. This bundle supplies verified runtime payloads for Steam CN and TapTap Windows; other channels still need runtime testing.
 - The Hub sidebar, settings, and plugin F1 center link to the project source. The current desktop runtime version is `1.0.0-game-ui-r1`.
-- The in-game center now uses translucent surfaces without background stripes, the game's font, and official star-shaped sliders. Colored text previews are fixed. Target selection keeps native panning and the user's zoom; labels and leader lines shrink when zooming out. See the [UI and camera validation record](GAME_UI_R1.md) for tested behavior and pending checks.
+- The in-game center now uses translucent surfaces without background stripes, the game's font, and official star-shaped sliders. Colored text previews are fixed. Target selection keeps native panning and the user's zoom; labels and leader lines shrink when zooming out. See the [UI and camera validation record](docs/records/GAME_UI_R1.md) for tested behavior and pending checks.
 
 See [extension channel documentation](AstralParty-Hub/docs/specs/extension_channels.md) for manifests, destination mappings, and management boundaries. Game artwork, configuration, and resources remain the property of their respective owners and are not relicensed under the code's MIT license.
 
@@ -72,7 +74,7 @@ See [extension channel documentation](AstralParty-Hub/docs/specs/extension_chann
 
 `1.0.0-android-preview5` has been tested with the TapTap MuMu Android 12 game client (3.3.0, resource 026), including runtime loading, touch entry, and phone-helper installation/restore. The mobile button defaults to 64 UI units with a minimum of 48 and independent adjustment. Automatic edge hiding now persists correctly and leaves a tappable strip. Menu and text scaling remain independent; desktop defaults are unchanged.
 
-Xiaomi 14 Pro (Android 16 / HyperOS 3) passed in-APK pairing, local connection, directory checks, official restore, and plugin installation, with device hashes independently verified. System wireless-debugging authorization is still required; Shizuku is optional. Xiaomi 15, other devices, and extended gesture/background scenarios have not been individually verified. The desktop bridge is paused on Android, and future server integration remains unimplemented. This is not an Android Hub APK. See [Android compatibility and device deployment](ANDROID_COMPATIBILITY.md) for the tested scope and build/restore commands.
+Xiaomi 14 Pro (Android 16 / HyperOS 3) passed in-APK pairing, local connection, directory checks, official restore, and plugin installation, with device hashes independently verified. System wireless-debugging authorization is still required; Shizuku is optional. Xiaomi 15, other devices, and extended gesture/background scenarios have not been individually verified. The desktop bridge is paused on Android, and future server integration remains unimplemented. This is not an Android Hub APK. See [Android compatibility and device deployment](docs/guides/ANDROID_COMPATIBILITY.md) for the tested scope and build/restore commands.
 
 ## 🏗️ Architecture Overview
 
@@ -209,10 +211,10 @@ When refreshing this checkout from the development workspace, run `python tools/
 
 ## 📚 Detailed Documentation
 
-- [AUTO_FOLLOW_PROTOCOL.md](AUTO_FOLLOW_PROTOCOL.md) — Auto-Follow Local TCP Communication Protocol Specification
-- [AUTO_FOLLOW_STATE_MACHINE.md](AUTO_FOLLOW_STATE_MACHINE.md) — Auto-Follow 11-State Finite State Machine Design & Transition Matrix
-- [HAND_TRUTH_SOURCE_ARCHITECTURE.md](HAND_TRUTH_SOURCE_ARCHITECTURE.md) — Single Source of Truth Architecture & Counter-Forgery Design
-- [OVERLAY_LIFECYCLE_RECONCILIATION.md](OVERLAY_LIFECYCLE_RECONCILIATION.md) — Floating Overlay Adaptive Lifecycle Reconciliation Specification
+- [AUTO_FOLLOW_PROTOCOL.md](docs/guides/AUTO_FOLLOW_PROTOCOL.md) — Auto-Follow Local TCP Communication Protocol Specification
+- [AUTO_FOLLOW_STATE_MACHINE.md](docs/guides/AUTO_FOLLOW_STATE_MACHINE.md) — Auto-Follow 11-State Finite State Machine Design & Transition Matrix
+- [HAND_TRUTH_SOURCE_ARCHITECTURE.md](docs/guides/HAND_TRUTH_SOURCE_ARCHITECTURE.md) — Single Source of Truth Architecture & Counter-Forgery Design
+- [OVERLAY_LIFECYCLE_RECONCILIATION.md](docs/guides/OVERLAY_LIFECYCLE_RECONCILIATION.md) — Floating Overlay Adaptive Lifecycle Reconciliation Specification
 - [local-managed-watcher.md](AstralParty-Hub/docs/local-managed-watcher.md) — Locally Managed Watcher Work Unit Technical Guide
 
 ---

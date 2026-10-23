@@ -75,6 +75,17 @@ internal static class XingShuConfigKeys
 	// Wave 2: 移动端/通用 UI 缩放 (XingShuMobileUIHelper)
 	internal const string MobileUserScale = "XINGSHU_UI_USER_SCALE";
 
+	// Phone feature-center typography is independent of map widgets and the ball.
+	internal const string MobileTextScale = "XINGSHU_MOBILE_TEXT_SCALE";
+	internal const float MobileTextScaleDefault = .80f;
+	internal const float MobileTextScaleMin = .80f;
+	internal const float MobileTextScaleMax = 1.35f;
+	internal const string MobilePanelScale = "XINGSHU_MOBILE_PANEL_SCALE";
+	internal const float MobilePanelScaleMin = .70f;
+	internal const float MobilePanelScaleMax = 1.30f;
+	internal const string MobilePanelX = "XINGSHU_MOBILE_PANEL_X";
+	internal const string MobilePanelY = "XINGSHU_MOBILE_PANEL_Y";
+
 	internal const float MobileUserScaleDefault = 1.0f;
 
 	internal const float MobileUserScaleMin = 1.0f;
@@ -287,6 +298,7 @@ internal static class XingShuConfigKeys
 	internal const float StatsWidgetTextAlphaDefault = 0.96f;
 
 	internal const float StatsWidgetScaleDefault = 1.0f;
+	internal const float StatsWidgetAndroidScaleDefault = .80f;
 
 	internal const float StatsWidgetXDefault = 1.0f;
 

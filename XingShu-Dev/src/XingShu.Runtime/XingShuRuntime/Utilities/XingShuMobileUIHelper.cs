@@ -138,15 +138,15 @@ public static class XingShuMobileUIHelper
 		}
 	}
 
-	// Floating details share the compact desktop proportions. The larger menu
-	// scale is intended for full-screen controls and would cover the map here.
+	// Floating widgets use their own scale preferences. The legacy menu multiplier
+	// may still contain 10x from old clients and must not enlarge either widget.
 	public static float WidgetScaleFactor
 	{
 		get
 		{
 			if (!IsMobile) return 1f;
 			Rect safe = SafeScreenRect;
-			return LimitScale(Mathf.Min(safe.width / 1600f, safe.height / 900f) * 1.2f * UserScaleMultiplier);
+			return LimitScale(Mathf.Min(safe.width / 1600f, safe.height / 900f) * 1.2f);
 		}
 	}
 

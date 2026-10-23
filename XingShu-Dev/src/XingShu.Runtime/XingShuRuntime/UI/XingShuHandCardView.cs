@@ -34,7 +34,7 @@ namespace XingShuRuntime.UI
         private readonly List<Image> _scalePresetImages = new List<Image>();
         private readonly List<Text> _scalePresetTexts = new List<Text>();
         private static readonly float[] SCALE_PRESETS = new float[] { .4f, HandCardDock.DefaultScale, .8f, 1f, 1.2f };
-        private static readonly string[] SCALE_PRESET_LABELS = new string[] { "40%", "60% 默认", "80%", "100%", "120%" };
+        private static readonly string[] SCALE_PRESET_LABELS = new string[] { "40%", XingShuMobileUIHelper.IsMobile ? "50% 默认" : "60% 默认", "80%", "100%", "120%" };
 
         // Play Button Size Card
         private Slider _btnSizeSlider;
@@ -705,7 +705,7 @@ namespace XingShuRuntime.UI
                     {
                         _playersListText.text = "(当前未在支持的战局中，无活跃玩家手牌监控数据)";
                     }
-                    if (_playersCardLayoutElement != null)
+                    if (_playersCardLayoutElement != null && !XingShuMobileUIHelper.IsMobile)
                     {
                         _playersCardLayoutElement.preferredHeight = 120f;
                         _playersCardLayoutElement.minHeight = 120f;
@@ -806,7 +806,7 @@ namespace XingShuRuntime.UI
 
             // 动态调节卡片高度以容纳玩家行
             float targetHeight = Mathf.Max(140f, 60f + (curPlayersCount * 42f));
-            if (_playersCardLayoutElement != null)
+            if (_playersCardLayoutElement != null && !XingShuMobileUIHelper.IsMobile)
             {
                 _playersCardLayoutElement.preferredHeight = targetHeight;
                 _playersCardLayoutElement.minHeight = targetHeight;

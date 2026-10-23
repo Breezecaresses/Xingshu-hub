@@ -87,7 +87,8 @@ namespace XingShuRuntime.Utilities
         {
             Preferences.Background = XingShuConfigService.GetFloat(Key(XingShuConfigKeys.StatsWidgetPcBackground, XingShuConfigKeys.StatsWidgetAndroidBackground), .78f);
             Preferences.TextAlpha = XingShuConfigService.GetFloat(Key(XingShuConfigKeys.StatsWidgetPcText, XingShuConfigKeys.StatsWidgetAndroidText), .96f);
-            Preferences.Scale = XingShuConfigService.GetFloat(Key(XingShuConfigKeys.StatsWidgetPcScale, XingShuConfigKeys.StatsWidgetAndroidScale), 1);
+            Preferences.Scale = XingShuConfigService.GetFloat(Key(XingShuConfigKeys.StatsWidgetPcScale, XingShuConfigKeys.StatsWidgetAndroidScale),
+                XingShuMobileUIHelper.IsMobile ? XingShuConfigKeys.StatsWidgetAndroidScaleDefault : XingShuConfigKeys.StatsWidgetScaleDefault);
             Preferences.X = XingShuConfigService.GetFloat(Key(XingShuConfigKeys.StatsWidgetPcX, XingShuConfigKeys.StatsWidgetAndroidX), 1);
             Preferences.Y = XingShuConfigService.GetFloat(Key(XingShuConfigKeys.StatsWidgetPcY, XingShuConfigKeys.StatsWidgetAndroidY), .12f);
             Preferences.Locked = XingShuConfigService.GetBool(Key(XingShuConfigKeys.StatsWidgetPcLock, XingShuConfigKeys.StatsWidgetAndroidLock), false);

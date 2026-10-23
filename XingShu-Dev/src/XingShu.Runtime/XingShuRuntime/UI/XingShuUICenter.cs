@@ -23,6 +23,7 @@ namespace XingShuRuntime.UI
         private CanvasGroup _canvasGroup;
         private RectTransform _mainFrameRt;
         private Text _pageTitle;
+        private GameObject _mobileNavigation;
         private float _preferredScale = 1f;
 
         private GameObject _contentArea;
@@ -92,7 +93,8 @@ namespace XingShuRuntime.UI
 
             BuildCenterCanvas();
             SetOpenState(false);
-            XingShuOverlayInput.Register(this, () => _isOpen, () => new Rect(0f, 0f, Screen.width, Screen.height));
+            XingShuOverlayInput.Register(this, () => _isOpen, () => XingShuMobileUIHelper.IsMobile
+                ? XingShuOverlayInput.ScreenRect(_mainFrameRt) : new Rect(0f, 0f, Screen.width, Screen.height));
         }
 
         private void OnDestroy()
@@ -548,6 +550,11 @@ namespace XingShuRuntime.UI
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
+            if (XingShuMobileUIHelper.IsMobile)
+            {
+                scaler.referenceResolution = new Vector2(960, XingShuMobilePageLayout.ReferenceHeight);
+                scaler.matchWidthOrHeight = 1f;
+            }
 
             canvasGo.AddComponent<GraphicRaycaster>();
             _canvasGroup = canvasGo.AddComponent<CanvasGroup>();
@@ -568,6 +575,7 @@ namespace XingShuRuntime.UI
             Button backdropBtn = backdropGo.AddComponent<Button>();
             backdropBtn.transition = Selectable.Transition.None;
             backdropBtn.onClick.AddListener(Close);
+            if (XingShuMobileUIHelper.IsMobile) backdropGo.SetActive(false);
 
             // 3. 独立导航与设置主体组成的居中框架 (1440 × 860)
             GameObject mainFrame = XingShuUIFactory.CreateUIObject("MainFrame", canvasGo);
@@ -577,6 +585,12 @@ namespace XingShuRuntime.UI
             _mainFrameRt.pivot = new Vector2(0.5f, 0.5f);
             _mainFrameRt.anchoredPosition = Vector2.zero;
             _mainFrameRt.sizeDelta = new Vector2(1440f, 860f);
+            if (XingShuMobileUIHelper.IsMobile)
+            {
+                BuildMobileCenter(mainFrame);
+                FitPanelToScreen();
+                return;
+            }
             float userScale = XingShuConfigService.GetFloat(XingShuConfigKeys.MobileUserScale, XingShuConfigKeys.MobileUserScaleDefault);
             if (!XingShuMobileUIHelper.IsMobile)
             {
@@ -625,6 +639,29 @@ namespace XingShuRuntime.UI
         private void FitPanelToScreen()
         {
             if (_mainFrameRt == null || Screen.width <= 0 || Screen.height <= 0) return;
+            if (XingShuMobileUIHelper.IsMobile)
+            {
+                float scale = Screen.height / XingShuMobilePageLayout.ReferenceHeight;
+                Rect mobileSafe = XingShuMobileUIHelper.SafeScreenRect;
+                _mainFrameRt.localScale = Vector3.one;
+                float ratio = XingShuMobilePageLayout.PanelScale;
+                float width = Mathf.Min(mobileSafe.width / scale - 16, Mathf.Max(360, (mobileSafe.width / scale * .5f - 12) * ratio));
+                float height = Mathf.Min(mobileSafe.height / scale - 16, Mathf.Max(300, mobileSafe.height / scale * .90f * ratio));
+                _mainFrameRt.sizeDelta = new Vector2(width, height);
+                float x = XingShuMobileUIHelper.FiniteClamp(XingShuConfigService.GetFloat(XingShuConfigKeys.MobilePanelX, .70f), 0, 1, .70f);
+                float y = XingShuMobileUIHelper.FiniteClamp(XingShuConfigService.GetFloat(XingShuConfigKeys.MobilePanelY, .50f), 0, 1, .50f);
+                Vector2 half = new Vector2(width, height) * scale * .5f;
+                Vector2 center = new Vector2(
+                    Mathf.Clamp(mobileSafe.xMin + x * mobileSafe.width, mobileSafe.xMin + half.x, mobileSafe.xMax - half.x),
+                    Mathf.Clamp(mobileSafe.yMin + y * mobileSafe.height, mobileSafe.yMin + half.y, mobileSafe.yMax - half.y));
+                _mainFrameRt.anchoredPosition = (center - new Vector2(Screen.width, Screen.height) * .5f) / scale;
+                if (_mobileNavigation != null)
+                {
+                    var drawer = _mobileNavigation.transform.Find("Drawer") as RectTransform;
+                    if (drawer != null) drawer.offsetMax = new Vector2(Mathf.Min(360, width - 24), 0);
+                }
+                return;
+            }
             // Match the CanvasScaler, then fit the entire frame with a small screen margin.
             float canvasScale = Mathf.Sqrt((Screen.width / 1920f) * (Screen.height / 1080f));
             Rect safe = XingShuMobileUIHelper.SafeScreenRect;
@@ -641,6 +678,89 @@ namespace XingShuRuntime.UI
             rt.anchorMin = min; rt.anchorMax = max; rt.pivot = pivot;
             rt.anchoredPosition = pos; rt.sizeDelta = size;
             return rt;
+        }
+
+        internal static void RefreshMobileText()
+        {
+            if (Instance != null && Instance._canvas != null)
+                XingShuMobilePageLayout.RefreshAll(Instance._canvas.gameObject);
+        }
+
+        internal static void RefreshMobileWindow()
+        {
+            if (Instance == null || !XingShuMobileUIHelper.IsMobile) return;
+            Instance.FitPanelToScreen();
+            Instance._dragHandle?.ClampPosition();
+        }
+
+        private void SaveMobilePosition()
+        {
+            Rect safe = XingShuMobileUIHelper.SafeScreenRect;
+            if (safe.width <= 0 || safe.height <= 0) return;
+            float scale = Screen.height / XingShuMobilePageLayout.ReferenceHeight;
+            Vector2 center = _mainFrameRt.anchoredPosition * scale + new Vector2(Screen.width, Screen.height) * .5f;
+            XingShuConfigService.SetFloat(XingShuConfigKeys.MobilePanelX, Mathf.Clamp01((center.x - safe.xMin) / safe.width));
+            XingShuConfigService.SetFloat(XingShuConfigKeys.MobilePanelY, Mathf.Clamp01((center.y - safe.yMin) / safe.height));
+            XingShuConfigService.Save();
+        }
+
+        private void BuildMobileCenter(GameObject frame)
+        {
+            Sprite frameSprite = XingShuUIAssetService.GetSprite("window_frame.png");
+            var bg = frame.AddComponent<Image>(); bg.sprite = frameSprite; bg.type = Image.Type.Sliced;
+            bg.color = XingShuUIAssetService.IsFallbackSprite(frameSprite) ? XingShuUITheme.PanelBase : Color.white;
+            var titleBar = XingShuUIFactory.CreateUIObject("MobileDragBar", frame);
+            Place(titleBar, Vector2.up, Vector2.one, Vector2.up, new Vector2(128, -8), new Vector2(-256, 64));
+            titleBar.AddComponent<Image>().color = new Color(0, 0, 0, .01f);
+            _dragHandle = titleBar.AddComponent<XingShuUIDragHandle>();
+            _dragHandle.targetRect = _mainFrameRt;
+            _dragHandle.parentRect = _canvas.transform as RectTransform;
+            _dragHandle.onDragFinished = SaveMobilePosition;
+            _dragHandle.BindEvents();
+            var menu = XingShuUIFactory.CreateButton(frame, "MobileMenu", "功能菜单",
+                XingShuUIAssetService.GetSprite("button_primary.png"), Color.white, Color.white,
+                () => _mobileNavigation.SetActive(!_mobileNavigation.activeSelf), 22);
+            Place(menu.gameObject, Vector2.up, Vector2.up, Vector2.up, new Vector2(12, -8), new Vector2(112, 64));
+            _pageTitle = XingShuUIFactory.CreateText(titleBar, "MobileTitle", TAB_NAMES[0], 24,
+                Color.white, TextAnchor.MiddleLeft, FontStyle.Bold);
+            XingShuDetailLayout.Fill(_pageTitle.rectTransform, 6, 0, 6, 0);
+            _pageTitle.horizontalOverflow = HorizontalWrapMode.Wrap;
+            var close = XingShuUIFactory.CreateButton(frame, "MobileClose", "返回",
+                XingShuUIAssetService.GetSprite("button_secondary.png"), Color.white, XingShuUITheme.PrimaryText, Close, 22);
+            Place(close.gameObject, Vector2.one, Vector2.one, Vector2.one, new Vector2(-12, -8), new Vector2(112, 64));
+            BuildContentArea(frame);
+            foreach (Transform page in _contentArea.transform)
+                if (page.gameObject != _comingSoonView) XingShuMobilePageLayout.Adapt(page.gameObject);
+            var footer = XingShuUIFactory.CreateText(frame, "MobileFooter", "拖动顶部移动 · 上下滑动查看设置", 18,
+                new Color(.8f, .78f, .86f), TextAnchor.MiddleCenter);
+            Place(footer.gameObject, Vector2.zero, Vector2.right, Vector2.zero, new Vector2(12, 4), new Vector2(-24, 28));
+
+            // Drawer is last in sibling order and blocks the content underneath.
+            _mobileNavigation = XingShuUIFactory.CreateUIObject("MobileNavigation", frame);
+            XingShuDetailLayout.Fill(_mobileNavigation.GetComponent<RectTransform>());
+            var shade = _mobileNavigation.AddComponent<Image>(); shade.color = new Color(0, 0, 0, .7f);
+            var dismiss = _mobileNavigation.AddComponent<Button>(); dismiss.targetGraphic = shade;
+            dismiss.onClick.AddListener(() => _mobileNavigation.SetActive(false));
+            var drawer = XingShuUIFactory.CreateUIObject("Drawer", _mobileNavigation);
+            var dr = drawer.GetComponent<RectTransform>();
+            dr.anchorMin = Vector2.zero; dr.anchorMax = Vector2.up; dr.pivot = Vector2.zero;
+            dr.offsetMin = Vector2.zero; dr.offsetMax = new Vector2(360, 0);
+            var drawerBg = drawer.AddComponent<Image>(); drawerBg.color = new Color(.1f, .08f, .16f, 1f);
+            var scroll = XingShuUIFactory.CreateVerticalScrollView(drawer, "MobileFunctions", out GameObject nav);
+            var flow = nav.GetComponent<VerticalLayoutGroup>();
+            flow.spacing = 12; flow.padding = new RectOffset(16, 16, 16, 24);
+            var caption = XingShuUIFactory.CreateText(nav, "Choose", "选择功能", 26, Color.white, TextAnchor.MiddleLeft, FontStyle.Bold);
+            caption.gameObject.AddComponent<LayoutElement>().preferredHeight = 52;
+            for (int i = 0; i < TAB_NAMES.Length; i++)
+            {
+                int index = i;
+                var button = XingShuUIFactory.CreateButton(nav, "MobileTab_" + i, TAB_NAMES[i],
+                    XingShuUIAssetService.GetSprite("sidebar_tab_normal.png"), Color.white, Color.white, () => SelectTab(index), 24);
+                var element = button.gameObject.AddComponent<LayoutElement>();
+                element.minHeight = element.preferredHeight = 68;
+                _tabButtons.Add(button); _tabImages.Add(button.GetComponent<Image>()); _tabTexts.Add(button.GetComponentInChildren<Text>());
+            }
+            _mobileNavigation.SetActive(false);
         }
 
         private void BuildTitleBar(GameObject parent)
@@ -746,6 +866,11 @@ namespace XingShuRuntime.UI
             caRt.pivot = new Vector2(0f, 1f);
             caRt.anchoredPosition = new Vector2(280f, -112f);
             caRt.sizeDelta = new Vector2(-312f, -158f);
+            if (XingShuMobileUIHelper.IsMobile)
+            {
+                caRt.offsetMin = new Vector2(14, 36);
+                caRt.offsetMax = new Vector2(-14, -84);
+            }
 
             // 1. 游戏加速页面 (Active Feature - Tab 0)
             _gameSpeedView = new XingShuGameSpeedView(_contentArea.transform);
@@ -809,6 +934,7 @@ namespace XingShuRuntime.UI
 
         private void SelectTab(int index)
         {
+            if (_mobileNavigation != null) _mobileNavigation.SetActive(false);
             _currentTabIndex = index;
             if (_pageTitle != null) _pageTitle.text = TAB_NAMES[index];
             Sprite normalTabSprite = XingShuUIAssetService.GetSprite("sidebar_tab_normal.png");
@@ -833,7 +959,7 @@ namespace XingShuRuntime.UI
                 if (i < _tabTexts.Count && _tabTexts[i] != null)
                 {
                     _tabTexts[i].color = Color.white;
-                    _tabTexts[i].fontSize = 21;
+                    _tabTexts[i].fontSize = XingShuMobileUIHelper.IsMobile ? 24 : 21;
                     _tabTexts[i].fontStyle = FontStyle.Bold;
                 }
             }

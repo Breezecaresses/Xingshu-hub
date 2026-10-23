@@ -1,7 +1,10 @@
 """Copy the active source into a separate Git checkout without nested repositories or game binaries."""
 import argparse
 from pathlib import Path
+import posixpath
+import re
 import shutil
+from project_paths import project_document
 
 ROOT = Path(__file__).resolve().parents[1]
 FOLDERS = [
@@ -43,7 +46,7 @@ FILES = [
     'tools/check_runtime_compatibility.ps1',
     'tools/prepare_android_runtime.py', 'tools/android_runtime_device.py',
     'tools/check_android_runtime.ps1', 'ANDROID_COMPATIBILITY.md',
-    'tools/install_hub_watch_join_fix.ps1', 'tools/export_source_repo.py',
+    'tools/install_hub_watch_join_fix.ps1', 'tools/export_source_repo.py', 'tools/project_paths.py', 'tools/test_source_export.py', 'docs/records/MOBILE_UI_20261024.md',
     'tools/GroupTestInstaller.cs', 'tools/package_group_test.py', 'tools/package_android_preview.py', 'tools/publish_release.py', 'GROUP_DISTRIBUTION_20261021_2.md', 'GROUP_DISTRIBUTION_20261021_3.md',
     'tools/AndroidPreviewInstaller.cs', 'XingShu-Dev/tools/test_preference_migration.ps1',
     'tools/build_android_installer.py', 'ANDROID_PHONE_INSTALL.md', 'GROUP_DISTRIBUTION_20261022_2.md',
@@ -51,12 +54,68 @@ FILES = [
     'tools/prepare_mod_library.py', 'tools/test_mod_library_package.py', 'MOD_MANAGEMENT_20261023.md',
     'tools/HubUpdater.cs', 'tools/SignUpdate.java', 'tools/update-public-cert.txt',
     'tools/prepare_update_release.py', 'tools/test_app_updates.py', 'APP_UPDATES_20261023.md', 'CHANNEL_COMPATIBILITY_20261023.md',
-    'XingShu-Dev/tools/test_assist_ball.ps1',
+    'XingShu-Dev/tools/test_assist_ball.ps1', 'XingShu-Dev/tools/test_mobile_slider.ps1', 'XingShu-Dev/tools/test_mobile_widgets.ps1',
     'NATIVE_WINDOWS.md', 'tools/build_native_hub.py', 'tools/test_native_core.py',
     'tools/migrate_native_host.py', 'tools/export_map_guides.py', 'tools/catalog_schema.json',
 ]
 SKIP_DIRS = {'.git', '.gradle', 'build', 'bin', 'obj', 'target', 'node_modules', '__pycache__', 'dist', 'release'}
 SKIP_SUFFIXES = {'.dll', '.exe', '.pdb', '.bundle', '.7z', '.zip', '.rar', '.log', '.pyc', '.tsbuildinfo'}
+
+# Working notes stay beside the local build scripts. The public source tree has
+# one documentation entry point instead of accumulating dated files at its root.
+GUIDES = {'ANDROID_COMPATIBILITY.md', 'ANDROID_PHONE_INSTALL.md',
+          'HAND_TRUTH_SOURCE_ARCHITECTURE.md', 'OVERLAY_LIFECYCLE_RECONCILIATION.md',
+          'AUTO_FOLLOW_PROTOCOL.md', 'AUTO_FOLLOW_STATE_MACHINE.md',
+          'MONSTER_TARGETING.md', 'NATIVE_WINDOWS.md'}
+DOC_PATHS = {name: 'docs/' + ('guides/' if name in GUIDES else 'records/') + name
+             for name in FILES if name.endswith('.md') and '/' not in name}
+
+def normalized_bytes(data):
+    return b'\n'.join(line.rstrip(b'\r') for line in data.split(b'\n'))
+
+def rewrite_doc_links(content, old_path, new_path):
+    def replace(match):
+        target = match.group(2)
+        if re.match(r'^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|/|#)', target):
+            return match.group(0)
+        path, separator, fragment = target.partition('#')
+        resolved = posixpath.normpath(posixpath.join(posixpath.dirname(old_path), path))
+        mapped = DOC_PATHS.get(resolved, resolved)
+        relative = posixpath.relpath(mapped, posixpath.dirname(new_path) or '.')
+        return match.group(1) + relative + (separator + fragment if separator else '') + match.group(3)
+    return re.sub(r'(!?\[[^\]]*\]\()([^\s)]+)(\))', replace, content)
+
+def migrate_root_documents(destination):
+    # Check all old files before removing any. Never discard checkout-only edits.
+    stale = []
+    for name in DOC_PATHS:
+        old = destination / name
+        if old.exists():
+            if normalized_bytes(old.read_bytes()) != normalized_bytes(project_document(ROOT, name).read_bytes()):
+                raise SystemExit(f'Root document has checkout-only changes; merge it first: {old}')
+            stale.append(old)
+    for old in stale:
+        old.unlink()
+    for name in ('README.md', 'README_CN.md'):
+        path = destination / name
+        if path.exists():
+            before = normalized_bytes(path.read_bytes()).decode('utf-8')
+            after = rewrite_doc_links(before, name, name)
+            if 'docs/README.md' not in after:
+                heading, separator, body = after.partition('\n')
+                after = heading + '\n\n[项目文档与验证记录](docs/README.md)\n\n' + body.lstrip('\n')
+            if after != before:
+                path.write_bytes(after.encode('utf-8'))
+    index = '# 项目文档\n\n使用与架构说明集中在 `guides/`，历史更新和验证记录集中在 `records/`。\n\n'
+    for directory, heading in (('guides', '使用与架构'), ('records', '更新与验证记录')):
+        index += '## ' + heading + '\n\n'
+        entries = dict(DOC_PATHS)
+        entries.update({Path(name).name: name for name in FILES if name.startswith('docs/') and name.endswith('.md')})
+        for name, mapped in sorted(entries.items()):
+            if mapped.startswith('docs/' + directory + '/'):
+                index += f'- [{name}]({directory}/{name})\n'
+        index += '\n'
+    (destination / 'docs/README.md').write_bytes((index.rstrip() + '\n').encode('utf-8'))
 
 def initialize_file(path, content):
     # Published documentation and ignore rules are maintained in the checkout.
@@ -74,7 +133,7 @@ def main():
     destination.mkdir(parents=True, exist_ok=True)
     if any(destination.iterdir()) and not (destination / '.xingshu-source-export').exists():
         raise SystemExit('Refusing to overwrite an unrelated directory')
-    selected = {ROOT / item for item in FILES}
+    selected = {project_document(ROOT, item) if item in DOC_PATHS else ROOT / item for item in FILES}
     for folder in FOLDERS:
         if (ROOT / folder).exists():
             selected.update(p for p in (ROOT / folder).rglob('*') if p.is_file())
@@ -90,12 +149,15 @@ def main():
             continue
         if source.name.startswith('.env') or 'credentials' in source.name.lower() or source.name == 'local.properties' or source.suffix.lower() in {'.jks', '.keystore', '.apk'}:
             continue
-        target = destination / relative
+        target_relative = DOC_PATHS.get(relative.as_posix(), relative.as_posix())
+        target = destination / target_relative
         if destination not in target.resolve().parents:
             raise SystemExit('Target escaped source checkout')
         target.parent.mkdir(parents=True, exist_ok=True)
         if source.suffix.lower() in {'.cs', '.rs', '.ts', '.tsx', '.json', '.css', '.ps1', '.py', '.md', '.toml', '.html', '.lock', '.java', '.gradle', '.xml', '.aidl', '.txt', '.c', '.cpp', '.h', '.xaml', '.csproj', '.manifest'}:
-            normalized = b'\n'.join(line.rstrip(b'\r') for line in source.read_bytes().split(b'\n'))
+            normalized = normalized_bytes(source.read_bytes())
+            if source.suffix.lower() == '.md':
+                normalized = rewrite_doc_links(normalized.decode('utf-8'), relative.as_posix(), target_relative).encode('utf-8')
             existing = target.read_bytes() if target.exists() else b''
             previous = b'\n'.join(line.rstrip(b'\r') for line in existing.split(b'\n'))
             if normalized != previous:
@@ -150,6 +212,7 @@ Runtime：执行 `XingShu-Dev/tools/build.ps1 -Configuration Release`，需要 V
 
 自动化回归：`npm run test:resolver`、`npm run test:auto-follow`、`npm run test:runtime-truth-closure`；Rust `cargo test --lib local_watcher` 及 `cargo test --lib configured_platform_match_end_releases_only_the_spectator`。C# 独立生命周期测试位于 `XingShu-Dev/tools/MatchLifecycleTests`。
 ''')
+    migrate_root_documents(destination)
     print(f'Exported {count} source files, {size / 1024 / 1024:.2f} MiB to {destination}')
 
 if __name__ == '__main__':

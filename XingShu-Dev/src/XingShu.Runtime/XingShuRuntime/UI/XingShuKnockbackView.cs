@@ -831,13 +831,13 @@ namespace XingShuRuntime.UI
 
                 if (_previewLine1Text != null)
                 {
-                    _previewLine1Text.fontSize = previewBase;
-                    _previewLine1Text.text = $"<b><size={previewBase}><color={p16Col}>击飞 16.7%</color>  <color={targetCol}>典狱长</color></size></b>";
+                    _previewLine1Text.fontSize = XingShuMobileUIHelper.IsMobile ? Mathf.RoundToInt(Mathf.Max(22, previewBase) * XingShuMobilePageLayout.TextScale) : previewBase;
+                    _previewLine1Text.text = $"<b><size={_previewLine1Text.fontSize}><color={p16Col}>击飞 16.7%</color>  <color={targetCol}>典狱长</color></size></b>";
                 }
                 if (_previewLine2Text != null)
                 {
-                    _previewLine2Text.fontSize = previewBase;
-                    _previewLine2Text.text = $"<b><size={previewBase}><color={p100Col}>击飞 100%</color>  <color={targetCol}>闹钟猫头鹰</color></size></b>";
+                    _previewLine2Text.fontSize = XingShuMobileUIHelper.IsMobile ? Mathf.RoundToInt(Mathf.Max(22, previewBase) * XingShuMobilePageLayout.TextScale) : previewBase;
+                    _previewLine2Text.text = $"<b><size={_previewLine2Text.fontSize}><color={p100Col}>击飞 100%</color>  <color={targetCol}>闹钟猫头鹰</color></size></b>";
                 }
 
                 if (curStatus != _lastObservedStatus || force)

@@ -2,7 +2,7 @@
 
 版本：`0.2.0-native1`。本版为独立候选版，未替换现有 Hub，也未作为正式版本上传。
 
-2026-10-22：按用户决定暂停原生迁移，继续使用现有 React / Tauri Hub 与 R7 游戏插件。原生源码、独立发布目录和 ZIP 均留存；下文为候选版的完成情况记录，不作为当前默认启动或发布方案。旧 Hub 入口为 `AstralParty-Hub/release/XingShu/Hub/xingshu-hub.exe`。本次验证见 [R7 验证记录](R7_VERIFICATION_20261022.md)。
+2026-10-22：按用户决定暂停原生迁移，继续使用现有 React / Tauri Hub 与 R7 游戏插件。原生源码、独立发布目录和 ZIP 均留存；下文为候选版的完成情况记录，不作为当前默认启动或发布方案。旧 Hub 入口为 `AstralParty-Hub/release/XingShu/Hub/xingshu-hub.exe`。本次验证见 [R7 验证记录](../records/R7_VERIFICATION_20261022.md)。
 
 ## 界面和核心
 

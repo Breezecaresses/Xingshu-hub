@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import zipfile
+from project_paths import project_document
 
 ROOT=Path(__file__).resolve().parents[1]
 def sha(path): return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -39,14 +40,14 @@ def main():
     manifest['sourceCommit']=args.source_commit
     (destination/'candidate.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf8')
     shutil.copy2(ROOT/'tools/android_runtime_device.py',destination/'android_runtime_device.py')
-    shutil.copy2(ROOT/'ANDROID_COMPATIBILITY.md',destination/'兼容性说明.md')
+    shutil.copy2(project_document(ROOT,'ANDROID_COMPATIBILITY.md'),destination/'兼容性说明.md')
     shutil.copy2(ROOT/'LICENSE',destination/'LICENSE.txt')
     shutil.copy2(args.phone_apk,destination/'星枢手机安装助手.apk')
-    shutil.copy2(ROOT/'ANDROID_PHONE_INSTALL.md',destination/'手机安装与手动替换.md')
+    shutil.copy2(project_document(ROOT,'ANDROID_PHONE_INSTALL.md'),destination/'手机安装与手动替换.md')
     manual=destination/'手动替换'; manual.mkdir()
     shutil.copy2(candidate,manual/'__data')
     shutil.copy2(args.vanilla,manual/'官方原版.__data')
-    shutil.copy2(ROOT/'ANDROID_PHONE_INSTALL.md',manual/'替换说明.md')
+    shutil.copy2(project_document(ROOT,'ANDROID_PHONE_INSTALL.md'),manual/'替换说明.md')
     (manual/'文件校验.json').write_text(json.dumps({**manifest,
         'candidate':'__data','vanilla':'官方原版.__data',
         'supportedPreviousSha256':['3d94697f4dc6d64c2cb5fcca56339090f54e920cd7dab6de7bcc1912347e5a0f']},ensure_ascii=False,indent=2)+'\n',encoding='utf8')

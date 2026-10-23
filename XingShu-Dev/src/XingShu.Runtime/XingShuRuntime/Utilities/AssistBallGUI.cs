@@ -764,6 +764,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 				if (canvas != null)
 				{
 					canvas.pixelPerfect = true;
+					if (XingShuMobileUIHelper.IsMobile) canvas.sortingOrder = 31020;
 				}
 			}
 			ApplyCanvasScale(_ballRootObj);
@@ -1798,7 +1799,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 	{
 		if (_ballRootObj != null)
 		{
-			_ballRootObj.SetActive(_visible);
+			if (_ballRootObj.activeSelf != _visible) _ballRootObj.SetActive(_visible);
 		}
 	}
 

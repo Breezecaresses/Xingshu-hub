@@ -17,6 +17,8 @@ namespace XingShuRuntime.UI
         [SerializeField]
         internal RectTransform parentRect;
 
+        internal System.Action onDragFinished;
+
         private readonly List<RectTransform> _excludedRects = new List<RectTransform>();
 
         private int _pointerId = int.MinValue;
@@ -132,6 +134,7 @@ namespace XingShuRuntime.UI
                 _dragAllowedForCurrentPointer = false;
                 _pointerId = int.MinValue;
                 ClampPosition();
+                onDragFinished?.Invoke();
             }
         }
 

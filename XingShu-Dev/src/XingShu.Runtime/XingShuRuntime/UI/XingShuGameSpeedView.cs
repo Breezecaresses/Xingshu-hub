@@ -563,9 +563,12 @@ namespace XingShuRuntime.UI
                         _smartPauseToggle.gameObject.SetActive(false);
                     }
                     RectTransform toggleRt = _enableToggle.GetComponent<RectTransform>();
-                    toggleRt.anchorMin = new Vector2(0f, 0.5f);
-                    toggleRt.anchorMax = new Vector2(1f, 0.5f);
-                    toggleRt.sizeDelta = new Vector2(-48f, 32f);
+                    if (!XingShuMobileUIHelper.IsMobile)
+                    {
+                        toggleRt.anchorMin = new Vector2(0f, 0.5f);
+                        toggleRt.anchorMax = new Vector2(1f, 0.5f);
+                        toggleRt.sizeDelta = new Vector2(-48f, 32f);
+                    }
 
                     UpdateStatusText(curEnabled);
                     UpdatePresetButtonVisuals(curSpeed);

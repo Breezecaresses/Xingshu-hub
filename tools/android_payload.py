@@ -13,7 +13,10 @@ def sha(path):
 def previous_hashes(manifest):
     # Only intact candidates for this exact game/resource build are accepted.
     found = {'3d94697f4dc6d64c2cb5fcca56339090f54e920cd7dab6de7bcc1912347e5a0f'}
-    for path in (ROOT / '发布包').glob('XingShu_Android_*/candidate.json'):
+    releases = ROOT / '发布包'
+    manifests = set(releases.glob('XingShu_Android_*/candidate.json'))
+    manifests.update(releases.glob('XingShu_*/Android/candidate.json'))
+    for path in sorted(manifests):
         old = json.loads(path.read_text(encoding='utf-8-sig'))
         if any(old.get(key) != manifest.get(key) for key in ('platform', 'package', 'appVersion', 'originalSha256', 'bundleRelativePath')):
             continue

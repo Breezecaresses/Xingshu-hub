@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import zipfile
 from android_payload import previous_hashes, sha
+from project_paths import project_document
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -57,7 +58,7 @@ def main():
     subprocess.run([str(compiler), '/nologo', '/target:winexe', '/optimize+', '/reference:System.Windows.Forms.dll',
                     '/reference:System.Drawing.dll', '/reference:System.Web.Extensions.dll',
                     '/out:' + str(root / '星枢安卓安装助手.exe'), str(ROOT / 'tools/AndroidPreviewInstaller.cs')], check=True)
-    shutil.copy2(ROOT / 'ANDROID_PHONE_INSTALL.md', root / '手机独立安装说明.md')
+    shutil.copy2(project_document(ROOT, 'ANDROID_PHONE_INSTALL.md'), root / '手机独立安装说明.md')
     info = {'formatVersion': 1, 'runtimeVersion': m['runtimeVersion'], 'files': {
         f.relative_to(root).as_posix(): sha(f) for f in sorted(root.rglob('*')) if f.is_file()
     }}

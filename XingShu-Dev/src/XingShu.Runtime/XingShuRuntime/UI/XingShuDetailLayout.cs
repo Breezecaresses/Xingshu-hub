@@ -53,6 +53,7 @@ namespace XingShuRuntime.UI
 
         internal XingShuMatchPlayerCard(GameObject parent, bool compact)
         {
+            bool phone = XingShuMobileUIHelper.IsMobile && !compact;
             _root = XingShuUIFactory.CreateUIObject("PlayerDetailCard", parent);
             var rt = _root.GetComponent<RectTransform>(); XingShuDetailLayout.Fill(rt);
             XingShuDetailLayout.Panel(rt).raycastTarget = false;
@@ -68,17 +69,31 @@ namespace XingShuRuntime.UI
                 var rect = label.rectTransform; rect.anchorMin = rect.anchorMax = new Vector2(1, 1); rect.pivot = new Vector2(1, 1);
                 rect.anchoredPosition = new Vector2(-18, label == _score ? -12 : -44); label.alignment = TextAnchor.MiddleRight;
             }
-            int columns = compact ? 3 : Labels.Length;
+            if (phone)
+            {
+                _name.fontSize = 24; _character.fontSize = 22;
+                _score.fontSize = 30; _state.fontSize = 20;
+                _name.rectTransform.anchorMax = Vector2.one;
+                _name.rectTransform.sizeDelta = new Vector2(-240, 44);
+                _character.rectTransform.anchorMax = Vector2.one;
+                _character.rectTransform.sizeDelta = new Vector2(-240, 40);
+                _character.rectTransform.anchoredPosition = new Vector2(68, -60);
+                _score.rectTransform.sizeDelta = new Vector2(140, 48);
+                _state.rectTransform.sizeDelta = new Vector2(180, 36);
+                _state.rectTransform.anchoredPosition = new Vector2(-18, -64);
+            }
+            int columns = compact || phone ? 3 : Labels.Length;
+            float top = phone ? 114 : 78, rowHeight = phone ? 92 : 48;
             for (int i = 0; i < Labels.Length; i++)
             {
                 int col = i % columns, row = i / columns;
-                var cell = XingShuDetailLayout.Box(rt, "Metric" + i, 0, 78 + row * 48, 0, 44);
+                var cell = XingShuDetailLayout.Box(rt, "Metric" + i, 0, top + row * rowHeight, 0, rowHeight - 4);
                 cell.anchorMin = new Vector2((float)col / columns, 1); cell.anchorMax = new Vector2((float)(col + 1) / columns, 1);
-                cell.offsetMin = new Vector2(12, -122 - row * 48); cell.offsetMax = new Vector2(-12, -78 - row * 48);
-                var title = XingShuDetailLayout.Text(cell, Labels[i], 0, 0, 0, 18, 11, true);
-                title.rectTransform.anchorMax = new Vector2(1, 1); title.rectTransform.sizeDelta = new Vector2(0, 18); title.alignment = TextAnchor.MiddleCenter;
-                _values[i] = XingShuDetailLayout.Text(cell, "—", 0, 20, 0, 24, compact ? 16 : 18);
-                _values[i].rectTransform.anchorMax = new Vector2(1, 1); _values[i].rectTransform.sizeDelta = new Vector2(0, 24); _values[i].alignment = TextAnchor.MiddleCenter;
+                cell.offsetMin = new Vector2(12, -top - (row + 1) * rowHeight + 4); cell.offsetMax = new Vector2(-12, -top - row * rowHeight);
+                var title = XingShuDetailLayout.Text(cell, Labels[i], 0, 0, 0, phone ? 36 : 18, phone ? 22 : 11, true);
+                title.rectTransform.anchorMax = new Vector2(1, 1); title.rectTransform.sizeDelta = new Vector2(0, phone ? 36 : 18); title.alignment = TextAnchor.MiddleCenter;
+                _values[i] = XingShuDetailLayout.Text(cell, "—", 0, phone ? 40 : 20, 0, phone ? 46 : 24, phone ? 28 : compact ? 16 : 18);
+                _values[i].rectTransform.anchorMax = new Vector2(1, 1); _values[i].rectTransform.sizeDelta = new Vector2(0, phone ? 46 : 24); _values[i].alignment = TextAnchor.MiddleCenter;
             }
         }
 

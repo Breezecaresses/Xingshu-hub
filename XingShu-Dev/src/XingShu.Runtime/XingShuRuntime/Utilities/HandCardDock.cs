@@ -45,7 +45,8 @@ namespace XingShuRuntime.Utilities
         private const float CardsTop = 84;
         private float _panelWidth = 404, _panelHeight = 434;
         private Vector2 _position = new Vector2(12, 150);
-        internal const float DefaultScale = .6f, MinScale = .4f, MaxScale = 1.2f;
+        internal const float MinScale = .4f, MaxScale = 1.2f;
+        internal static float DefaultScale => XingShuMobileUIHelper.IsMobile ? .5f : .6f;
         internal static float Scale
         {
             get => Mathf.Clamp(XingShuConfigService.GetFloat("XS_HAND_DOCK_SCALE", DefaultScale), MinScale, MaxScale);
