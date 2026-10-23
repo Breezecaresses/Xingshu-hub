@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType><TargetFramework>net10.0-windows</TargetFramework><UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><AssemblyName>xingshu-hub</AssemblyName>
+    <RootNamespace>XingShu.Native</RootNamespace><Version>0.2.0</Version><ApplicationIcon>../src-tauri/icons/icon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest><EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <PublishReadyToRun>false</PublishReadyToRun><DebugType>embedded</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="../src-tauri/icons/icon.ico" Link="Brand/icon.ico" />
+    <Resource Include="../src-tauri/icons/128x128.png" Link="Brand/logo.png" />
+    <Content Include="../src/shared/gameCatalog.generated.json" Link="Assets/catalog.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../src/shared/mapGuides.generated.json" Link="Assets/guides.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('../src/shared/mapGuides.generated.json')" />
+  </ItemGroup>
+</Project>

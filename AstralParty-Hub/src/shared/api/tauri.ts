@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 let syncedRuntimeBindings: string | null = null;
 let runtimeBindingsSync: Promise<void> | null = null;
-import { CANONICAL_BOUND_SPECTATOR_PLAYER_ID } from '../../services/expectedAccountBindings';
+import { CANONICAL_BOUND_SPECTATOR_PLAYER_ID } from '../../services/expectedAccountBindings.ts';
 import type {
   Backup,
   Card,

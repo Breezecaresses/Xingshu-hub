@@ -33,7 +33,7 @@ namespace XingShuRuntime.Utilities
             _root = new GameObject("XINGSHU_StatsWidget", typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster));
             UnityEngine.Object.DontDestroyOnLoad(_root);
             var canvas = _root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 30020;
-            _widget = XingShuDetailLayout.Box(_root.transform, "Widget", 0, 0, 360, 376);
+            _widget = XingShuDetailLayout.Box(_root.transform, "Widget", 0, 0, 360, StatsWidgetPreferences.Height);
             _background = XingShuDetailLayout.Panel(_widget, "window_frame.png", Preferences.Background);
             var heading = XingShuDetailLayout.Box(_widget, "Header", 0, 0, 360, 42);
             XingShuDetailLayout.Panel(heading, "header_bar.png");
@@ -50,9 +50,9 @@ namespace XingShuRuntime.Utilities
                 int slot = i;
                 _tabs[i] = XingShuDetailLayout.Button(_body.transform, "P" + (i + 1), 12 + i * 84, 48, 78, 28, () => { _selected = slot; Refresh(_frame); });
             }
-            var detail = XingShuDetailLayout.Box(_body.transform, "Detail", 10, 84, 340, 274);
+            var detail = XingShuDetailLayout.Box(_body.transform, "Detail", 10, 84, 340, 226);
             _card = new XingShuMatchPlayerCard(detail.gameObject, true);
-            _footer = XingShuDetailLayout.Text(_body.transform, "实时参考 · 点 P1–P4 切换", 14, 358, 334, 18, 10);
+            _footer = XingShuDetailLayout.Text(_body.transform, "实时参考 · 点 P1–P4 切换", 14, 310, 334, 18, 10);
             ReloadPreferences(); Show(false);
         }
 
@@ -63,12 +63,12 @@ namespace XingShuRuntime.Utilities
             _status.text = frame.Players[_selected]?.State == "已结算" ? "对局统计 · 已结算" : "对局统计 · 实时参考";
             for (int i = 0; i < _tabs.Length; i++) _tabs[i].image.sprite = XingShuUIAssetService.GetSprite(i == _selected ? "button_selected.png" : "button_secondary.png");
             _card.Refresh(frame.Players[_selected], _selected);
-            _footer.text = frame.Players[_selected]?.State == "已结算" ? "服务器结算 · 与 Hub 同一评分规则" : "实时参考 · 累计金币计分，结算金币仅展示";
+            _footer.text = frame.Players[_selected]?.State == "已结算" ? "服务器结算 · 与 Hub 同一评分规则" : "实时参考 · 累计金币参与评分";
         }
         private void Layout()
         {
             if (!Ready) return;
-            _body.SetActive(!_collapsed); _widget.sizeDelta = new Vector2(360, _collapsed ? 42 : 376);
+            _body.SetActive(!_collapsed); _widget.sizeDelta = new Vector2(360, _collapsed ? 42 : StatsWidgetPreferences.Height);
             Rect safe = XingShuMobileUIHelper.SafeScreenRect;
             var bounds = Preferences.Layout(safe.x, Screen.height - safe.yMax, safe.width, safe.height, BaseScale);
             _widget.anchoredPosition = new Vector2(bounds.X, -bounds.Y);

@@ -22,6 +22,10 @@ internal sealed class AndroidPreviewInstaller : Form
     {
         try {
             if (args.Length > 0) {
+                // GUI executables have no console code page. Write UTF-8 to
+                // redirected pipes without calling SetConsoleOutputCP.
+                Console.SetOut(new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true });
+                Console.SetError(new StreamWriter(Console.OpenStandardError(), new UTF8Encoding(false)) { AutoFlush = true });
                 var options = new Dictionary<string, string>();
                 for (int i = 1; i < args.Length; i += 2) {
                     if (i + 1 == args.Length) throw new Exception("Missing option value");
@@ -30,7 +34,7 @@ internal sealed class AndroidPreviewInstaller : Form
                 var worker = new Deployment(Get(options, "--manifest", Path.Combine(Home, "candidate.json")),
                     Get(options, "--adb", FindAdb()), Get(options, "--serial", ""), Get(options, "--backup-dir", ""), Console.WriteLine);
                 if (args[0] == "--verify-package") worker.VerifyPackage();
-                else if (args[0] == "--check") worker.Check();
+                else if (args[0] == "--check") worker.Inspect();
                 else if (args[0] == "--install" || args[0] == "--restore") worker.Apply(args[0] == "--restore");
                 else throw new Exception("Unknown action");
                 return 0;
@@ -41,12 +45,14 @@ internal sealed class AndroidPreviewInstaller : Form
     static string Get(Dictionary<string,string> values, string key, string fallback) { return values.ContainsKey(key) ? values[key] : fallback; }
     static string FindAdb()
     {
+        string bundled = Path.Combine(Home, "platform-tools", "adb.exe");
+        if (File.Exists(bundled)) return bundled;
         foreach (string folder in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';')) {
             try { string file = Path.Combine(folder.Trim('"'), "adb.exe"); if (File.Exists(file)) return file; } catch { }
         }
         string[] known = { @"E:\TapTap\Support\android_emulator\engine\nx_main\adb.exe", @"C:\Program Files\Netease\MuMuPlayer-12.0\shell\adb.exe" };
         foreach (string file in known) if (File.Exists(file)) return file;
-        return "adb.exe";
+        return "";
     }
     AndroidPreviewInstaller()
     {
@@ -73,6 +79,7 @@ internal sealed class AndroidPreviewInstaller : Form
         refresh.Enabled = false;
         try {
             string executable = adb.Text;
+            if (!File.Exists(executable)) throw new Exception("未找到 ADB。请完整解压包含 platform-tools 的安装包，或点击“选择 ADB”。");
             string result = await Task.Run(() => Deployment.Execute(executable, "devices"));
             devices.Items.Clear();
             foreach (Match match in Regex.Matches(result, @"(?m)^([^\s]+)\s+device\s*$")) devices.Items.Add(match.Groups[1].Value);
@@ -103,12 +110,11 @@ internal sealed class AndroidPreviewInstaller : Form
         string Target { get { return "/sdcard/Android/data/" + Package + "/files/" + Value("bundleRelativePath"); } }
         string Backup { get { return Path.Combine(backupDirectory, "assembly.vanilla.__data"); } }
         string Receipt { get { return Path.Combine(backupDirectory, "deployment.json"); } }
-        string Source {
-            get {
-                string path = Path.GetFullPath(Path.Combine(manifestDirectory, Value("candidate")));
+        string Source { get { return Payload("candidate"); } }
+        string Payload(string key) {
+                string path = Path.GetFullPath(Path.Combine(manifestDirectory, Value(key)));
                 if (!path.StartsWith(manifestDirectory + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new Exception("安装包文件路径越界");
                 return path;
-            }
         }
         internal Deployment(string file, string adbPath, string device, string backups, Action<string> logger)
         {
@@ -130,6 +136,31 @@ internal sealed class AndroidPreviewInstaller : Form
             if (!version.Success || version.Groups[1].Value != Value("appVersion")) throw new Exception("游戏版本不匹配，请使用对应预览包");
             report("游戏版本与设备已确认：" + serial);
         }
+        bool Known(string value)
+        {
+            if (value == Value("originalSha256") || value == Value("candidateSha256")) return true;
+            object entries;
+            if (manifest.TryGetValue("supportedPreviousSha256", out entries)) {
+                var values = entries as System.Collections.IEnumerable;
+                if (values != null) foreach (object entry in values) if (Convert.ToString(entry) == value) return true;
+            }
+            return false;
+        }
+        internal void Inspect()
+        {
+            VerifyPackage(); Check();
+            string current = RemoteHash(Target);
+            report("当前游戏缓存：" + (current == Value("candidateSha256") ? "本版星枢" : current == Value("originalSha256") ? "官方原版" : Known(current) ? "可升级的旧版星枢" : "未知版本，禁止覆盖"));
+            report("SHA256：" + current);
+            if (!Known(current)) throw new Exception("游戏缓存不在已验证版本中，请先使用官方资源修复。");
+            EnsureGameClosed();
+            report("游戏已关闭，资源可读取；安装时将再次核对并保留备份。");
+        }
+        void EnsureGameClosed()
+        {
+            if (Regex.IsMatch(Adb("shell", "ps -A"), @"(?m)\s" + Regex.Escape(Package) + @"(?::[^\s]+)?\s*$"))
+                throw new Exception("游戏仍在运行。请正常退出游戏后重试，不会强制中断对局。");
+        }
         internal void Apply(bool undo)
         {
             if (!undo) VerifyPackage(); Check();
@@ -138,30 +169,33 @@ internal sealed class AndroidPreviewInstaller : Form
             bool tracked = previous.ContainsKey("serial") && Convert.ToString(previous["serial"]) == serial
                 && previous.ContainsKey("target") && Convert.ToString(previous["target"]) == Target
                 && previous.ContainsKey("installedSha256") && Convert.ToString(previous["installedSha256"]) == current;
-            if (current != vanilla && !tracked) throw new Exception("缓存不是原版或已记录的预览，已停止。旧预览请先用原工具还原，再安装新版。");
-            if (undo && !File.Exists(Receipt)) throw new Exception("没有此设备的安装记录，无法还原");
+            if (!Known(current) && !tracked) throw new Exception("缓存不是原版或已验证的星枢版本，已停止。请先使用官方资源修复。");
+            EnsureGameClosed();
+            if (current == expected) { report((undo ? "已经是官方原版" : "已经安装本版星枢") + "，SHA256 校验通过，无需重复写入。"); return; }
             if (File.Exists(Backup)) { if (Hash(Backup) != vanilla) throw new Exception("原版备份校验失败"); }
             else {
-                if (undo || current != vanilla) throw new Exception("缺少有效原版备份");
-                Directory.CreateDirectory(backupDirectory); Adb("pull", Target, Backup);
+                Directory.CreateDirectory(backupDirectory);
+                if (current == vanilla) Adb("pull", Target, Backup);
+                else if (manifest.ContainsKey("vanilla") && Hash(Payload("vanilla")) == vanilla) File.Copy(Payload("vanilla"), Backup, false);
+                else throw new Exception("缺少有效原版备份，请沿用原安装工具还原后重试。");
                 if (Hash(Backup) != vanilla) throw new Exception("备份校验失败，未修改游戏");
             }
-            // A click never interrupts a running match. The user must close the game first.
-            string running = Adb("shell", "ps -A");
-            if (Regex.IsMatch(running, @"(?m)\s" + Regex.Escape(Package) + @"\s*$")) throw new Exception("游戏仍在运行。请正常退出游戏后重试，不会强制中断对局。");
+            string snapshot = Path.Combine(backupDirectory, "before-" + current + ".__data");
+            if (!File.Exists(snapshot)) Adb("pull", Target, snapshot);
+            if (Hash(snapshot) != current) throw new Exception("安装前快照校验失败，未修改游戏");
             string stage = "/data/local/tmp/xingshu-" + expected + ".bundle";
             Adb("push", undo ? Backup : Source, stage);
             if (RemoteHash(stage) != expected || RemoteHash(Target) != current) throw new Exception("暂存校验失败或游戏缓存已变化，未修改游戏");
-            Adb("shell", "am force-stop " + Package);
+            EnsureGameClosed();
             try {
                 Adb("shell", "cp " + QuoteShell(stage) + " " + QuoteShell(Target));
                 if (RemoteHash(Target) != expected) throw new Exception("写入校验失败");
             } catch (Exception error) {
-                Adb("push", Backup, stage);
-                if (RemoteHash(stage) != vanilla) throw new Exception("还原暂存失败，请保留备份并使用官方修复：" + error.Message);
+                Adb("push", snapshot, stage);
+                if (RemoteHash(stage) != current) throw new Exception("还原暂存失败，请保留备份并使用官方修复：" + error.Message);
                 Adb("shell", "cp " + QuoteShell(stage) + " " + QuoteShell(Target));
-                if (RemoteHash(Target) != vanilla) throw new Exception("还原校验失败，请使用官方资源修复");
-                throw new Exception("安装失败，已校验恢复原版：" + error.Message);
+                if (RemoteHash(Target) != current) throw new Exception("还原校验失败，请使用官方资源修复");
+                throw new Exception("安装失败，已校验恢复安装前版本：" + error.Message);
             }
             var record = new Dictionary<string,object> { {"serial",serial}, {"package",Package}, {"target",Target}, {"originalSha256",vanilla}, {"installedSha256",expected}, {"backup",Backup}, {"action",undo ? "restore" : "install"}, {"timestamp",DateTime.UtcNow.ToString("o")} };
             string temporary = Receipt + ".tmp";

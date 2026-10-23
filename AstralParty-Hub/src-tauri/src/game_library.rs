@@ -254,11 +254,11 @@ impl GameLibraryStore {
     }
 }
 
-#[tauri::command]
-pub fn get_game_library(store: tauri::State<GameLibraryStore>) -> HubResult<Vec<CachedAccount>> { store.accounts() }
+#[cfg_attr(feature = "web-ui", tauri::command)]
+pub fn get_game_library(store: crate::desktop_host::State<GameLibraryStore>) -> HubResult<Vec<CachedAccount>> { store.accounts() }
 
-#[tauri::command]
-pub fn sync_game_library(bridge: tauri::State<Arc<BridgeServer>>, connection_id: String) -> HubResult<()> {
+#[cfg_attr(feature = "web-ui", tauri::command)]
+pub fn sync_game_library(bridge: crate::desktop_host::State<Arc<BridgeServer>>, connection_id: String) -> HubResult<()> {
     let session=bridge.get_runtime_session(&connection_id).ok_or_else(invalid)?;
     if session.live_player_id.is_none() || session.connection_state != "CONNECTED" { return Err(invalid()); }
     let message=BridgeEnvelope::new("GAME_LIBRARY_REQUEST",serde_json::json!({}));
@@ -266,13 +266,13 @@ pub fn sync_game_library(bridge: tauri::State<Arc<BridgeServer>>, connection_id:
     else {Err(HubError::new("GAME_DATA_OFFLINE","游戏连接已断开，请重新进入大厅后同步","GAME_DATA"))}
 }
 
-#[tauri::command]
-pub fn get_game_match_detail(store: tauri::State<GameLibraryStore>, platform: String, player_id: i64, time: i64, hero_id: i32, map_id: i32) -> HubResult<Option<MatchDetail>> {
+#[cfg_attr(feature = "web-ui", tauri::command)]
+pub fn get_game_match_detail(store: crate::desktop_host::State<GameLibraryStore>, platform: String, player_id: i64, time: i64, hero_id: i32, map_id: i32) -> HubResult<Option<MatchDetail>> {
     store.match_detail(&platform,player_id,time,hero_id,map_id)
 }
 
-#[tauri::command]
-pub fn request_game_match_detail(store: tauri::State<GameLibraryStore>, bridge: tauri::State<Arc<BridgeServer>>, connection_id: String, player_id: i64, time: i64, hero_id: i32, map_id: i32) -> HubResult<String> {
+#[cfg_attr(feature = "web-ui", tauri::command)]
+pub fn request_game_match_detail(store: crate::desktop_host::State<GameLibraryStore>, bridge: crate::desktop_host::State<Arc<BridgeServer>>, connection_id: String, player_id: i64, time: i64, hero_id: i32, map_id: i32) -> HubResult<String> {
     let session=bridge.get_runtime_session(&connection_id).ok_or_else(invalid)?;
     if session.live_player_id!=Some(player_id) {return Err(invalid());}
     if !session.runtime_version.contains("library-r") || session.runtime_version.ends_with("library-r1") {

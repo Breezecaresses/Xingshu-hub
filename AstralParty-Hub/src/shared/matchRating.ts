@@ -1,6 +1,6 @@
 import type { MatchParticipant } from './gameLibrary';
 
-export const ratingMethod = '星枢评分 v2：仅比较同一局玩家，取综合分、输出分、辅助分中的最高分，再除以（1＋死亡次数 × 0.15）。各项比例均为本人数据 ÷ 本局最高值。综合分：输出 30%、治疗 20%、击杀 15%、转账 30%、累计金币 5%，满分 10；全局为零的项目移除权重。输出分：输出 75%、击杀 25%，满分 10，同样移除全局为零的项目。辅助分：min（转账 ÷ 20，1）×（6＋2 × 转账比例＋2 × 治疗比例），转账达到 20 时有 6 分基础贡献，死亡仍会扣分。结算金币只展示余额，不参与评分。这是星枢计算的参考分，不是游戏官方评分。';
+export const ratingMethod = '星枢评分 v2：仅比较同一局玩家，取综合分、输出分、辅助分中的最高分，再除以（1＋死亡次数 × 0.15）。各项比例均为本人数据 ÷ 本局最高值。综合分：输出 30%、治疗 20%、击杀 15%、转账 30%、累计金币 5%，满分 10；全局为零的项目移除权重。输出分：输出 75%、击杀 25%，满分 10，同样移除全局为零的项目。辅助分：min（转账 ÷ 20，1）×（6＋2 × 转账比例＋2 × 治疗比例），转账达到 20 时有 6 分基础贡献，死亡仍会扣分。这是星枢计算的参考分，不是游戏官方评分。';
 
 /** Missing replay metrics remain unknown; a profile-only record never gets a fabricated score. */
 export function rateMatch(players: MatchParticipant[]): (number | null)[] {

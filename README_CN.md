@@ -18,6 +18,14 @@
 
 ---
 
+## Windows 原生迁移候选版（暂缓）
+
+2026-10-22：按用户决定暂停原生迁移，当前继续使用 React / Tauri Hub 与 R7 游戏插件。候选源码和本地 ZIP 保留，未覆盖现有程序；当前后台验证结果和实战待办见 [R7 验证清单](R7_VERIFICATION_20261022.md)。
+
+`0.2.0-native1` 已在本地构建，界面使用 WPF / .NET 10，核心使用不含 Tauri / WebView 的 Rust 构建。已迁入 18 个页面，新增地图攻略、角色养成详情和原生观战跟随。旧版源码和发布包仍保留，当前候选版尚未上传或替换测试包。
+
+已完成离线验收；真实在线观战尚未验收，Spine/WebM 播放及完整托管管理界面仍待迁移。构建、使用及验证范围见 [原生版说明](NATIVE_WINDOWS.md)。
+
 ## 群发测试包
 
 当前[群发测试包](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.2)标记为预发布，不作为正式稳定版。Assets 按电脑端和安卓端提供下载项；电脑端 ZIP 同时包含 Steam 国服与 TapTap Windows。电脑端完整解压 ZIP 后运行“星枢安装助手.exe”，支持 Steam 国服、TapTap 3.3.0 / 资源026。手牌挂件默认整体60%，可调40%–120%。已知边界见[本次说明](GROUP_DISTRIBUTION_20261022_2.md)，包中不附带仅限本地验证的原生变速原型。

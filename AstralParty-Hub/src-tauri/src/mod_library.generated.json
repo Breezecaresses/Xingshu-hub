@@ -1,0 +1,1639 @@
+{
+  "formatVersion": 1,
+  "gameVersion": "3.3.0",
+  "gameAssemblySha256": "6279b4a1814e9b0def32779ebc2dfd5810373f112f0b12ee02f5c97caa4f46fa",
+  "catalogSha256": "03e3ca28a1b490d7d98d8047781f8a7f14a6ad0ea79743c455faf493cf92c61a",
+  "items": [
+    {
+      "id": "local.658bfbc2cf723c8b",
+      "name": "修女 日服联动皮 - 修女原皮（立绘/界面部分）",
+      "archive": "修女 日服联动皮 - 修女原皮.zip",
+      "archiveSha256": "c4b0423d19f3886e70bf1e3bc4573d900cea371f677ffb4348e131bb5bdb36e5",
+      "author": "Foxe（狐e）",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [
+        {
+          "source": "payload/6393a9ee179c80f235bf04230d21bafcf598a678cd35d6b6b39338f5a8245294.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/c74c74f4d3f87242ca312e613ad6288f.bundle",
+          "sha256": "6393a9ee179c80f235bf04230d21bafcf598a678cd35d6b6b39338f5a8245294",
+          "originalSha256": "cea480696e23801e0e90c6d8bae64d8bcb109a938be7595142b9ddc1b7ea9287",
+          "size": 3759128,
+          "assets": [
+            "UT_Hero_Bust_103_0"
+          ]
+        },
+        {
+          "source": "payload/e1223c75c878aa183492fc1518ce79074ff6e2133acd6e21b49e8a789be3b905.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/6ac4c474237a9ad886ea721b0f32e427.bundle",
+          "sha256": "e1223c75c878aa183492fc1518ce79074ff6e2133acd6e21b49e8a789be3b905",
+          "originalSha256": "50e1374dc31969cdd436978b10c1052f25468b8d3ddd129b4b1d7b50a9551e13",
+          "size": 55940,
+          "assets": [
+            "UT_Item_AccountBackground_71103"
+          ]
+        },
+        {
+          "source": "payload/90fa38f1d92307815ac051cae4ea7bf3bc88c83b84645d8f442546d7e73440dc.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/dc20b612f248b262fad401f5933a79df.bundle",
+          "sha256": "90fa38f1d92307815ac051cae4ea7bf3bc88c83b84645d8f442546d7e73440dc",
+          "originalSha256": "39eecfe76034a2f0bd675d99a9efd9e4ca9883cae0df441a8cd58b25db7e0351",
+          "size": 3759124,
+          "assets": [
+            "UT_Hero_Bust_103_1"
+          ]
+        },
+        {
+          "source": "payload/e54611886662dabd970fae0ec81222e5092b8195d55b65953bb5c517b8fdda95.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/a883430fbd5f0b6b1734ad5afe09708e.bundle",
+          "sha256": "e54611886662dabd970fae0ec81222e5092b8195d55b65953bb5c517b8fdda95",
+          "originalSha256": "ce991af822a56d8c7d99f2b5ac813362a358863c85d0a069ded81f882e763c2c",
+          "size": 167932,
+          "assets": [
+            "UT_Hero_RolePhoto_103"
+          ]
+        },
+        {
+          "source": "payload/b36262451349db508b69b92e1e2c309123739d077181334c528128473798d7f2.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/ce4eca13ddbdfef4cd763c0b911ff163.bundle",
+          "sha256": "b36262451349db508b69b92e1e2c309123739d077181334c528128473798d7f2",
+          "originalSha256": "1cc19a9a67e729a71221448b660fb79119a4703b5524c1763a3ac0cd236f5885",
+          "size": 83572,
+          "assets": [
+            "UT_Hero_ThinCard_103"
+          ]
+        },
+        {
+          "source": "payload/66bd17fee4eac198ffa9e0ed2fc681bf437280a6eee2ec35b500d24c4b390bac.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/faf563bf1c47fe38dd7f8cafcaf3647b.bundle",
+          "sha256": "66bd17fee4eac198ffa9e0ed2fc681bf437280a6eee2ec35b500d24c4b390bac",
+          "originalSha256": "32a2f701080ce4d148fa04b405261fac205cc6ed92a70585e37ac2197b397d79",
+          "size": 943700,
+          "assets": [
+            "UT_Hero_LevelUp_103"
+          ]
+        },
+        {
+          "source": "payload/26f7ccdb2c8a45cb59512c0e46c0a8ceefcff27606527dc71ba72caf91032db1.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/1a09bfb75ea7db2ee7f3df3a2f1fda5a.bundle",
+          "sha256": "26f7ccdb2c8a45cb59512c0e46c0a8ceefcff27606527dc71ba72caf91032db1",
+          "originalSha256": "528c3f5a15e05caeca2c089444aeb645e1cc169034b27b831230cfe2a71cc873",
+          "size": 579288,
+          "assets": [
+            "UT_Hero_Card2_103"
+          ]
+        },
+        {
+          "source": "payload/aa03152a54b4e119a0ecfec6abaede8d62c0f8a087272fc7ad84e830f5e315bd.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/d80c3518cd7c9198f8401295742f2be4.bundle",
+          "sha256": "aa03152a54b4e119a0ecfec6abaede8d62c0f8a087272fc7ad84e830f5e315bd",
+          "originalSha256": "acd4db28138ad3402ef78dd019504169a50ed26c284d96be5bdcf71798df8877",
+          "size": 101532,
+          "assets": [
+            "UT_Hero_ProfilePhoto_103"
+          ]
+        },
+        {
+          "source": "payload/f67184bac96ac11c3b326bbc1a800ec4170ea817a1004347b8904203bc002488.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/4c390b8562032cae16ccacfa002ad022.bundle",
+          "sha256": "f67184bac96ac11c3b326bbc1a800ec4170ea817a1004347b8904203bc002488",
+          "originalSha256": "4c89a1d61118b0d21cae8cda0c3af80bfc05f23f0f17cd4e12a68031ab94bfb1",
+          "size": 3108212,
+          "assets": [
+            "UT_Hero_Card_103"
+          ]
+        },
+        {
+          "source": "payload/45c30e952a91c2129d5663320de5c522e7c5b221bff9f0880192fea7c33841f5.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/5a2e99c2068cd1440cdb7dae417118f0.bundle",
+          "sha256": "45c30e952a91c2129d5663320de5c522e7c5b221bff9f0880192fea7c33841f5",
+          "originalSha256": "45a2c89f70592f0a97fcb69d09cba82a2fda5f7e4d9ce60e8cd10b8dbbfaa338",
+          "size": 278336,
+          "assets": [
+            "UT_AccountBackground_71103"
+          ]
+        }
+      ],
+      "unmappedFiles": [
+        "游戏根目录\\2eaa541d327642506e5eee383389a3c8.bundle",
+        "游戏根目录\\7e7ce54b6ceee815c9cf4546da94974f.bundle",
+        "游戏根目录\\d74fe1f6cafe88cfb845cd7a9d480fcc.bundle"
+      ],
+      "conflicts": [
+        "local.c84c3a9194a6b883"
+      ]
+    },
+    {
+      "id": "local.c84c3a9194a6b883",
+      "name": "修女 日服联动皮 - 修女原皮 · 立绘与卡面 · 缓存立绘方案",
+      "archive": "修女 日服联动皮 - 修女原皮.zip",
+      "archiveSha256": "c4b0423d19f3886e70bf1e3bc4573d900cea371f677ffb4348e131bb5bdb36e5",
+      "author": "Foxe（狐e）",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [
+        {
+          "source": "payload/81202ab16d368b7527ed4518e6040c8341e437e86c9f0bf99cc09844d1a6eb79.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/4c390b8562032cae16ccacfa002ad022.bundle",
+          "sha256": "81202ab16d368b7527ed4518e6040c8341e437e86c9f0bf99cc09844d1a6eb79",
+          "originalSha256": "4c89a1d61118b0d21cae8cda0c3af80bfc05f23f0f17cd4e12a68031ab94bfb1",
+          "size": 2852724,
+          "assets": [
+            "UT_Hero_Card_103"
+          ]
+        }
+      ],
+      "unmappedFiles": [],
+      "conflicts": [
+        "local.658bfbc2cf723c8b"
+      ]
+    },
+    {
+      "id": "local.a785a1251249cb56",
+      "name": "梅加斯魔枪改色mod（立绘简修版）-by花环飞鸟（立绘/界面部分）",
+      "archive": "梅加斯魔枪改色mod（立绘简修版）-by花环飞鸟.rar",
+      "archiveSha256": "bfdbf0efd396010f917a85028aa747366204e653bf1636782795c9e4b755fa68",
+      "author": "花环飞鸟",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [
+        {
+          "source": "payload/fcb169671145da3edd0824c2616848a81ed6003fa9602f21d98f7943d0869152.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/8cec02a225b84f5e036149b80b7a3559.bundle",
+          "sha256": "fcb169671145da3edd0824c2616848a81ed6003fa9602f21d98f7943d0869152",
+          "originalSha256": "30f123ed1b5ccf7ad956b37e9177904caabe2a95d24c51055edb27ce0fe823cf",
+          "size": 2827132,
+          "assets": [
+            "UT_Hero_Bust_122_02_1"
+          ]
+        },
+        {
+          "source": "payload/e5f8b872f2fffc7e44210e7d1521ccb19e11d14fcc0e0cc29c33d51134482e38.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/8b2c518602112d1a4d6cfee5acfa79bb.bundle",
+          "sha256": "e5f8b872f2fffc7e44210e7d1521ccb19e11d14fcc0e0cc29c33d51134482e38",
+          "originalSha256": "15967ddfa291d24a1fe33d530e9ef257150edb128a4a3e83d5ced8a445152990",
+          "size": 4151924,
+          "assets": [
+            "UT_Activity_60227_BG"
+          ]
+        },
+        {
+          "source": "payload/af95bfc580eaef1e30e83e6c772eafd89d45bafaeb3a57ce66f2341747804f00.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/039bf335d0d76fd3962a9c6449eea554.bundle",
+          "sha256": "af95bfc580eaef1e30e83e6c772eafd89d45bafaeb3a57ce66f2341747804f00",
+          "originalSha256": "93b5b7062c551593bbabd7d36ea8a21969fde1f5e33a05a5d44296cf67ffaee9",
+          "size": 1226844,
+          "assets": [
+            "UT_Hero_LevelUp_122_02"
+          ]
+        },
+        {
+          "source": "payload/ae9e0a23ea2d9771a62278d4fa3a43bd46d55d45d5b1080592dc5d440ecdfe6d.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/eebb40dc6b627c22f79b37ee6beb13b1.bundle",
+          "sha256": "ae9e0a23ea2d9771a62278d4fa3a43bd46d55d45d5b1080592dc5d440ecdfe6d",
+          "originalSha256": "a55896bc5c7515d0933aa2a3c6b401d1f25fe2edcb1ce82074513638bf9420a6",
+          "size": 2827132,
+          "assets": [
+            "UT_Hero_Bust_122_02_0"
+          ]
+        },
+        {
+          "source": "payload/438523b3bcdcef190eb976719463f61a30b21cfc9ba17523e136cd9cdccdc7a7.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/2fb8a01fde835b078fd9406d058a2ac7.bundle",
+          "sha256": "438523b3bcdcef190eb976719463f61a30b21cfc9ba17523e136cd9cdccdc7a7",
+          "originalSha256": "b495dced1182b309ecd65458b4aa4bc4ea25e8391d16a789f0e1481996c413d4",
+          "size": 5264024,
+          "assets": [
+            "UT_Hero_Card_122_02"
+          ]
+        },
+        {
+          "source": "payload/930b4dce7e55738b15b24993b16db3416df34df99cecc02e20e9fa5e1f440859.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/2ac0547a7c233b55e9fa8a30bd748936.bundle",
+          "sha256": "930b4dce7e55738b15b24993b16db3416df34df99cecc02e20e9fa5e1f440859",
+          "originalSha256": "17e3206e30c8cbb5b11bc07c6997b9a7154971a7bf2aa41c6989f7c172a85dd8",
+          "size": 101536,
+          "assets": [
+            "UT_Hero_ProfilePhoto_122_02"
+          ]
+        }
+      ],
+      "unmappedFiles": [
+        "752cbc68dbe323eb9c755fc431a1ac9e\\f59ed46dba7fd0d320dbed0f9f7449b9\\__data",
+        "e21bb877af7187712cc5b7ceda37875f\\59714911fc681f067e0c2c3de1901a3c\\__data",
+        "e64e1762ee1f7bdc402d3dd7aac6e9ab\\5f4189924e79f1545a2b91d9b7b7947d\\__data"
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "local.ec883bc244edf0f8",
+      "name": "游戏王妹卡卡图mod（by阿底） · 事件",
+      "archive": "游戏王妹卡卡图mod（by阿底）.zip",
+      "archiveSha256": "813c30ef3de1cfdb3e9e1b03b0067deded3ff4dc57b9dc449be5d00a61664492",
+      "author": "阿底",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [
+        {
+          "source": "payload/75caeb0c85548421f8dc7a8f482aa4f8e9d06e7d300c0d816ee91427a3eb7f50.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/569c5f6954e5fc046d4fc118bc28d23a.bundle",
+          "sha256": "75caeb0c85548421f8dc7a8f482aa4f8e9d06e7d300c0d816ee91427a3eb7f50",
+          "originalSha256": "06fd083de9ae127552f29898dcfae3982662d61194cc691c1acf742c595af1fc",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_30205"
+          ]
+        },
+        {
+          "source": "payload/f03e358264c6506b34ee061df01f7cabaf1aeec5521227beb7537fec83950a60.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/a681d8e8b187a15dafbd1df51952658d.bundle",
+          "sha256": "f03e358264c6506b34ee061df01f7cabaf1aeec5521227beb7537fec83950a60",
+          "originalSha256": "3647945b2238d4704efe86c3bd99cec490d224c9e3ed9416e6d958512d4ddf07",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_12705"
+          ]
+        },
+        {
+          "source": "payload/9ce452f757082d1d968b42ab359f1f86576b1601bb73b71b461f6eef9628ef2e.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/e5df1853351dc9ff7beb71c0b1b1462e.bundle",
+          "sha256": "9ce452f757082d1d968b42ab359f1f86576b1601bb73b71b461f6eef9628ef2e",
+          "originalSha256": "a9b12022f6c12d2e4de8273700e71a211addfc1f7b6212dc0e4a1fbc00c608b5",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_30010"
+          ]
+        },
+        {
+          "source": "payload/5f432bc4f4a4925518421f82384ad9ee4a53c363e536c7ef571458b530f728f5.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/3989b993f94b963e38d25434f92c9485.bundle",
+          "sha256": "5f432bc4f4a4925518421f82384ad9ee4a53c363e536c7ef571458b530f728f5",
+          "originalSha256": "abeddcffab8e0e2c89f16ee8c4c71c0513201e9428a89490766ee031a7748c19",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_12704"
+          ]
+        },
+        {
+          "source": "payload/1f1245b1dd0ff9b92f5cb8c5b698c8e68cbd4b3c3352f9ba5d13aca37990e3d5.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/66ccf84c92e27489a31a8be1c0e06658.bundle",
+          "sha256": "1f1245b1dd0ff9b92f5cb8c5b698c8e68cbd4b3c3352f9ba5d13aca37990e3d5",
+          "originalSha256": "bfdd305f504cfa2e30c05ebc2362a6effaa35d991b4579ab0264ccba9a07f3dc",
+          "size": 257524,
+          "assets": [
+            "UT_Event_30201"
+          ]
+        },
+        {
+          "source": "payload/dc515453d6aedbc861d142bc8736e769ca12a0562dd6f3205d71ab341857c74b.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/37026cc731699f314d9ebf6f7fffd2c0.bundle",
+          "sha256": "dc515453d6aedbc861d142bc8736e769ca12a0562dd6f3205d71ab341857c74b",
+          "originalSha256": "31233986cf0bcb3e11b3a6814bdd9b11c5109d91197c78e01968e977e0ca70de",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_30009"
+          ]
+        },
+        {
+          "source": "payload/53b429ae541ca64cc4e43df799240f91a2760910a3c3b6461078e8e3cf52eb59.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/ac9bbf505e897152ffac34351a2215c1.bundle",
+          "sha256": "53b429ae541ca64cc4e43df799240f91a2760910a3c3b6461078e8e3cf52eb59",
+          "originalSha256": "fe8ddfbab7458dbd8a3eda1d513013fb46c187fe5e933591a619a47cd9eb0af4",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_12703"
+          ]
+        },
+        {
+          "source": "payload/6f608c44dc6b476ac86136c5983e9021535901d513a1d46106fdfae26a7b67fb.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/265e3c4316e665846ae82fc24183d4be.bundle",
+          "sha256": "6f608c44dc6b476ac86136c5983e9021535901d513a1d46106fdfae26a7b67fb",
+          "originalSha256": "2f53f575f1580aac000c391b37704e7c1a1609470ca3cfb27044764e31f8a55e",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_30014"
+          ]
+        },
+        {
+          "source": "payload/f6d4f3701c58367f55bb923accdf8a2c7734d1e649b8009a1147f3ec2f4a4c39.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/6b675a2feab8b79cda3380d9c2305019.bundle",
+          "sha256": "f6d4f3701c58367f55bb923accdf8a2c7734d1e649b8009a1147f3ec2f4a4c39",
+          "originalSha256": "47b4e61f80ec049f918d08120b0ff7c71398cafdb33178226975b42a94d0853e",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_30006"
+          ]
+        },
+        {
+          "source": "payload/d5a0d7de22e4082b0c34da68db78c6d992eeb33bca3c3b83f6a1f42da774d78a.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/b3870c018040a6e2bbf8fc2f5c43c985.bundle",
+          "sha256": "d5a0d7de22e4082b0c34da68db78c6d992eeb33bca3c3b83f6a1f42da774d78a",
+          "originalSha256": "3f0bc5dd25c2d259e45d0d06954320da2aa5fa31c65aca95293567f30c970140",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_30206"
+          ]
+        },
+        {
+          "source": "payload/8c3a3c1a5676ca10245d91ba1ff10f3b7da601776d203c6b1cf006ee74dcf029.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/c4b1eb3a8a011e5a6885ed625c6733dd.bundle",
+          "sha256": "8c3a3c1a5676ca10245d91ba1ff10f3b7da601776d203c6b1cf006ee74dcf029",
+          "originalSha256": "b2308202bc9d0ee745015bcb25906e2854ef9c59db61078c078cc269a20860fe",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_30012"
+          ]
+        },
+        {
+          "source": "payload/f69c0e15a38ecc6fac7d40d8b781da3407b0c159781f303bb0a89dcf862e1987.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/2d3ac700d38e9853a40a187b5a845606.bundle",
+          "sha256": "f69c0e15a38ecc6fac7d40d8b781da3407b0c159781f303bb0a89dcf862e1987",
+          "originalSha256": "bd60e05860eeafeb990be4214e73199d33b8926b1f5b8087828a004568b6aa2e",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_30002"
+          ]
+        },
+        {
+          "source": "payload/66eee07ad8a70e25fd44731ad8b2871b0516c05174ecfeaeab4f018893eaaf34.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/b8efe34b1a83cbc33aa16dd9c4093848.bundle",
+          "sha256": "66eee07ad8a70e25fd44731ad8b2871b0516c05174ecfeaeab4f018893eaaf34",
+          "originalSha256": "17d2ac1009455bf8c8903c267732e1579440e7bc47647c562b5b1a1f9de12c71",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_30008"
+          ]
+        },
+        {
+          "source": "payload/90e169205497dac211c11e3959bdfa826b4c3b6eb8c0102c6d2e000b06d6d546.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/02677f8a42b760cc43e640441081d0fc.bundle",
+          "sha256": "90e169205497dac211c11e3959bdfa826b4c3b6eb8c0102c6d2e000b06d6d546",
+          "originalSha256": "7df480477a7b888cc07294dea9b0c93a8d41712e08bf00e7609fd05471ef9ed1",
+          "size": 1606324,
+          "assets": [
+            "UT_MapEvent_31002"
+          ]
+        },
+        {
+          "source": "payload/add8432bb782b59d877397b25d0f832703c9fb42d584bd0dbb2fe37c5480d8e4.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/0753c79b70f9814ca15096a7ca2a365c.bundle",
+          "sha256": "add8432bb782b59d877397b25d0f832703c9fb42d584bd0dbb2fe37c5480d8e4",
+          "originalSha256": "b6cedba9fb7feb31559f708bf31541a8f10ef913825f429c0cafc4e1414683a6",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_30204"
+          ]
+        },
+        {
+          "source": "payload/fc38b3a81e9ab1aced0b0451421ad45d5679616576fbd0a0eeeb5ae1e1d5cad2.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/044011aefcc2606bdfff08e78446ac2b.bundle",
+          "sha256": "fc38b3a81e9ab1aced0b0451421ad45d5679616576fbd0a0eeeb5ae1e1d5cad2",
+          "originalSha256": "793e0901433c1e5a19cff7df58181acd9c1d3a0f7b2105f2215bf522c2e2c094",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_30019"
+          ]
+        },
+        {
+          "source": "payload/eb4c725d0b57befdbf1734a0cb8b8694aa14faebf3f78d53ad428abbca8ee32f.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/a03762dffbf268328312772728f11253.bundle",
+          "sha256": "eb4c725d0b57befdbf1734a0cb8b8694aa14faebf3f78d53ad428abbca8ee32f",
+          "originalSha256": "c2cddff93507c53c90f09b21ad1d332cc4ee7970e506aacf2f7a10b0e293dddf",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_12702"
+          ]
+        },
+        {
+          "source": "payload/6cd0424cc2a054866ea4ce37834b059e8d3dc0faff083e38582074cb531e0307.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/c742c0e7d85213cc7ab5220545a083eb.bundle",
+          "sha256": "6cd0424cc2a054866ea4ce37834b059e8d3dc0faff083e38582074cb531e0307",
+          "originalSha256": "04dd8b2fc2ca9be183e40e1acdf9aa06c5fe6e16f04abf350d9c64ca3e39579f",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_30013"
+          ]
+        },
+        {
+          "source": "payload/c5ad81451927e24bf9fc5118078311ff4ba7bb455254b4a11fad96f8763326f6.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/33495c2aa3b3f2bc01bc8a8c66e6fef1.bundle",
+          "sha256": "c5ad81451927e24bf9fc5118078311ff4ba7bb455254b4a11fad96f8763326f6",
+          "originalSha256": "8db2ea82edd960598dd90ac9d567eb0fee861ffda75e7e515b2837c5ca02b132",
+          "size": 1606324,
+          "assets": [
+            "UT_Event_30202"
+          ]
+        }
+      ],
+      "unmappedFiles": [],
+      "conflicts": []
+    },
+    {
+      "id": "local.25b0d52e66740e10",
+      "name": "游戏王妹卡卡图mod（by阿底） · 手牌",
+      "archive": "游戏王妹卡卡图mod（by阿底）.zip",
+      "archiveSha256": "813c30ef3de1cfdb3e9e1b03b0067deded3ff4dc57b9dc449be5d00a61664492",
+      "author": "阿底",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [
+        {
+          "source": "payload/e0293568b2165481301cd77efb34c8a74825797560d4cd0df446852d08294084.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/aba829d10898f01163e6785ad3096a20.bundle",
+          "sha256": "e0293568b2165481301cd77efb34c8a74825797560d4cd0df446852d08294084",
+          "originalSha256": "2de14eace41313a83a7e0340001c44019eaca09edf2c75e2fa29853f351b8c3c",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_20011"
+          ]
+        },
+        {
+          "source": "payload/825dbd97cf8ccf50c50fa80c83f368183065eb2087633aeb5359d6073c8dbebc.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/937932e9d287f92b72f92c393090cf82.bundle",
+          "sha256": "825dbd97cf8ccf50c50fa80c83f368183065eb2087633aeb5359d6073c8dbebc",
+          "originalSha256": "dece3807d3e82a771d7677a21b1d686d36952b31643d3c86ff96282f585f4e8a",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_21002"
+          ]
+        },
+        {
+          "source": "payload/a754c1d11e367e4c6dc04e62293a1cebf92ab9496b6bf2ff73658592947293f3.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/414a029f534a4b61aef0004acbef2236.bundle",
+          "sha256": "a754c1d11e367e4c6dc04e62293a1cebf92ab9496b6bf2ff73658592947293f3",
+          "originalSha256": "1dbbd3a7c37a7a3215827f6dbf8c20535a500ff949829e07508f2ed74d8722b6",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_10009"
+          ]
+        },
+        {
+          "source": "payload/6924496980b25f79f1ba27510ebe9987230d440decdb1a8c43a90f9ff1d919e4.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/142d255bccfac7b836815ac73883875b.bundle",
+          "sha256": "6924496980b25f79f1ba27510ebe9987230d440decdb1a8c43a90f9ff1d919e4",
+          "originalSha256": "5b560ac111620639b1e92f619a5a81f68364a77e9c654804792eb91c32653c19",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_21005"
+          ]
+        },
+        {
+          "source": "payload/852ec70dc1d08da4e41af89b6302daee6557887bf583395f6591400126c0e6d1.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/5eaf6b88eda836b26d6f1da24f5c9b53.bundle",
+          "sha256": "852ec70dc1d08da4e41af89b6302daee6557887bf583395f6591400126c0e6d1",
+          "originalSha256": "3c918557033c5ab06415026426743e64dc3b268b8c6cae4a03da36b77e00f543",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_21020"
+          ]
+        },
+        {
+          "source": "payload/9ead714d7d49693f0ab2bb425f8714f0476e6c92244b4daed098d7eb49c724ac.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/b3363ed769ce3b8b0abb7b30d0a6b784.bundle",
+          "sha256": "9ead714d7d49693f0ab2bb425f8714f0476e6c92244b4daed098d7eb49c724ac",
+          "originalSha256": "c70f5937820064565dc09dd08c11e269e1defcfae589f55f16318e012ba18ead",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_20008"
+          ]
+        },
+        {
+          "source": "payload/3fa8c9c031686e0e0031d06c2516ab0bbc65e385c97092560fbb65ff61d363f7.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/87e4b119075f5005fe6cc853c3ee4f72.bundle",
+          "sha256": "3fa8c9c031686e0e0031d06c2516ab0bbc65e385c97092560fbb65ff61d363f7",
+          "originalSha256": "2f4b1e18413366be6a91a5702181d6a325c79d34dc49e9ed4f6e352ade5076ff",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_20002"
+          ]
+        },
+        {
+          "source": "payload/68e45dfa2a73bf3e31f43875c2c74f49388b7187c4fc65ecd3ed1ff767303f5d.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/743301b749e45dcb53e86267d60c8a5e.bundle",
+          "sha256": "68e45dfa2a73bf3e31f43875c2c74f49388b7187c4fc65ecd3ed1ff767303f5d",
+          "originalSha256": "150a841e71787ccd8d93b437b1c1add35e1d0173f8e73d88fce0a8984ab84ff5",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_21016"
+          ]
+        },
+        {
+          "source": "payload/2e2faa79bbb795b4f65296936fcbc8b763620cb378be4b218ebbb06f9bdb2004.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/6cda65765f03366ccda073386f0f88bf.bundle",
+          "sha256": "2e2faa79bbb795b4f65296936fcbc8b763620cb378be4b218ebbb06f9bdb2004",
+          "originalSha256": "dff99501b6d682c07ea59c54ac97db1e5b1ca7c6ac80b93d629c277060a9309b",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_21006"
+          ]
+        },
+        {
+          "source": "payload/ccf8af21963830a01afd4158d9d5fff3b2a94784ccee1decfbeb3a18269c3c81.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/f190ad7b35a20e70be711a087a411e8d.bundle",
+          "sha256": "ccf8af21963830a01afd4158d9d5fff3b2a94784ccee1decfbeb3a18269c3c81",
+          "originalSha256": "e891a72dfc2ad71fec3a5cb37ff633e1bcd931332bfdbfeedbab6c669fa782f4",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_21003"
+          ]
+        },
+        {
+          "source": "payload/55d183ae6987391a674f509fce133759f6d9788be5ccaa4f6ab6e33ca482373a.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/9ae3113cbe8a83ac81e2046fb111e375.bundle",
+          "sha256": "55d183ae6987391a674f509fce133759f6d9788be5ccaa4f6ab6e33ca482373a",
+          "originalSha256": "eda6c2f788cc4f78f34d212bed042c6ce9b0836a733d71ad954ebd1af1a6fcae",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_10008"
+          ]
+        },
+        {
+          "source": "payload/2b9ef9d6621adce4d154b7e758a36b4ac971bc4f2186f62b5f122fce8cb268dc.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/5950c57f54913872a8c7bd979f203a04.bundle",
+          "sha256": "2b9ef9d6621adce4d154b7e758a36b4ac971bc4f2186f62b5f122fce8cb268dc",
+          "originalSha256": "1a5df0dbd525cef6108c1698722fe70efdbc246097412f3de423a1dffccfeadb",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_20005"
+          ]
+        },
+        {
+          "source": "payload/54c1dced3205532d98e91eee0441d5810210be73f0d04d205951aa3b0fbcd03e.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/b0008bae3f6de801f3064d87a6a6b64e.bundle",
+          "sha256": "54c1dced3205532d98e91eee0441d5810210be73f0d04d205951aa3b0fbcd03e",
+          "originalSha256": "eaefcd7d933004aca17159c7e90288599a0ec0f9ca23534fb18e555e901c8208",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_21009"
+          ]
+        },
+        {
+          "source": "payload/24d57367f6274cce2e5d913f605fd2034867fa62f6482cc6e69663e56fc516e2.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/983fe03552907cf896c9dcff52d83689.bundle",
+          "sha256": "24d57367f6274cce2e5d913f605fd2034867fa62f6482cc6e69663e56fc516e2",
+          "originalSha256": "5d9fa5d2102f4ed96a6f1b2c4e4383c9a935d22d19ca0b5a9ca17ee6a0b7e109",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_10007"
+          ]
+        },
+        {
+          "source": "payload/29912b37269ddf01fda6d605ff22ee3536ad1b05f44118b78a792f9927982c39.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/f1cb77ada42363b2111f7f1810b0e0ed.bundle",
+          "sha256": "29912b37269ddf01fda6d605ff22ee3536ad1b05f44118b78a792f9927982c39",
+          "originalSha256": "7d3585abb2f79c00f68a7a7f782f4606627a57c5f6d6bdfb415edca8cdeecf9e",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_21010"
+          ]
+        },
+        {
+          "source": "payload/3d4937ea6c80096df09ea387150c6a2391d4191ad281b9b48a3958a9d1e9df63.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/c46bafe39d9c0f23f87f992babbc4406.bundle",
+          "sha256": "3d4937ea6c80096df09ea387150c6a2391d4191ad281b9b48a3958a9d1e9df63",
+          "originalSha256": "4749190d3875a69d37875ab37503a0ce0f114df279603d7d0e4f147e64c173cc",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_20027"
+          ]
+        },
+        {
+          "source": "payload/4c980775516ca3431467f4d4669752779eb156a07e1285e3532c784cd3474773.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/09790106102e9727d65ea21547204a67.bundle",
+          "sha256": "4c980775516ca3431467f4d4669752779eb156a07e1285e3532c784cd3474773",
+          "originalSha256": "ac8732ef6ff54bd0f0ac78910e16cc1971bcee248913a62bc0f1aa4db708298b",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_21015"
+          ]
+        },
+        {
+          "source": "payload/c5d8bc5dc10e85e1e016299cce266b8f7b86c31773410479cff1f4d5de0d7cbf.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/227ef0c6ed32f711a4c069224b1183f4.bundle",
+          "sha256": "c5d8bc5dc10e85e1e016299cce266b8f7b86c31773410479cff1f4d5de0d7cbf",
+          "originalSha256": "c69587ff76264188b31f8bdb2afefc0500dfa8d286298fdcddf1bdb3740d69ed",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_21001"
+          ]
+        },
+        {
+          "source": "payload/0c56e113711c9d5d62f1afebb3f3fcb839b3b63a5211e641fcd1a16538eecbb1.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/f0fa1d3e2208e439fee59c97942a0d48.bundle",
+          "sha256": "0c56e113711c9d5d62f1afebb3f3fcb839b3b63a5211e641fcd1a16538eecbb1",
+          "originalSha256": "d11e6324e067b20e49e6c01963e65481e151aeca7c50efb1f767234c677492f1",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_10013"
+          ]
+        },
+        {
+          "source": "payload/bf29063a8e035db22e2da6ad91173486ad37885a15b11338133c83ad071137da.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/8be101bd5c4eb470087037ba21db3884.bundle",
+          "sha256": "bf29063a8e035db22e2da6ad91173486ad37885a15b11338133c83ad071137da",
+          "originalSha256": "b142ff56d3b6d0dc486b58e12cc8f91f7ea9bfc43780ce6c2249e8ac36d0f2eb",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_10005"
+          ]
+        },
+        {
+          "source": "payload/dbc25e9f5cac4d571ede1e9de0ecc94a5f9dbf9b64b8bb19637473863897102f.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/66d35fec61f6d8ba8c22ed25003d1168.bundle",
+          "sha256": "dbc25e9f5cac4d571ede1e9de0ecc94a5f9dbf9b64b8bb19637473863897102f",
+          "originalSha256": "5a0b270f9d35e864a4b897a4c9a18dbfd83de41b5136f7ed07e3db30d224655c",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_20032"
+          ]
+        },
+        {
+          "source": "payload/3ed1b54a0f0bcf929de0be94d3976cb71a6f1ce99157396b6c270d31e46cc9c7.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/91b55a3e72a41c420b4b1c1340e9e44f.bundle",
+          "sha256": "3ed1b54a0f0bcf929de0be94d3976cb71a6f1ce99157396b6c270d31e46cc9c7",
+          "originalSha256": "c78b849051681bc3d66e8cda97203be43f0c8402daa720e74c967d9a8823e534",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_21008"
+          ]
+        },
+        {
+          "source": "payload/57998135519a31dad6c254ca3e74f90fd688ce9580e28c136d07fecfae6306c9.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/4a82e4a56ddd4303e96ee53d0d885a63.bundle",
+          "sha256": "57998135519a31dad6c254ca3e74f90fd688ce9580e28c136d07fecfae6306c9",
+          "originalSha256": "9ca0f4c591abe694724c095d7d82fe34e8281ee1bf09f7e9fa1dfeb8f06c9376",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_21021"
+          ]
+        },
+        {
+          "source": "payload/ce214db7cf793cd67eb2acea215da2b804075704cdb785a8762672a396c4cd54.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/78ce803e2e86e387de5a58859c33041d.bundle",
+          "sha256": "ce214db7cf793cd67eb2acea215da2b804075704cdb785a8762672a396c4cd54",
+          "originalSha256": "bc261d5b5bddb11f5f0f30fc8724a0045e6f266acea6a64b47ce260a42ace1e6",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_20013"
+          ]
+        },
+        {
+          "source": "payload/8a35986ad1759b5198d878921b49f7a6a691729347ef06068a64879bfbf9df85.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/5e39e91c60eeb494285548ded317b55e.bundle",
+          "sha256": "8a35986ad1759b5198d878921b49f7a6a691729347ef06068a64879bfbf9df85",
+          "originalSha256": "4d1e2367accc7a79ef9ced551b1db2739ad4746229330cabb551dd0d77ec002f",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_10002"
+          ]
+        },
+        {
+          "source": "payload/01be4b1e5fcfd272c116ec633a9be53af0f7a054713d6e20ac3e513a3e6ef33c.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/e94025fded8dfd41a5d0abc49e9a4d7b.bundle",
+          "sha256": "01be4b1e5fcfd272c116ec633a9be53af0f7a054713d6e20ac3e513a3e6ef33c",
+          "originalSha256": "d77003cd1b033a47b73b1ef9ee6a1b219dc80aeeb884eb384bd960640dd4af82",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_20006"
+          ]
+        },
+        {
+          "source": "payload/1db99b9f52b4ad7aeebf47fb3ff150e4ef5c06640209558094de99751248a4fb.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/8207d1d73b7b34f7504fdcbd45066016.bundle",
+          "sha256": "1db99b9f52b4ad7aeebf47fb3ff150e4ef5c06640209558094de99751248a4fb",
+          "originalSha256": "1605edeec9c7ce514c94b5a8b4cc20c94871bbdc43a23e9f264260633d117bb4",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_10003"
+          ]
+        },
+        {
+          "source": "payload/a3bb99781d3186ccea2334fc898cb7ab2e1c023c6cb7e253bb553a3284134015.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/74b35dc076802d5d91aa5aaec1aa86c0.bundle",
+          "sha256": "a3bb99781d3186ccea2334fc898cb7ab2e1c023c6cb7e253bb553a3284134015",
+          "originalSha256": "894cc850df61ea02b99ccc1c2343c89f1dd10ee8582384cb4f39024da170f2d9",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_10006"
+          ]
+        },
+        {
+          "source": "payload/2b041822baffb0c16dd1365147035e410fc2c8b40de23827de203e67437cc2ea.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/16137ee6e3dc1a1d5fc45370c4a7e108.bundle",
+          "sha256": "2b041822baffb0c16dd1365147035e410fc2c8b40de23827de203e67437cc2ea",
+          "originalSha256": "309cadd570933ed29984e5b9a67fbd6651a393b4426477382c52875dc08d123c",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_21007"
+          ]
+        },
+        {
+          "source": "payload/db8d06b85f2430b750c251857b501fb668b95161e58587d89031d9ba9835e080.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/d6d01bd2e6d097ce5b088069bedd1f63.bundle",
+          "sha256": "db8d06b85f2430b750c251857b501fb668b95161e58587d89031d9ba9835e080",
+          "originalSha256": "a10aefc75691c64555a916b10d13caa82a55e9cb9241e1500e33e59ee168f04f",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_20014"
+          ]
+        },
+        {
+          "source": "payload/0ce6df1317e8449ec5d68670f0ef6997866a9acda70fb7748f9a064a8badb398.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/54d856968894330b131d6b4f160374aa.bundle",
+          "sha256": "0ce6df1317e8449ec5d68670f0ef6997866a9acda70fb7748f9a064a8badb398",
+          "originalSha256": "172c9bb81db453212f3d9354d112f4e3d70331e73efdf3b945506260a9f4fca3",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_20030"
+          ]
+        },
+        {
+          "source": "payload/3eb7e9d53bf8621cff995ae6f0974cddc52d2d255279c6e790086abb2f74c92c.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/ed9a39a9de3cdcf376992bbb66c3abb1.bundle",
+          "sha256": "3eb7e9d53bf8621cff995ae6f0974cddc52d2d255279c6e790086abb2f74c92c",
+          "originalSha256": "c229055af97b32860b44461698352db52d5402acb987354513299d103e277d45",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_10011"
+          ]
+        },
+        {
+          "source": "payload/62517b93e46e895b0f6f7024436285f133ef7bd24ed013f572b97983ed961f80.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/b1fb41634d100244c1ad4c7660e7b723.bundle",
+          "sha256": "62517b93e46e895b0f6f7024436285f133ef7bd24ed013f572b97983ed961f80",
+          "originalSha256": "80962784f913882f2dcf15d95f47c159586d6fb6e054a29f30b276ee886c97ad",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_10001"
+          ]
+        },
+        {
+          "source": "payload/503be3ac87c156f1cf6a038479ffc900403faf5ea4e2977d8088096ae64c6a89.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/10d920bf2b4b701f8129e5f601953305.bundle",
+          "sha256": "503be3ac87c156f1cf6a038479ffc900403faf5ea4e2977d8088096ae64c6a89",
+          "originalSha256": "b57a824580b14de02bf6a7fd1f42f12ac6a3fa8e8e1f65c85f360b2ba40a49fa",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_10010"
+          ]
+        },
+        {
+          "source": "payload/6979b1aba0457b13cd2e011fc661f6cc52494c039934754a73bde9c14fd70dfa.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/e022687377215db026e3527c53110ff0.bundle",
+          "sha256": "6979b1aba0457b13cd2e011fc661f6cc52494c039934754a73bde9c14fd70dfa",
+          "originalSha256": "14d5e9777a786b00976428c8a2a133b6c854365bc901d12150f6fa3606541e6a",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_21004"
+          ]
+        },
+        {
+          "source": "payload/8befbd66121d6a1652d2bfa04101862505db5a0a4cf660545b8dfd3aca1e48ed.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/9f1d37751f0ba3448cd03a4ddc562f2c.bundle",
+          "sha256": "8befbd66121d6a1652d2bfa04101862505db5a0a4cf660545b8dfd3aca1e48ed",
+          "originalSha256": "0d5cddbbfd37b60d41736c0fd15492d9919bc23481ccb5f3275c72d2e9177301",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_10004"
+          ]
+        },
+        {
+          "source": "payload/bbe0f752cf8db789772374f41bdc9a92f238e6533e29ba06b3946b205632e3eb.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/8efc2901a12c0046d82e3217e9595317.bundle",
+          "sha256": "bbe0f752cf8db789772374f41bdc9a92f238e6533e29ba06b3946b205632e3eb",
+          "originalSha256": "8173424e1a8ef23137d75d9a162db940e15bc13504bc26b4b23db711210d6584",
+          "size": 1606328,
+          "assets": [
+            "UT_HandCard_21014"
+          ]
+        },
+        {
+          "source": "payload/73b8f49ba77fb7b16b4a26dcb46ef9c4453b83dbaf9dee7e6a94d18ca5dcc6b4.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/91589d57193473d956f637c3166844e5.bundle",
+          "sha256": "73b8f49ba77fb7b16b4a26dcb46ef9c4453b83dbaf9dee7e6a94d18ca5dcc6b4",
+          "originalSha256": "2f988f428a0c893993193945da3d6f66db941d537090129365c371affc090b4c",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_20001"
+          ]
+        },
+        {
+          "source": "payload/29382769b01e6df0092da5e57ae4568e6aa9c388cdbe0451b322a73efb2395bc.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/14bf7a7444d0cb96a087ea6f95829378.bundle",
+          "sha256": "29382769b01e6df0092da5e57ae4568e6aa9c388cdbe0451b322a73efb2395bc",
+          "originalSha256": "f21a5f86defe825ee268a52692d32ae7fc589cd88173a8f7e6cf9967639393ac",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_20010"
+          ]
+        },
+        {
+          "source": "payload/2114b1cbe7a24af647873387dd3f21723dd8c40680e6171159fd111b0e1bd386.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/3b20a468721ed2100c01b9c32e0c0d55.bundle",
+          "sha256": "2114b1cbe7a24af647873387dd3f21723dd8c40680e6171159fd111b0e1bd386",
+          "originalSha256": "a1b9e46b43dae63e6656e525afaea284c1a7a9d42980301f080e4fa861d01dc6",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_20028"
+          ]
+        },
+        {
+          "source": "payload/8dc15b4193914930e7270103956b0ef3797c8db450e1346f0eed981ea0f51d7e.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/a1b85998b9c4c10026f9f492b8622ee8.bundle",
+          "sha256": "8dc15b4193914930e7270103956b0ef3797c8db450e1346f0eed981ea0f51d7e",
+          "originalSha256": "5b0ca9c74dbfa088cd013f5785ee5a9af2efcc8345d3ed2605d31edcb31708c9",
+          "size": 1606324,
+          "assets": [
+            "UT_HandCard_10012"
+          ]
+        }
+      ],
+      "unmappedFiles": [],
+      "conflicts": [
+        "local.7129524130e4982a",
+        "local.9a9ec9c4450ac585"
+      ]
+    },
+    {
+      "id": "local.f5aefdf1bc5cada3",
+      "name": "犹格索托斯庭院  小叶子  替换  多萝西（只有立绘）",
+      "archive": "犹格索托斯庭院  小叶子  替换  多萝西（只有立绘）.zip",
+      "archiveSha256": "a2472cf08607090f81c8b69a426b75f460c3b5ae26ab8a494cec4b1a949fa886",
+      "author": "Foxe（狐e）",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [
+        {
+          "source": "payload/2472f616b321107c6da4b54f12792d72bb8489b736d37f78de1623459a46d24c.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/d951c38f448a385a1d3f4f0fc9df66fd.bundle",
+          "sha256": "2472f616b321107c6da4b54f12792d72bb8489b736d37f78de1623459a46d24c",
+          "originalSha256": "2d4122d3c4bb9910b722eca19ddbff4f6108d1b4e6421acaa5614669e587a9ca",
+          "size": 83576,
+          "assets": [
+            "UT_Hero_ThinCard_304"
+          ]
+        },
+        {
+          "source": "payload/e9d4b8d50569bbb022416f65632854c3c73a8958e1b7a8006630c571c87b46a6.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/7ab1e2f5828b715dbdc33409076f54eb.bundle",
+          "sha256": "e9d4b8d50569bbb022416f65632854c3c73a8958e1b7a8006630c571c87b46a6",
+          "originalSha256": "8a8d75b2184302d6f7ff540b679a7033baee6acc60413fe0dc2e0c0357a230c8",
+          "size": 579284,
+          "assets": [
+            "UT_Hero_Card2_304"
+          ]
+        },
+        {
+          "source": "payload/af01ad4c76d43f22b94954bac6655e976a046b98f75966495dbe5551410e42ca.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/2c75f9ce14760c677d958101102dd55f.bundle",
+          "sha256": "af01ad4c76d43f22b94954bac6655e976a046b98f75966495dbe5551410e42ca",
+          "originalSha256": "7b202a087ffe88af0598e9757984f081d0790b17c42360acf390b62dfeb3c423",
+          "size": 101532,
+          "assets": [
+            "UT_Hero_ProfilePhoto_304"
+          ]
+        },
+        {
+          "source": "payload/a5a4098e05a67b8641804d9d08bd837c28a096b05320594bc8e32ac664bd7c19.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/3546588018771952bdbbf0e2e19469ff.bundle",
+          "sha256": "a5a4098e05a67b8641804d9d08bd837c28a096b05320594bc8e32ac664bd7c19",
+          "originalSha256": "57a0e6f738fe7cea25cae707770bafc9886179b1f6ab115f0852d768fb43e0f3",
+          "size": 55936,
+          "assets": [
+            "UT_Item_PlayerPhoto_70074"
+          ]
+        },
+        {
+          "source": "payload/52fe4f585d9ff6e431adabfc3345e75fc72ee06c3999a5fa0b3cd4c12619710c.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/b8699ccbc4050ea0bf54ab1da0ec7ee2.bundle",
+          "sha256": "52fe4f585d9ff6e431adabfc3345e75fc72ee06c3999a5fa0b3cd4c12619710c",
+          "originalSha256": "74661eeb0fa7ba3a6b409a2823fa97e362e8dc8973567413408226dc1579176e",
+          "size": 3759124,
+          "assets": [
+            "UT_Hero_Bust_304_1"
+          ]
+        },
+        {
+          "source": "payload/1e488f5fa7a1c885748abefdcb8cedb6e667eb651d4f826e0d319990f992e12e.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/5a89fa0e722bff768fdb8832408409d7.bundle",
+          "sha256": "1e488f5fa7a1c885748abefdcb8cedb6e667eb651d4f826e0d319990f992e12e",
+          "originalSha256": "11614c8585b1d0b28dedab4e17ec882ffc0a22261549b5897b262f57534885c5",
+          "size": 3759124,
+          "assets": [
+            "UT_Hero_Bust_304_0"
+          ]
+        },
+        {
+          "source": "payload/b9f883629cecc4bb1ba37b41f9ec447d3eb8d8f094349b73caaa5cae5a18fb06.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/4517913ed8786cf7ea232c9aa96addc5.bundle",
+          "sha256": "b9f883629cecc4bb1ba37b41f9ec447d3eb8d8f094349b73caaa5cae5a18fb06",
+          "originalSha256": "f9d44eb2c6477822993787d5aeaf93c027cc727a8702fbf2692d11ed15628933",
+          "size": 278332,
+          "assets": [
+            "UT_AccountBackground_71069"
+          ]
+        },
+        {
+          "source": "payload/664aef0097f739db0f27c9c56d06a048a27c5095fd2dafea69096cb5f78fdf92.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/cdf106c4a176057997ae39c799f7ce03.bundle",
+          "sha256": "664aef0097f739db0f27c9c56d06a048a27c5095fd2dafea69096cb5f78fdf92",
+          "originalSha256": "f6b07c856d00ea6a617c750797eb61f5a6b8475cae119e76cc1b8487fdbdc745",
+          "size": 84732,
+          "assets": [
+            "UT_AccountHeadShot_70074"
+          ]
+        },
+        {
+          "source": "payload/4812906bc4d80a1535c3c49af0c9311e0e30f185b4289e6e03b0be961beaf43b.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/ee5ae4547f1f71b4aac3ff5f98abd4b3.bundle",
+          "sha256": "4812906bc4d80a1535c3c49af0c9311e0e30f185b4289e6e03b0be961beaf43b",
+          "originalSha256": "998f5b9dd9be3fc53bd8382f6195170b2815d7f0677164b8c4b69a358c819c86",
+          "size": 167932,
+          "assets": [
+            "UT_Hero_RolePhoto_304"
+          ]
+        },
+        {
+          "source": "payload/38f602d7447c185739a9d43afa10ed0cd011de0ceece91fd0cd2c867a016ff73.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/cf0d005ecb39a26403f88e7c53ab6610.bundle",
+          "sha256": "38f602d7447c185739a9d43afa10ed0cd011de0ceece91fd0cd2c867a016ff73",
+          "originalSha256": "8f5c0f1f791349b7b87628948c2684893cee8f3d8b9e69a26e278458116b9ae0",
+          "size": 55924,
+          "assets": [
+            "UT_Item_Hero_304"
+          ]
+        },
+        {
+          "source": "payload/b791cef5ea24b1283f5064b358f34e5defd2955eea8683db8e0b71eb5ed0fb28.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/014c9b6e715e98cb87002499112068be.bundle",
+          "sha256": "b791cef5ea24b1283f5064b358f34e5defd2955eea8683db8e0b71eb5ed0fb28",
+          "originalSha256": "7e49967748d8b1249aa1fb9d3339608cbb57657718e7afeb123f50ca90259ff0",
+          "size": 55940,
+          "assets": [
+            "UT_Item_AccountBackground_71069"
+          ]
+        },
+        {
+          "source": "payload/08e771bc4e4ed6a46283835f16c71e895f3adc7b1bbb9810d0f499207f7b8c4b.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/e25d9d2d9f106fb9fb0d2e2abfa10a48.bundle",
+          "sha256": "08e771bc4e4ed6a46283835f16c71e895f3adc7b1bbb9810d0f499207f7b8c4b",
+          "originalSha256": "baa6b501bac243198a127aa59228f6d98143079b24d6f5e0c62b2f1477eaac02",
+          "size": 2801524,
+          "assets": [
+            "UT_Hero_Card_304"
+          ]
+        }
+      ],
+      "unmappedFiles": [],
+      "conflicts": []
+    },
+    {
+      "id": "local.7129524130e4982a",
+      "name": "风水吉厄手牌(我也要似吗)",
+      "archive": "风水吉厄手牌(我也要似吗).rar",
+      "archiveSha256": "a0f565652b1681e03a1e17ec26a9d5efdfcde4a26f1acc8998b8e71df24f8704",
+      "author": "原包作者（见原包说明）",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [
+        {
+          "source": "payload/79fb41f05b245059f3f75b4a1f7b8c6083e2d410a2538f941f14132130a19e1b.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/c46bafe39d9c0f23f87f992babbc4406.bundle",
+          "sha256": "79fb41f05b245059f3f75b4a1f7b8c6083e2d410a2538f941f14132130a19e1b",
+          "originalSha256": "4749190d3875a69d37875ab37503a0ce0f114df279603d7d0e4f147e64c173cc",
+          "size": 4360628,
+          "assets": [
+            "UT_HandCard_20027"
+          ]
+        },
+        {
+          "source": "payload/62922ada90475099367d547277b1b8c20b5a1e1ea43a23b6700ab2464632a072.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/3b20a468721ed2100c01b9c32e0c0d55.bundle",
+          "sha256": "62922ada90475099367d547277b1b8c20b5a1e1ea43a23b6700ab2464632a072",
+          "originalSha256": "a1b9e46b43dae63e6656e525afaea284c1a7a9d42980301f080e4fa861d01dc6",
+          "size": 4360628,
+          "assets": [
+            "UT_HandCard_20028"
+          ]
+        }
+      ],
+      "unmappedFiles": [],
+      "conflicts": [
+        "local.25b0d52e66740e10"
+      ]
+    },
+    {
+      "id": "local.8082cbb2dd917604",
+      "name": "魔女审判 替换 侦探万圣节皮肤静态名片",
+      "archive": "魔女审判 替换 侦探万圣节皮肤静态名片.zip",
+      "archiveSha256": "19bdc0b5783edc25be8dc4b8af6fca220c9de07963b5909c0e40fe647a138e92",
+      "author": "Foxe（狐e）",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [
+        {
+          "source": "payload/b1c9a92eba77ddc62106c76955073f6219c8d1c36afc1594736b12b99f579d3a.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/6181065091217fcc6f54a67208cfe70d.bundle",
+          "sha256": "b1c9a92eba77ddc62106c76955073f6219c8d1c36afc1594736b12b99f579d3a",
+          "originalSha256": "ad56bdeb7b9d9f62c046f24d54ec8435a0d47ab634396c1cca05f62ec45c6b35",
+          "size": 134314,
+          "assets": [
+            "UT_AccountBackground_71070"
+          ]
+        }
+      ],
+      "unmappedFiles": [],
+      "conflicts": []
+    },
+    {
+      "id": "local.6316d31eb2db64c1",
+      "name": "魔女审判 橘雪梨 语音 技能动画",
+      "archive": "魔女审判 橘雪梨 语音 技能动画.rar",
+      "archiveSha256": "4dd3232355f3df7ac08a723e6b19c38a5507b66b666f006f60532845c5518c1b",
+      "author": "Foxe（狐e）",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [],
+      "unmappedFiles": [
+        "橘雪梨语音吹替以及技能动画\\蛋的技能动画\\892e67dd78a849887bfa302e9c5fad32.bundle",
+        "橘雪梨语音吹替以及技能动画\\蛋的语音吹替\\__data"
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "local.e0494a7183d9b8e5",
+      "name": "魔女审判 橘雪梨替换侦探 原皮（立绘/界面部分）",
+      "archive": "魔女审判 橘雪梨替换侦探 原皮.zip",
+      "archiveSha256": "fde42977f2771b6fcad0408d4e33b8eecc5459270670d089348d0f8a539ceb5a",
+      "author": "Foxe（狐e）",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [
+        {
+          "source": "payload/e29c5e14995da0e808eae1a3ee5b0fe0a2acbb917e5eeef7ef5174123d0cca68.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/ea5bd782060c3dc574300827bb633378.bundle",
+          "sha256": "e29c5e14995da0e808eae1a3ee5b0fe0a2acbb917e5eeef7ef5174123d0cca68",
+          "originalSha256": "d9ba55e895919c0ec54ff8463aad87e3dd5e5685b3eb04965471001070d7de61",
+          "size": 167932,
+          "assets": [
+            "UT_Hero_RolePhoto_102"
+          ]
+        },
+        {
+          "source": "payload/6bf665ffbdf71cc35d6bf192279d8c8539899f3ae88d1791eddf6c3791f0da70.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/f5ba6399f8bda27461c50aeefcafb568.bundle",
+          "sha256": "6bf665ffbdf71cc35d6bf192279d8c8539899f3ae88d1791eddf6c3791f0da70",
+          "originalSha256": "cf114f5ba707411da2ea94364ced0de59f74b152b24b6f86750531f27853970b",
+          "size": 55940,
+          "assets": [
+            "UT_Item_AccountBackground_71102"
+          ]
+        },
+        {
+          "source": "payload/4d018b98d7c6d15c5ec4d9e9b007432ff058f502ed098ea5ccc5a1899f12dcff.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/04cd4bc8c9fffaf80c59d7fd7e990944.bundle",
+          "sha256": "4d018b98d7c6d15c5ec4d9e9b007432ff058f502ed098ea5ccc5a1899f12dcff",
+          "originalSha256": "c5ba634e43d3fefc2764a0d55d21363dc44389ad0fbf46db484c1ecb76ce5355",
+          "size": 3759124,
+          "assets": [
+            "UT_Hero_Bust_102_1"
+          ]
+        },
+        {
+          "source": "payload/c8635c56f6a2deecfb7d77ee99e794264770d6ef92192b38e7f456357f12b94b.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/c6e615ef1473219c1bb3c87786793360.bundle",
+          "sha256": "c8635c56f6a2deecfb7d77ee99e794264770d6ef92192b38e7f456357f12b94b",
+          "originalSha256": "c428ac4806a371291c59bbfba108f0554837b88db0ef8c17d6d8459d7a562210",
+          "size": 579284,
+          "assets": [
+            "UT_Hero_Card2_102"
+          ]
+        },
+        {
+          "source": "payload/c0cb6898eae80f4f737a96c5b4e84b69ef22f1626b1eff3c43ba5a586b08d575.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/f7c7062cf520e53545eb32ccfc713f3f.bundle",
+          "sha256": "c0cb6898eae80f4f737a96c5b4e84b69ef22f1626b1eff3c43ba5a586b08d575",
+          "originalSha256": "85d081a97e57e4f7902bb0d00c518c89959f472db295df466f2802ccadd77682",
+          "size": 1059448,
+          "assets": [
+            "UT_Hero_LevelUp_102"
+          ]
+        },
+        {
+          "source": "payload/5555b0e46edfc8c56015cb2249e3fe14c8f9621847fe48d131cbb25c4ff84104.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/45a89bcda438e13a7cd1a568b7e87653.bundle",
+          "sha256": "5555b0e46edfc8c56015cb2249e3fe14c8f9621847fe48d131cbb25c4ff84104",
+          "originalSha256": "fb4bdb256276e0a96b90d6c654dc9d4300f73fbdfe7c4f96899f3cc7d55a6711",
+          "size": 2458452,
+          "assets": [
+            "UT_Hero_Card_102"
+          ]
+        },
+        {
+          "source": "payload/abe0bad4d9d509650f0bced3a4013222dc8f286d6abc363e7f51098607379d00.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/f2b8eb417b8560ee05104c07386af244.bundle",
+          "sha256": "abe0bad4d9d509650f0bced3a4013222dc8f286d6abc363e7f51098607379d00",
+          "originalSha256": "e5e6bc6bbd25c4f963d4697a5059495f2c6805f1805672187fe6d4b320a711a2",
+          "size": 55924,
+          "assets": [
+            "UT_Item_Hero_102"
+          ]
+        },
+        {
+          "source": "payload/be3664fbf2074d6524208da4e5850982ee505c414f854df99a269f461edccadd.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/8e2afa8bd70a707aa640ef2ea11b86b3.bundle",
+          "sha256": "be3664fbf2074d6524208da4e5850982ee505c414f854df99a269f461edccadd",
+          "originalSha256": "bd3b2f81074368d3b76ed5d891d38778eb9965471a918c950f3f26af008824a0",
+          "size": 334460,
+          "assets": [
+            "UT_Land_102"
+          ]
+        },
+        {
+          "source": "payload/23c51b75e010eb2ee88755abbd025a2cdff8b9cd6d53a1fd3a00086bb5a1102e.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/a6f1baec73aee46082f4b482f5ab9240.bundle",
+          "sha256": "23c51b75e010eb2ee88755abbd025a2cdff8b9cd6d53a1fd3a00086bb5a1102e",
+          "originalSha256": "e39a46be90208b349122397d5a82f9d7eb57d3f28fc353789838c2d5a9370519",
+          "size": 278332,
+          "assets": [
+            "UT_AccountBackground_71102"
+          ]
+        },
+        {
+          "source": "payload/293ab424ba61349a0bccab7898d9fab804aefd014b419dea9d466fc57f45b6f3.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/22a3919f5c8261623f6d185741e1c9a2.bundle",
+          "sha256": "293ab424ba61349a0bccab7898d9fab804aefd014b419dea9d466fc57f45b6f3",
+          "originalSha256": "ae49affbcba331bac5f4cf70dbd4d3e486d517882cc505020b2c26eff84a0f3f",
+          "size": 24129,
+          "assets": [
+            "UT_Hero_ProfilePhoto_102"
+          ]
+        },
+        {
+          "source": "payload/45f2d1a816927d2216404f312b06850f5ba0052005395a6260a69cf5c3a02e58.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/a4ec9d129172b876b93f74a16e120f4d.bundle",
+          "sha256": "45f2d1a816927d2216404f312b06850f5ba0052005395a6260a69cf5c3a02e58",
+          "originalSha256": "f735607518c6df6aa10cc498750e89d39ca9a3de655063a3f77849ba92158c79",
+          "size": 83572,
+          "assets": [
+            "UT_Hero_ThinCard_102"
+          ]
+        },
+        {
+          "source": "payload/f22fb513a84e692457f32275197086d60bc52568243398d9a99b7f88a218e4ac.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/8cec9565e37c420feacbcd6c7aa49f2a.bundle",
+          "sha256": "f22fb513a84e692457f32275197086d60bc52568243398d9a99b7f88a218e4ac",
+          "originalSha256": "14ffe727ec1fc2b77c0bad399cc24a68dbb9f847ee6349c633ec8fdc29aaf7f9",
+          "size": 3759128,
+          "assets": [
+            "UT_Hero_Bust_102_0"
+          ]
+        }
+      ],
+      "unmappedFiles": [
+        "根目录文件夹\\2cd2e176bec3d4132038ca9d623e4ad6.bundle",
+        "根目录文件夹\\566e3107dd6b7987bfeb826e97453dcd.bundle",
+        "根目录文件夹\\892e67dd78a849887bfa302e9c5fad32.bundle"
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "local.482e010de1cf3fce",
+      "name": "魔女审判 汉娜 语音 技能动画",
+      "archive": "魔女审判 汉娜 语音 技能动画.rar",
+      "archiveSha256": "2e50b13eafaae99950cf1fef8fac710d70356aa3ad2f8e48852771cf6bcefa2a",
+      "author": "Foxe（狐e）",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [],
+      "unmappedFiles": [
+        "汉娜\\技能动画-换到aa根目录\\4bab00efb3fd31989ee6224086bbb69c.bundle",
+        "汉娜\\纯语音替换\\__data",
+        "汉娜\\适配动画的语音替换\\__data"
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "local.9a9ec9c4450ac585",
+      "name": "魔女审判 汉娜替换凛 原皮（立绘/界面部分）",
+      "archive": "魔女审判 汉娜替换凛 原皮.zip",
+      "archiveSha256": "10e024083aa8558d3b23899dddc5be0f0449adfb73deeaf0e40cd575b14bdc81",
+      "author": "Foxe（狐e）",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [
+        {
+          "source": "payload/d9ec773bf559a4cd90a170c00e8b8a3e0ab3d4722b082f7097c5b14d57def3e4.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/60fa8408475e29f192d4db7c6fe10ad0.bundle",
+          "sha256": "d9ec773bf559a4cd90a170c00e8b8a3e0ab3d4722b082f7097c5b14d57def3e4",
+          "originalSha256": "674a5566189e63b3b41201488308918d3dd32419625ff76b4185221d0509eb96",
+          "size": 83572,
+          "assets": [
+            "UT_Hero_ThinCard_121"
+          ]
+        },
+        {
+          "source": "payload/6f0b66336ecd7a2f5b5729f7541b8f4c583c26aee2931134ef5ff007a8ea4952.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/3adfcc1b123f41a83898c5e05dda1fcf.bundle",
+          "sha256": "6f0b66336ecd7a2f5b5729f7541b8f4c583c26aee2931134ef5ff007a8ea4952",
+          "originalSha256": "39dde760ab8af15e13a7bcbb2af5e7270b98c91d765b03a5173a1189c53fc5d4",
+          "size": 529008,
+          "assets": [
+            "UT_Land_121"
+          ]
+        },
+        {
+          "source": "payload/f15079c01b30cf34951fdc05f35944ddf1dccf9aca1f15e3bc50f549f73d0bc6.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/83abbd4b9dc20d72c3ca1957832c439a.bundle",
+          "sha256": "f15079c01b30cf34951fdc05f35944ddf1dccf9aca1f15e3bc50f549f73d0bc6",
+          "originalSha256": "cec07a52c3351316695162393eb312c84fb5305d324037bc1fccc31f74cb08c8",
+          "size": 55924,
+          "assets": [
+            "UT_Buff_121_Passive"
+          ]
+        },
+        {
+          "source": "payload/0d0336c0d37885363f3ff99ca62f9c7823034b7bf0ad96f654155d17c075d445.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/6d61c5d0c54df8aaab8a80cf998b9957.bundle",
+          "sha256": "0d0336c0d37885363f3ff99ca62f9c7823034b7bf0ad96f654155d17c075d445",
+          "originalSha256": "57a7b96afa8b1ab6946a9d29365586339ee45e8e0eb4141aa684f7d475938b45",
+          "size": 895704,
+          "assets": [
+            "UT_Hero_LevelUp_121"
+          ]
+        },
+        {
+          "source": "payload/3d314938e479b0e36633cb1a685cd4f39fd8b1dfdb145b309e5f9b08249808f1.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/52acaab6f1cfa02a50ca5fc18245baf5.bundle",
+          "sha256": "3d314938e479b0e36633cb1a685cd4f39fd8b1dfdb145b309e5f9b08249808f1",
+          "originalSha256": "63039b4ce5238a7c931248c84ce1196af383e6820a697bee6df02c51f97a6924",
+          "size": 55924,
+          "assets": [
+            "UT_Item_Hero_121"
+          ]
+        },
+        {
+          "source": "payload/f85e529dd76bd04f6fd435408ecd76fc3a7f9b651418d0a90416c1f7c1a84460.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/3c2c14876a411bf7274bd950f71d6151.bundle",
+          "sha256": "f85e529dd76bd04f6fd435408ecd76fc3a7f9b651418d0a90416c1f7c1a84460",
+          "originalSha256": "6071b9dbc58b26aabd1b04dfad83cc13b3923823d48a1e52b93fc105f0637484",
+          "size": 139924,
+          "assets": [
+            "UT_Platform_121"
+          ]
+        },
+        {
+          "source": "payload/4f512bb0e69ffb9a4b6a12d4792a4af5c0c543d0879c3f79a03050f850acd6f6.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/edf8de7cbfbaa90cdae3681581f20d2b.bundle",
+          "sha256": "4f512bb0e69ffb9a4b6a12d4792a4af5c0c543d0879c3f79a03050f850acd6f6",
+          "originalSha256": "37c0340fa08aaaeddb6745a96ff49a95c2f72580706cf2465d91c07985e85422",
+          "size": 101532,
+          "assets": [
+            "UT_Hero_ProfilePhoto_121"
+          ]
+        },
+        {
+          "source": "payload/239b98aefc602f08eb8e8ca0fe3a2d3896a967e645c2d96fb58815791748a493.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/29a2d34305c49201fefbbc8956ff89ca.bundle",
+          "sha256": "239b98aefc602f08eb8e8ca0fe3a2d3896a967e645c2d96fb58815791748a493",
+          "originalSha256": "7cf21b0fac659c5e87d72b6d449996929ee6a41770cbf6e4ed438de4b0417918",
+          "size": 2827128,
+          "assets": [
+            "UT_Hero_Bust_121_1"
+          ]
+        },
+        {
+          "source": "payload/f895116529e0bce99412461fcc1ff46f3ecbc11926d079d4b404ae96f6e5b8c1.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/b7f4713fe7388831bc1b8877a386417f.bundle",
+          "sha256": "f895116529e0bce99412461fcc1ff46f3ecbc11926d079d4b404ae96f6e5b8c1",
+          "originalSha256": "e952f4099d3677967163229eb365a7190aca41dc2eb57a2f6dac1f8fe29cf942",
+          "size": 167932,
+          "assets": [
+            "UT_Hero_RolePhoto_121"
+          ]
+        },
+        {
+          "source": "payload/b71b63c32fc0864e02759e1766d5ebffdba8c21ad4bfdc02170553cc21f21159.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/b2df8527702bb208ee4d6bbf74dd8404.bundle",
+          "sha256": "b71b63c32fc0864e02759e1766d5ebffdba8c21ad4bfdc02170553cc21f21159",
+          "originalSha256": "5cd2988e95f6e3dce8ad80a26cb3dfb2f1220f6ba991b9a438d916b0c712e974",
+          "size": 18585620,
+          "assets": [
+            "UT_Hero_Card_121"
+          ]
+        },
+        {
+          "source": "payload/b0fbb15b9bff9e8fee2263f7611d7760900c9e80826f03f00589254132a8b8ce.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/6f3fd60f553413a4cc208ad1fd49faa5.bundle",
+          "sha256": "b0fbb15b9bff9e8fee2263f7611d7760900c9e80826f03f00589254132a8b8ce",
+          "originalSha256": "dacf98402d99dbc414a6037a9c83aa1b7b8d59fd7ea5f91cfc6471d9c90bbb4c",
+          "size": 2827128,
+          "assets": [
+            "UT_Hero_Bust_121_0"
+          ]
+        },
+        {
+          "source": "payload/d96150cf6cfe0ea43ef77585490d5931393aa0c14c83d280f01756837ae2f465.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/54d856968894330b131d6b4f160374aa.bundle",
+          "sha256": "d96150cf6cfe0ea43ef77585490d5931393aa0c14c83d280f01756837ae2f465",
+          "originalSha256": "172c9bb81db453212f3d9354d112f4e3d70331e73efdf3b945506260a9f4fca3",
+          "size": 327924,
+          "assets": [
+            "UT_HandCard_20030"
+          ]
+        },
+        {
+          "source": "payload/d1429ac213b8134cf4d5c7f257470df7e112a767b9d47c42c9d976fa2fe90d46.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/fc2fb13c91e141cc6804e145637364f4.bundle",
+          "sha256": "d1429ac213b8134cf4d5c7f257470df7e112a767b9d47c42c9d976fa2fe90d46",
+          "originalSha256": "b963d294d71aac7f3015f22828fa3c92c322cb6f0d43a0f441b68e0687e1f1dc",
+          "size": 579288,
+          "assets": [
+            "UT_Hero_Card2_121"
+          ]
+        }
+      ],
+      "unmappedFiles": [
+        "游戏根目录\\4141f6fb0038a4b56f48c253c12d4eb7.bundle",
+        "游戏根目录\\4bab00efb3fd31989ee6224086bbb69c.bundle",
+        "游戏根目录\\b5a7efd142439816437dfede01142587.bundle"
+      ],
+      "conflicts": [
+        "local.25b0d52e66740e10"
+      ]
+    },
+    {
+      "id": "local.bd5f0a2efc24a076",
+      "name": "黑旗袍 替换 旗袍原皮、赛季皮 · 原皮（无特效）（立绘/界面部分）",
+      "archive": "黑旗袍 替换 旗袍原皮、赛季皮.zip",
+      "archiveSha256": "cc1ba36a56959f5a708d796f83d90c546c5d3ec89912461fd6958cfcf5787e88",
+      "author": "原包作者（见原包说明）",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [
+        {
+          "source": "payload/a3c6fe7173afc406989660eeeba363b9173a3dd7fdee69af14d8e18c6495f024.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/0883ce7855602b4ebca5892595960ed6.bundle",
+          "sha256": "a3c6fe7173afc406989660eeeba363b9173a3dd7fdee69af14d8e18c6495f024",
+          "originalSha256": "a4b6e13c5492c266718b27ae586f364d7b5f68bb88652461428c67cfbcb4bdf2",
+          "size": 201841,
+          "assets": [
+            "UT_Hero_ThinCard_113"
+          ]
+        },
+        {
+          "source": "payload/27730ef1caae2af5cbff0f4bed212b5755213ee0c1b3fb641f94a0c298f187ea.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/3d699fbdbbb68e9cc73f1858c5a7f79c.bundle",
+          "sha256": "27730ef1caae2af5cbff0f4bed212b5755213ee0c1b3fb641f94a0c298f187ea",
+          "originalSha256": "3b118176476aa145ab307f46ef09801c9ae4e18521ed26863af53282ba7f526a",
+          "size": 7060721,
+          "assets": [
+            "UT_Hero_Bust_113_1"
+          ]
+        },
+        {
+          "source": "payload/a994712ea106e3775b75c81802e37b97375ed0f2ede907e00502e4262dad0d7a.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/f3de563be4a312786693cff6ce99e9fe.bundle",
+          "sha256": "a994712ea106e3775b75c81802e37b97375ed0f2ede907e00502e4262dad0d7a",
+          "originalSha256": "433cd0dc8dac6cf7e5cff290847e1ab9274222b589664dcb001ee13e613e68a1",
+          "size": 132721,
+          "assets": [
+            "UT_Item_Hero_113"
+          ]
+        },
+        {
+          "source": "payload/91d85af6abff8969e0333584ef8e438eb99d2c8efb8e121a88ed97757f41a73c.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/5a3f370cc6104218f7669a43e0061535.bundle",
+          "sha256": "91d85af6abff8969e0333584ef8e438eb99d2c8efb8e121a88ed97757f41a73c",
+          "originalSha256": "fec697020b7323cc9a95badb443fb15aa80159fc1b8b6bea2c482e8414564d3a",
+          "size": 6323121,
+          "assets": [
+            "UT_Hero_Card_113"
+          ]
+        },
+        {
+          "source": "payload/423f31577a56a98f573f61e69dbde21bb2b3ffa399a8074d92073fb8541f0776.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/698a76bf0164241d06f06a633be65c19.bundle",
+          "sha256": "423f31577a56a98f573f61e69dbde21bb2b3ffa399a8074d92073fb8541f0776",
+          "originalSha256": "c6a98c298b932f9f3f301f1ea58e0d9823dbca44d805390dd9dfb646f244da91",
+          "size": 246729,
+          "assets": [
+            "UT_Hero_ProfilePhoto_113"
+          ]
+        },
+        {
+          "source": "payload/837f151e394da9019a87aeb9433e05705481985e812f82457880c6138a28629c.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/cdc9acc79a64682ce4161dadf132617b.bundle",
+          "sha256": "837f151e394da9019a87aeb9433e05705481985e812f82457880c6138a28629c",
+          "originalSha256": "b1763cb286a9b45122020838e990daf060273c15ceb99cac87ac818fa39c28e1",
+          "size": 7060721,
+          "assets": [
+            "UT_Hero_Bust_113_0"
+          ]
+        },
+        {
+          "source": "payload/0411e8a19e60e310698d334e0f341516d8fcd9abd6122f1e47b293eb005dc8c0.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/c4d6d53da07c75c6cb704ed4193b1249.bundle",
+          "sha256": "0411e8a19e60e310698d334e0f341516d8fcd9abd6122f1e47b293eb005dc8c0",
+          "originalSha256": "8b7ae14ee7d994adee5b8cc7a08c897c5a7b6ffd65b3ec9d8d868e2ea3d72b58",
+          "size": 2376561,
+          "assets": [
+            "UT_Hero_LevelUp_113"
+          ]
+        },
+        {
+          "source": "payload/477da6580a2ec1268872d9a122e7a68a7712d679164a6562ac0b5e4f649d5754.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/fd25f35b7e5ccadc8508ba083d1d9864.bundle",
+          "sha256": "477da6580a2ec1268872d9a122e7a68a7712d679164a6562ac0b5e4f649d5754",
+          "originalSha256": "cf6385947689fe0b87df28ff2e5fb64b4f73df24b4fdbfd36aa0bfcc42837bcf",
+          "size": 412729,
+          "assets": [
+            "UT_Hero_RolePhoto_113"
+          ]
+        },
+        {
+          "source": "payload/f889c32b2acbae586f381f899c3c5561df63bbbcc45dbaec99618ab2ba808ad1.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/afa1cad176b7aa4b39a9a554e97fa81d.bundle",
+          "sha256": "f889c32b2acbae586f381f899c3c5561df63bbbcc45dbaec99618ab2ba808ad1",
+          "originalSha256": "11a6d4c9bb51bf92e49f70943c1386fd7a21fe41e49e50277e816b5d783d6410",
+          "size": 1441121,
+          "assets": [
+            "UT_Hero_Card2_113"
+          ]
+        }
+      ],
+      "unmappedFiles": [
+        "原皮（无特效）\\组件1\\30cb85acd5c09562b3fef549aed9a4fd.bundle",
+        "原皮（无特效）\\组件1\\5383c3fd9dc0ec82ffea5338133c88ba.bundle",
+        "原皮（无特效）\\组件1\\6f0536126a442a94bcfff9079d636297.bundle"
+      ],
+      "conflicts": [
+        "local.48377aa06087ed27"
+      ]
+    },
+    {
+      "id": "local.48377aa06087ed27",
+      "name": "黑旗袍 替换 旗袍原皮、赛季皮 · 原皮（无特效） · 缓存立绘方案",
+      "archive": "黑旗袍 替换 旗袍原皮、赛季皮.zip",
+      "archiveSha256": "cc1ba36a56959f5a708d796f83d90c546c5d3ec89912461fd6958cfcf5787e88",
+      "author": "原包作者（见原包说明）",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [
+        {
+          "source": "payload/03ed4f724402b856b9b7c8d6da342c61b06e44be58cbc085256258fc9b9b2637.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/afa1cad176b7aa4b39a9a554e97fa81d.bundle",
+          "sha256": "03ed4f724402b856b9b7c8d6da342c61b06e44be58cbc085256258fc9b9b2637",
+          "originalSha256": "11a6d4c9bb51bf92e49f70943c1386fd7a21fe41e49e50277e816b5d783d6410",
+          "size": 1441121,
+          "assets": [
+            "UT_Hero_Card2_113"
+          ]
+        }
+      ],
+      "unmappedFiles": [],
+      "conflicts": [
+        "local.bd5f0a2efc24a076"
+      ]
+    },
+    {
+      "id": "local.b9fe4dfe9f74682d",
+      "name": "黑旗袍 替换 旗袍原皮、赛季皮 · 替换语音（可选） · 缓存立绘方案",
+      "archive": "黑旗袍 替换 旗袍原皮、赛季皮.zip",
+      "archiveSha256": "cc1ba36a56959f5a708d796f83d90c546c5d3ec89912461fd6958cfcf5787e88",
+      "author": "原包作者（见原包说明）",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [],
+      "unmappedFiles": [
+        "替换语音（可选）\\c8ca465c4faa1c93be8b69096919a119\\acc80083ed7bca5ebed6731e9b6293c3\\__data",
+        "替换语音（可选）\\f6b1a2782623c2671f6a0a984140d861\\5f627e9a41b237dbc10d67f55d997bb9\\__data"
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "local.a5cdc8a439968d2d",
+      "name": "黑旗袍 替换 旗袍原皮、赛季皮 · 赛季皮旗袍（有特效）（立绘/界面部分）",
+      "archive": "黑旗袍 替换 旗袍原皮、赛季皮.zip",
+      "archiveSha256": "cc1ba36a56959f5a708d796f83d90c546c5d3ec89912461fd6958cfcf5787e88",
+      "author": "原包作者（见原包说明）",
+      "platforms": [
+        "STEAM_CN"
+      ],
+      "files": [
+        {
+          "source": "payload/b0aff07fb60fb947589c2547e66351326ac235181389b877bcf06019df92af0c.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/56ef7d4ace532cee4bdb29389891a059.bundle",
+          "sha256": "b0aff07fb60fb947589c2547e66351326ac235181389b877bcf06019df92af0c",
+          "originalSha256": "1fa22e27e1cd38dd256313461e718363a2ea41c94c291733d62bc9dc9bf3999a",
+          "size": 246729,
+          "assets": [
+            "UT_Hero_ProfilePhoto_113_02"
+          ]
+        },
+        {
+          "source": "payload/cc8e8cca81b0b357ba7f067d6e37e59249193959dbe4cd788ec86e82c54b37fd.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/f322a8c3d524683291c93956da752ed3.bundle",
+          "sha256": "cc8e8cca81b0b357ba7f067d6e37e59249193959dbe4cd788ec86e82c54b37fd",
+          "originalSha256": "d81269e3e513e91b98f1ae7adac606807f6b285136bf18541417b695833f7880",
+          "size": 1441121,
+          "assets": [
+            "UT_Hero_Card2_113_02"
+          ]
+        },
+        {
+          "source": "payload/257d29e450f9a65d18f29d70d7b7f3aca0ad58ac17062074ca1da15db86fa406.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/a88158cbb5e06beca751d931b178680f.bundle",
+          "sha256": "257d29e450f9a65d18f29d70d7b7f3aca0ad58ac17062074ca1da15db86fa406",
+          "originalSha256": "1e4e85b6ba66ab07e55b173a0a13b5d919062ab19d29443c29440802c69d9a29",
+          "size": 132737,
+          "assets": [
+            "UT_Item_StandingPainting_113_02"
+          ]
+        },
+        {
+          "source": "payload/c853efb6db35da188ea92c6eedd9583f53c87e0c949cbea8e7d6a469f2409f8e.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/0800e5525411235d5f4456d9bf9bedc8.bundle",
+          "sha256": "c853efb6db35da188ea92c6eedd9583f53c87e0c949cbea8e7d6a469f2409f8e",
+          "originalSha256": "1f8d80d93f678d676681426e38b8656e14f6e5f7b127eac9f755189b11d0c195",
+          "size": 11626721,
+          "assets": [
+            "UT_Hero_Card_113_02"
+          ]
+        },
+        {
+          "source": "payload/c6ba9aa529520f9ea5ad8186207c1adf87b836fd6622238e8e4912b5566545fa.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/849ca146d36a9fafbb2fe3b57b874e21.bundle",
+          "sha256": "c6ba9aa529520f9ea5ad8186207c1adf87b836fd6622238e8e4912b5566545fa",
+          "originalSha256": "8b79eb9cb3c97d455a1da99178ef1c7150bd963b730d5d4660e330cb8780edee",
+          "size": 201849,
+          "assets": [
+            "UT_Hero_ThinCard_113_02"
+          ]
+        },
+        {
+          "source": "payload/5d1752db892931aad5b1264c396acf91bed09ec6b10a16a9beb9db8dca77d2fa.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/26ee0082d8d47bc52bf216981de81476.bundle",
+          "sha256": "5d1752db892931aad5b1264c396acf91bed09ec6b10a16a9beb9db8dca77d2fa",
+          "originalSha256": "3712fa85362cdc865c5f2a3a02129b81cd569c17f9b7c5ed92c5ee43e3bcb13c",
+          "size": 412729,
+          "assets": [
+            "UT_Hero_RolePhoto_113_02"
+          ]
+        },
+        {
+          "source": "payload/445923f9afcd1d1959f6b949d3745933a4f2feffd82183c65e4a3296d0433b81.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/524ae16339ad49ca0ceabac50472540f.bundle",
+          "sha256": "445923f9afcd1d1959f6b949d3745933a4f2feffd82183c65e4a3296d0433b81",
+          "originalSha256": "872ae22825e3f97de0d943fcfdea2b250282237cb054367d03e3de9161b8ca08",
+          "size": 7060729,
+          "assets": [
+            "UT_Hero_Bust_113_02_1"
+          ]
+        },
+        {
+          "source": "payload/56b0ab2809072fb15216bd3e033cd26090939024ed4463fcff0255a3fb9ac251.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/f7043fc4f5828de20948e544305b4564.bundle",
+          "sha256": "56b0ab2809072fb15216bd3e033cd26090939024ed4463fcff0255a3fb9ac251",
+          "originalSha256": "1aa891f9e8edda5e30fec3e768cca0d0142cd55502a286d2927917fca27253ca",
+          "size": 2379321,
+          "assets": [
+            "UT_Hero_LevelUp_113_02"
+          ]
+        },
+        {
+          "source": "payload/80ed5054a03f1f59122692f5c79ca1e52e30344a1b478f36c5e452d2d831596a.bundle",
+          "target": "AstralParty_CN_Data/StreamingAssets/aa/StandaloneWindows64/b8675a3073f515825113c9555151fe08.bundle",
+          "sha256": "80ed5054a03f1f59122692f5c79ca1e52e30344a1b478f36c5e452d2d831596a",
+          "originalSha256": "ca4e4d8f94b3db5438af197163e28c9704a89a64774260ea58136562c8d05d70",
+          "size": 7060729,
+          "assets": [
+            "UT_Hero_Bust_113_02_0"
+          ]
+        }
+      ],
+      "unmappedFiles": [
+        "赛季皮旗袍（有特效）\\78a0980f6f30377f1f39a042db5e28bc.bundle",
+        "赛季皮旗袍（有特效）\\bd802c856a9f5dbb60e67615200fa061.bundle",
+        "赛季皮旗袍（有特效）\\e767c76b9a055fa4c895bc6608024405.bundle",
+        "赛季皮旗袍（有特效）\\fc595d2e21c8aacb54c4edc61e6b6df9.bundle"
+      ],
+      "conflicts": []
+    }
+  ]
+}

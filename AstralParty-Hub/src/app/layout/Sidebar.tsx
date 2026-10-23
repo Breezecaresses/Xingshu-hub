@@ -11,17 +11,13 @@ import {
   Coins,
   Map,
   History,
-  Puzzle,
   Sparkles,
-  Upload,
   RefreshCw,
   Archive,
   Activity,
   Settings,
-  Flame,
   Eye,
   Radio,
-  Cpu,
   PackageCheck,
 } from 'lucide-react';
 import { useTranslation } from '../../i18n';
@@ -33,7 +29,7 @@ export const Sidebar: React.FC = () => {
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <Flame size={18} color="#fff" />
+          <img src="/brand/xingshu.svg" alt="" aria-hidden="true" />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -106,13 +102,6 @@ export const Sidebar: React.FC = () => {
 
         <div className="nav-section-title">{t('nav.xingshuCore')}</div>
         <NavLink
-          to="/runtime"
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <Cpu size={17} />
-          <span>{t('nav.runtime')}</span>
-        </NavLink>
-        <NavLink
           to="/spectator"
           className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
         >
@@ -136,25 +125,11 @@ export const Sidebar: React.FC = () => {
           <span>{t('nav.packageManager')}</span>
         </NavLink>
         <NavLink
-          to="/extensions/plugins"
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <Puzzle size={17} />
-          <span>{t('nav.runtimePlugins')}</span>
-        </NavLink>
-        <NavLink
           to="/extensions/mods"
           className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
         >
           <Sparkles size={17} />
           <span>{t('nav.gameMods')}</span>
-        </NavLink>
-        <NavLink
-          to="/extensions/import"
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <Upload size={17} />
-          <span>{t('nav.importPackage')}</span>
         </NavLink>
 
         <div className="nav-section-title">{t('nav.operations')}</div>

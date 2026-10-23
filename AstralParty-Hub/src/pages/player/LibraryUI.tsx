@@ -72,8 +72,19 @@ export function GameImage({ asset, name, className = '' }: { asset: string; name
 export function GameText({ text }: { text?: string }) { return <p className="library-text">{plainGameText(text || '官方配置暂未提供说明。')}</p>; }
 export function LibraryModal({ title, close, children }: { title: string; close: () => void; children: React.ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const startedOutside = useRef(false);
   useEffect(() => { const d = ref.current!; if (!d.open) d.showModal(); }, []);
-  return <dialog ref={ref} className="library-modal" aria-label={title} onClose={close} onClick={e => { if (e.target === ref.current) close(); }}>
+  const isOutside = (x: number, y: number) => {
+    const bounds = ref.current?.getBoundingClientRect();
+    return !!bounds && (x < bounds.left || x > bounds.right || y < bounds.top || y > bounds.bottom);
+  };
+  return <dialog ref={ref} className="library-modal" aria-label={title} onClose={close}
+    onPointerDown={e => { startedOutside.current = e.target === ref.current && isOutside(e.clientX, e.clientY); }}
+    onPointerCancel={() => { startedOutside.current = false; }}
+    onClick={e => {
+      if (startedOutside.current && e.target === ref.current && isOutside(e.clientX, e.clientY)) close();
+      startedOutside.current = false;
+    }}>
     <header><h2>{title}</h2><button className="btn btn-secondary" aria-label="关闭详情" onClick={close}>关闭 ×</button></header><div className="library-modal-body">{children}</div>
   </dialog>;
 }

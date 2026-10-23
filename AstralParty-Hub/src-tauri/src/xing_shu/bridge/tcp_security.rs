@@ -143,7 +143,7 @@ pub enum SecurityError {
         allowed: Vec<String>,
     },
 
-    #[error("Executable path not in approved Steam CN directory or test directory: '{path}' (reason: {reason})")]
+    #[error("Executable does not match an approved platform installation: '{path}' (reason: {reason})")]
     DisallowedPath {
         path: String,
         reason: String,
@@ -288,15 +288,50 @@ pub fn resolve_taptap_executable_path() -> Option<PathBuf> {
     None
 }
 
-/// Resolves the canonical platform ID from a process executable path.
+/// The three Chinese launchers share an executable name. Only their audited
+/// native runtime hash identifies the channel, including relocated installs.
+fn shared_executable_platform(
+    path: &Path,
+    profiles: &[crate::xing_shu::platform::profile::PlatformProfile],
+) -> Option<String> {
+    use std::io::Read;
+    use sha2::{Digest, Sha256};
+    let name = path.file_name()?.to_str()?;
+    if !name.eq_ignore_ascii_case("吉星派对.exe") { return None; }
+    let mut file = std::fs::File::open(path.parent()?.join("GameAssembly.dll")).ok()?;
+    let mut digest = Sha256::new();
+    let mut buffer = [0u8; 65536];
+    loop {
+        let n = file.read(&mut buffer).ok()?;
+        if n == 0 { break; }
+        digest.update(&buffer[..n]);
+    }
+    let hash = format!("{:x}", digest.finalize());
+    let mut matches = profiles.iter().filter(|p| {
+        matches!(p.platform_id,
+            crate::xing_shu::platform::profile::PlatformId::TapTap |
+            crate::xing_shu::platform::profile::PlatformId::Bilibili |
+            crate::xing_shu::platform::profile::PlatformId::WeGame)
+        && matches!(p.compatibility_status,
+            crate::xing_shu::platform::profile::CompatibilityStatus::PartiallyAudited |
+            crate::xing_shu::platform::profile::CompatibilityStatus::Verified)
+        && p.process_executable.as_deref().map(|exe| exe.eq_ignore_ascii_case(name)).unwrap_or(false)
+        && p.game_runtime_dll_sha256.as_deref().map(|h| h.eq_ignore_ascii_case(&hash)).unwrap_or(false)
+    });
+    let matched = matches.next()?;
+    if matches.next().is_some() { return None; }
+    Some(matched.platform_id.to_string())
+}
+
+/// Resolves a channel from the OS-verified executable path, never HELLO claims.
 pub fn resolve_platform_id_from_path(path: &Path) -> Option<String> {
     let s = normalize_path_for_comparison(path);
     if s.ends_with("astralparty_cn.exe") || s.contains(r"8vjxn6cn") {
         Some("STEAM_CN".to_string())
     } else if s.ends_with("astralparty_int.exe") || s.contains(r"8vjxnint") {
         Some("STEAM_GLOBAL".to_string())
-    } else if s.ends_with("吉星派对.exe") || s.contains("cn_taptap") || s.contains("taptap") {
-        Some("TAPTAP".to_string())
+    } else if s.ends_with("吉星派对.exe") {
+        shared_executable_platform(path, &crate::xing_shu::platform::profile::get_default_profiles())
     } else {
         None
     }
@@ -783,33 +818,17 @@ pub fn verify_tcp_client_identity_with_policy(
         if is_game_exe {
             let normalized_peer_path = normalize_path_for_comparison(&exe_path);
 
-            let is_taptap_exe = exe_name.eq_ignore_ascii_case("吉星派对.exe")
-                || policy.expected_taptap_path.as_ref().map(|p| normalize_path_for_comparison(p) == normalized_peer_path).unwrap_or(false);
-
-            if is_taptap_exe {
-                let matches_taptap = if let Some(expected) = &policy.expected_taptap_path {
-                    let normalized_expected = normalize_path_for_comparison(expected);
-                    normalized_peer_path == normalized_expected
-                        || normalized_peer_path.contains("cn_taptap")
-                        || normalized_peer_path.contains("taptap")
-                } else {
-                    normalized_peer_path.contains("cn_taptap")
-                        || normalized_peer_path.contains("taptap")
-                        || normalized_peer_path.contains("cn_taptap_v3.3.0")
-                        || normalized_peer_path.ends_with(r"\吉星派对\吉星派对.exe")
-                };
-
-                if matches_taptap {
-                    detected_platform_id = Some("TAPTAP".to_string());
-                } else {
+            if exe_name.eq_ignore_ascii_case("吉星派对.exe") {
+                detected_platform_id = shared_executable_platform(
+                    &exe_path, &crate::xing_shu::platform::profile::get_default_profiles());
+                if detected_platform_id.is_none() {
                     return Err(SecurityError::DisallowedPath {
                         path: exe_path_str.clone(),
-                        reason: format!(
-                            "Executable path does not match canonical TapTap PlatformProfile directory: '{}'",
-                            normalized_peer_path
-                        ),
+                        reason: "Shared executable GameAssembly.dll does not match an audited TapTap, Bilibili or WeGame profile (FAIL CLOSED)".into(),
                     });
                 }
+            } else if policy.expected_taptap_path.as_ref().map(|p| normalize_path_for_comparison(p) == normalized_peer_path).unwrap_or(false) {
+                detected_platform_id = Some("TAPTAP".to_string());
             } else if exe_name.eq_ignore_ascii_case("AstralParty_INT.exe") {
                 if normalized_peer_path.contains(r"8vjxnint") || normalized_peer_path.contains(r"astralparty_int.exe") {
                     detected_platform_id = Some("STEAM_GLOBAL".to_string());
@@ -1019,7 +1038,7 @@ pub fn create_exclusive_tcp_listener(
                     SecurityError::BindError(format!("Failed to convert to tokio TcpListener: {}", e))
                 })?
             } else {
-                tauri::async_runtime::block_on(async move {
+                crate::desktop_host::block_on(async move {
                     tokio::net::TcpListener::from_std(std_listener)
                 }).map_err(|e| {
                     SecurityError::BindError(format!("Failed to convert to tokio TcpListener: {}", e))
@@ -1133,12 +1152,34 @@ mod tests {
         );
         assert_eq!(
             resolve_platform_id_from_path(Path::new(r"D:\TapTap\CN_TAPTAP_V3.3.0\吉星派对.exe")),
-            Some("TAPTAP".to_string())
+            None // A channel-looking directory alone cannot establish identity.
         );
         assert_eq!(
             resolve_platform_id_from_path(Path::new(r"C:\Windows\System32\notepad.exe")),
             None
         );
+    }
+
+    #[test]
+    fn test_shared_executable_channel_uses_native_hash_not_directory_name() {
+        use sha2::{Digest, Sha256};
+        use crate::xing_shu::platform::profile::{get_default_profiles, PlatformId};
+        let dir = tempfile::tempdir().unwrap();
+        // Deliberately misleading TapTap directory for both other channels.
+        let root = dir.path().join("TapTap");
+        std::fs::create_dir(&root).unwrap();
+        let exe = root.join("吉星派对.exe");
+        std::fs::write(&exe, b"fixture").unwrap();
+        let mut profiles = get_default_profiles();
+        for (id, bytes) in [(PlatformId::TapTap, b"tap".as_slice()), (PlatformId::Bilibili, b"bili".as_slice()), (PlatformId::WeGame, b"we".as_slice())] {
+            profiles.iter_mut().find(|p| p.platform_id == id).unwrap().game_runtime_dll_sha256 = Some(format!("{:x}", Sha256::digest(bytes)));
+            std::fs::write(root.join("GameAssembly.dll"), bytes).unwrap();
+            assert_eq!(shared_executable_platform(&exe, &profiles), Some(id.to_string()));
+        }
+        std::fs::write(root.join("GameAssembly.dll"), b"unknown or updated game").unwrap();
+        assert_eq!(shared_executable_platform(&exe, &profiles), None);
+        std::fs::remove_file(root.join("GameAssembly.dll")).unwrap();
+        assert_eq!(shared_executable_platform(&exe, &profiles), None);
     }
 
     #[test]

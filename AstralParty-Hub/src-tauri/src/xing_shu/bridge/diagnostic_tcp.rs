@@ -62,7 +62,10 @@ pub fn log_diagnostic(tag: &str, message: &str) {
     let stdout_line = format!("{tag} {message}");
 
     // Print to stdout
+    #[cfg(feature = "web-ui")]
     println!("{stdout_line}");
+    #[cfg(not(feature = "web-ui"))]
+    eprintln!("{stdout_line}");
 
     // Append to log files
     for path in get_diagnostic_log_paths() {

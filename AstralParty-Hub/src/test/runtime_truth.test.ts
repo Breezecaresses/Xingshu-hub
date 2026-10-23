@@ -375,28 +375,19 @@ runTest('Test 5: RuntimePage.tsx conforms to truth rules and consumes required A
   assert(fs.existsSync(runtimePagePath), `RuntimePage.tsx exists at ${runtimePagePath}`);
   const content = fs.readFileSync(runtimePagePath, 'utf8');
 
-  // 1. Must consume api.checkGameProcessStatus and api.getBridgeStatus
-  assert(content.includes('api.checkGameProcessStatus'), 'Consumes api.checkGameProcessStatus');
-  assert(content.includes('api.getBridgeStatus'), 'Consumes api.getBridgeStatus');
-
-  // 2. Must import and use deriveRuntimeTruthState
-  assert(content.includes('deriveRuntimeTruthState'), 'Imports and invokes deriveRuntimeTruthState');
-  assert(content.includes('getVersionItemBadge'), 'Uses getVersionItemBadge');
-
-  // 3. Must display the 4 required fields in the UI
-  assert(content.includes('已选择方案'), 'Renders "已选择方案" (Selected Plan)');
-  assert(content.includes('已安装版本'), 'Renders "已安装版本" (Installed Version)');
-  assert(content.includes('当前游戏实际状态'), 'Renders "当前游戏实际状态" (Actual Game State)');
-  assert(content.includes('Bridge 状态'), 'Renders "Bridge 状态" (Bridge State)');
-
-  // 4. Must display prominent "运行时会话真实状态" card
-  assert(content.includes('运行时会话真实状态'), 'Renders "运行时会话真实状态" card');
-  assert(content.includes('CANONICAL_RUNTIME_HOST') || content.includes('XingShuRuntimeHost'), 'Mentions Canonical Host XingShuRuntimeHost');
-  assert(content.includes('CANONICAL_TRANSPORT') || content.includes('Loopback TCP'), 'Mentions Active Transport Loopback TCP');
-  assert(content.includes('handshake_status'), 'Displays handshake status');
-
-  // 5. Must display legacy warning condition
-  assert(content.includes('检测到旧版 Runtime，当前 XingShu Bridge 未连接'), 'Renders legacy warning text');
+  // The directory-scoped runtime manager replaced the old global status card.
+  // Keep its file, process and live-connection evidence independent.
+  assert(content.includes("'get_extension_inventory', { installationId: game.id }"), 'File verification targets the selected installation');
+  assert(content.includes("'get_extension_runtime_state', { installationId: game.id }"), 'Process detection targets the selected installation');
+  assert(content.includes("'get_runtime_sessions'"), 'Consumes actual runtime sessions');
+  assert(content.includes('selectedRuntimeSessions(results[0].value, game.platform, game.executable_path)'), 'Filters live connections by both channel and executable');
+  assert(content.includes('ticket === request.current'), 'Stale directory reads cannot overwrite the selected directory');
+  assert(content.includes('if (cancelled) return'), 'Polls from a previous selection are discarded');
+  assert(content.includes('liveId === game?.id'), 'Live evidence must belong to the current installation');
+  for (const label of ['本地运行时文件', '所选目录的游戏进程', '当前连接上报版本', '尚无已确认连接']) {
+    assert(content.includes(label), `Renders independent evidence: ${label}`);
+  }
+  assert(content.includes('游戏进程存在或磁盘文件匹配，不代表运行时已连接'), 'Explains that file and process evidence cannot establish a live connection');
 
   // 6. Must NOT contain unconditional "{isZh ? '正在运行' : 'RUNNING ACTIVE'}" or similar false claim
   const forbiddenUnconditionalRunning = /ver\.is_active\s*&&\s*\(?<span[^>]*>[^<]*正在运行/;

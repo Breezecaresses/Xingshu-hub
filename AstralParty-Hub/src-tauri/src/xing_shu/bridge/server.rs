@@ -5,7 +5,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, warn};
 use uuid::Uuid;
-use tauri::Emitter;
+use crate::desktop_host::Emitter;
 
 use crate::domain::error::HubResult;
 use crate::xing_shu::bridge::protocol::{
@@ -620,7 +620,7 @@ pub struct BridgeServer {
     security_policy: Arc<Mutex<super::tcp_security::SecurityVerificationPolicy>>,
     session_manager: super::session::SessionManager,
     connection_manager: super::connection::ConnectionManager,
-    app_handle: Arc<Mutex<Option<tauri::AppHandle>>>,
+    app_handle: Arc<Mutex<Option<crate::desktop_host::AppHandle>>>,
     session_events_tx: tokio::sync::broadcast::Sender<SessionEvent>,
     game_library: Arc<Mutex<Option<crate::game_library::GameLibraryStore>>>,
 }
@@ -673,7 +673,7 @@ impl BridgeServer {
         &self.connection_manager
     }
 
-    pub fn set_app_handle(&self, handle: tauri::AppHandle) {
+    pub fn set_app_handle(&self, handle: crate::desktop_host::AppHandle) {
         *self.app_handle.lock().unwrap() = Some(handle);
     }
 
@@ -684,7 +684,7 @@ impl BridgeServer {
     pub fn emit_session_changed(&self, session: &RuntimeSession) {
         let _ = self.session_events_tx.send(SessionEvent::SessionChanged(session.clone()));
         if let Some(ref handle) = *self.app_handle.lock().unwrap() {
-            use tauri::Emitter;
+            use crate::desktop_host::Emitter;
             let _ = handle.emit("runtime://session-changed", session);
         }
     }
@@ -694,7 +694,7 @@ impl BridgeServer {
             connection_id: connection_id.to_string(),
         });
         if let Some(ref handle) = *self.app_handle.lock().unwrap() {
-            use tauri::Emitter;
+            use crate::desktop_host::Emitter;
             let payload = serde_json::json!({
                 "connectionId": connection_id,
                 "connection_id": connection_id
@@ -708,7 +708,7 @@ impl BridgeServer {
 
     pub fn emit_watch_target_response(&self, response: &WatchTargetResponsePayload) {
         if let Some(ref handle) = *self.app_handle.lock().unwrap() {
-            use tauri::Emitter;
+            use crate::desktop_host::Emitter;
             let _ = handle.emit("spectator://watch-target-response", response);
         }
     }
@@ -1023,7 +1023,7 @@ impl BridgeServer {
                 let _ = server_clone.run_listener(target_pipe).await;
             });
         } else {
-            tauri::async_runtime::spawn(async move {
+            crate::desktop_host::spawn(async move {
                 let _ = server_clone.run_listener(target_pipe).await;
             });
         }
@@ -1058,7 +1058,7 @@ impl BridgeServer {
                 let _ = server_clone.run_listener(target_pipe).await;
             });
         } else {
-            tauri::async_runtime::spawn(async move {
+            crate::desktop_host::spawn(async move {
                 let _ = server_clone.run_listener(target_pipe).await;
             });
         }
@@ -1184,7 +1184,7 @@ impl BridgeServer {
                 let _ = server_clone.run_tcp_listener(listener).await;
             });
         } else {
-            tauri::async_runtime::spawn(async move {
+            crate::desktop_host::spawn(async move {
                 let _ = server_clone.run_tcp_listener(listener).await;
             });
         }

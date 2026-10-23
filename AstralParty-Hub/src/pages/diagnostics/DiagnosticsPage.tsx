@@ -4,9 +4,13 @@ import { api } from '../../shared/api/tauri';
 import type { DiagnosticReport, SpectatorHandPayload, BridgeConnectionState } from '../../shared/types';
 import { Activity, RefreshCw, CheckCircle2, AlertTriangle, AlertCircle, Info, Cpu, HardDrive, Eye, Radio } from 'lucide-react';
 import { useTranslation } from '../../i18n';
+import { useSearchParams } from 'react-router-dom';
+import { RuntimeDiagnosticsPanel } from '../runtime/RuntimePage';
 
 export const DiagnosticsPage: React.FC = () => {
   const { locale, t } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const [runtimeOpen, setRuntimeOpen] = useState(searchParams.get('section') === 'runtime');
   const [report, setReport] = useState<DiagnosticReport | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -47,12 +51,6 @@ export const DiagnosticsPage: React.FC = () => {
     listen<SpectatorHandPayload>('spectator://hand-snapshot', (event) => {
       if (event.payload) {
         setHandPayload(event.payload);
-        setTimeout(() => {
-          const area = document.querySelector('.content-area');
-          if (area) {
-            area.scrollTo({ top: 420, behavior: 'smooth' });
-          }
-        }, 100);
       }
     })
       .then((fn) => {
@@ -79,6 +77,10 @@ export const DiagnosticsPage: React.FC = () => {
   useEffect(() => {
     runDiagnostics();
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get('section') === 'runtime') setRuntimeOpen(true);
+  }, [searchParams]);
 
   const isZh = locale === 'zh-CN';
 
@@ -108,6 +110,11 @@ export const DiagnosticsPage: React.FC = () => {
           <span>{t('diagnostics.runProbe')}</span>
         </button>
       </div>
+
+      <details className="panel" open={runtimeOpen} onToggle={event => setRuntimeOpen(event.currentTarget.open)}>
+        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>游戏组件检查 · 文件、进程与连接</summary>
+        {runtimeOpen && <div style={{ marginTop: 20 }}><RuntimeDiagnosticsPanel /></div>}
+      </details>
 
       {report && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

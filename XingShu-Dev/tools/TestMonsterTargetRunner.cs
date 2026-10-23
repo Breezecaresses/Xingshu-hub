@@ -7,7 +7,7 @@ namespace XingShu.Tests
     internal static class Program
     {
         private static int _passedCount = 0;
-        private static int _totalCount = 33;
+        private static int _totalCount = 41;
 
         private static void AssertCheck(string name, bool condition, string details)
         {
@@ -29,7 +29,7 @@ namespace XingShu.Tests
         public static int Main(string[] args)
         {
             Console.WriteLine("==================================================");
-            Console.WriteLine("MonsterTargetMath + Maximum Dice Preview: 33 Test Cases");
+            Console.WriteLine("MonsterTargetMath + Directional Maximum Dice Preview: 41 Test Cases");
             Console.WriteLine("==================================================");
 
             // --- Case 1: 直线单目标（唯一最短距离） ---
@@ -667,12 +667,70 @@ namespace XingShu.Tests
             AssertCheck("Case 24: long MonsterId roundtrip (> Int32.MaxValue) 验证无截断", c24Ok, string.Format("MonsterId={0}", r24.MonsterId));
 
             RunMaximumDicePreviewTests();
+            RunDirectionTests();
 
             Console.WriteLine("==================================================");
             Console.WriteLine(string.Format("Results: {0} / {1} Passed", _passedCount, _totalCount));
             Console.WriteLine("==================================================");
 
             return _passedCount == _totalCount ? 0 : 1;
+        }
+
+        private static void RunDirectionTests()
+        {
+            var graph = new Dictionary<int, List<int>>();
+            for (int node = 1; node <= 12; node++)
+            {
+                graph[node] = new List<int>();
+                if (node > 1) graph[node].Add(node - 1);
+                if (node < 12) graph[node].Add(node + 1);
+            }
+            var input = new TargetPredictionInput
+            {
+                MonsterId = 7, CurrentNode = 3, MonsterNodeKnown = true,
+                GraphKnown = true, PlayersKnown = true, GraphEdges = graph,
+                Players = new[] { new CandidatePlayer(10, 1, 0, false, 0, true, true, true) }
+            };
+            var behind = MonsterTargetPreview.Calculate(input, new[] { 4 });
+            AssertCheck("Case 34: 前向箭头不索敌身后玩家", behind.IsValid && behind.Candidates.Count == 0, "search reversed after the mandatory first move");
+            input.Players = new[] { new CandidatePlayer(10, 5, 0, false, 0, true, true, true) };
+            var ahead = MonsterTargetPreview.Calculate(input, new[] { 4 });
+            AssertCheck("Case 35: 双向邻接仍能沿箭头找到前方目标", ahead.Candidates.Count == 1 && ahead.Candidates[0].Distance == 2, "forward target lost");
+            var reversed = MonsterTargetPreview.Calculate(input, new[] { 2 });
+            AssertCheck("Case 36: 箭头反向后不沿旧方向找玩家", reversed.IsValid && reversed.Candidates.Count == 0, "old facing was retained");
+            input.Players = new[] { new CandidatePlayer(10, 3, 0, false, 0, true, true, true) };
+            var originalTile = MonsterTargetPreview.Calculate(input, new[] { 4 });
+            AssertCheck("Case 37: 先行一格后不掉头攻击原格玩家", originalTile.IsValid && originalTile.Candidates.Count == 0, "post-move search returned to the original tile");
+
+            // A genuine forward loop can approach a previously visited tile from
+            // another edge. Node-only visitation would incorrectly prune this route.
+            input.CurrentNode = 9;
+            input.GraphEdges = new Dictionary<int, List<int>>
+            {
+                { 9, new List<int> { 1, 10 } }, { 10, new List<int> { 9 } },
+                { 1, new List<int> { 9, 2, 3 } }, { 2, new List<int> { 1, 3 } },
+                { 3, new List<int> { 2, 1 } }
+            };
+            input.Players = new[] { new CandidatePlayer(10, 10, 0, false, 0, true, true, true) };
+            var loop = MonsterTargetPreview.Calculate(input, new[] { 1 });
+            AssertCheck("Case 38: 环路允许沿前向绕行，不能把掉头当捷径", loop.Candidates.Count == 1 && loop.Candidates[0].Distance == 6, "route state collapsed or illegal reverse shortcut used");
+            input.CurrentNode = 1;
+            input.GraphEdges = graph;
+            input.Players = new[] { new CandidatePlayer(10, 11, 0, false, 0, true, true, true) };
+            var ten = MonsterTargetPreview.Calculate(input, new[] { 2 });
+            input.Players = new[] { new CandidatePlayer(10, 12, 0, false, 0, true, true, true) };
+            var eleven = MonsterTargetPreview.Calculate(input, new[] { 2 });
+            AssertCheck("Case 39: 有来向的双向地图仍严格限制10格", ten.Candidates.Count == 1 && ten.Candidates[0].Distance == 10 && eleven.Candidates.Count == 0, "directional range boundary incorrect");
+            input.Players = new[] { new CandidatePlayer(10, 2, 0, false, 0, true, true, true) };
+            var one = MonsterTargetPreview.Calculate(input, new[] { 2 }, 1);
+            AssertCheck("Case 40: 前向首格目标不需要额外一步", one.Candidates.Count == 1 && one.Candidates[0].Distance == 1, "first step target lost");
+            input.CurrentNode = 3;
+            input.PostMoveNode = 4;
+            input.PostMoveNodeKnown = input.SearchRangeKnown = input.HasAttackedKnown = true;
+            input.SearchRange = 9;
+            input.Players = new[] { new CandidatePlayer(10, 1, 0, false, 0, true, true, true) };
+            var prediction = MonsterTargetMath.Predict(input);
+            AssertCheck("Case 41: 单目标预测同样排除首步之后的回头路", prediction.TargetPlayerId == 0 && prediction.Reason == PredictionReason.DefaultRouteNoTarget, "single-target engine reversed direction");
         }
 
         private static void RunMaximumDicePreviewTests()

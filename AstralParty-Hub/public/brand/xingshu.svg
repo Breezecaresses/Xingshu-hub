@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#282239"/><stop offset="1" stop-color="#121722"/>
+    </linearGradient>
+    <linearGradient id="star" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ff66b3"/><stop offset="1" stop-color="#ff278f"/>
+    </linearGradient>
+  </defs>
+  <rect x="20" y="20" width="472" height="472" rx="112" fill="url(#tile)"/>
+  <rect x="30" y="30" width="452" height="452" rx="102" fill="none" stroke="#494051" stroke-width="3"/>
+  <ellipse cx="256" cy="256" rx="182" ry="94" transform="rotate(-38 256 256)" fill="none" stroke="#ffcc37" stroke-width="22"/>
+  <path d="M256 106 294 218 406 256 294 294 256 406 218 294 106 256 218 218Z" fill="url(#star)" stroke="#1c1729" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M256 106 275 237 256 256 237 237Z" fill="#ffafcf"/>
+  <path d="m256 214 42 42-42 42-42-42Z" fill="#fff8eb"/>
+  <circle cx="392" cy="144" r="26" fill="#ffcc37" stroke="#1c1729" stroke-width="8"/>
+  <circle cx="120" cy="368" r="18" fill="#ffcc37" stroke="#1c1729" stroke-width="6"/>
+</svg>

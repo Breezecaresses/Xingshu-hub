@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use tauri::State;
+use crate::desktop_host::State;
 use crate::domain::error::{HubError, HubResult};
 use crate::domain::installation::GameInstallation;
 use crate::security::hash::compute_file_sha256;
@@ -64,7 +64,7 @@ fn register(db: &Database, platform: &str, selection: &str) -> HubResult<GameIns
     Ok(game)
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn list_extension_targets(center: State<'_, ExtensionCenter>) -> HubResult<Vec<GameInstallation>> {
     list_targets(&center.db)
 }
@@ -84,7 +84,7 @@ pub fn list_targets(db: &Database) -> HubResult<Vec<GameInstallation>> {
     }
     Ok(repo.list_all()?.into_iter().filter(|g| profiles().iter().any(|p| p["platformId"] == g.platform)).collect())
 }
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn register_extension_target(platform_id: String, path: String, center: State<'_, ExtensionCenter>) -> HubResult<GameInstallation> {
     register(&center.db, &platform_id, &path)
 }
@@ -104,7 +104,7 @@ pub struct ExtensionInventory {
 }
 fn package_root() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
-    [exe.parent()?, exe.parent()?.parent()?].into_iter()
+    exe.ancestors().skip(1).take(4)
         .find(|p| p.join("release.json").is_file() && installer_path(p).is_some()).map(Path::to_path_buf)
 }
 fn installer_path(package: &Path) -> Option<PathBuf> {
@@ -157,14 +157,14 @@ pub fn inventory(db: &Database, game: &GameInstallation) -> HubResult<ExtensionI
     }
     Ok(out)
 }
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn get_extension_inventory(installation_id: String, center: State<'_, ExtensionCenter>) -> HubResult<ExtensionInventory> {
     inventory(&center.db, &get_game(&center.db, &installation_id)?)
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeTargetState { process_ids: Vec<u32>, bep_in_ex_files_detected: bool }
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn get_extension_runtime_state(installation_id: String, center: State<'_, ExtensionCenter>) -> HubResult<RuntimeTargetState> {
     use sysinfo::{ProcessRefreshKind, RefreshKind, System, UpdateKind};
     let game = get_game(&center.db, &installation_id)?;
@@ -177,7 +177,7 @@ pub async fn get_extension_runtime_state(installation_id: String, center: State<
     }).collect();
     Ok(RuntimeTargetState { process_ids, bep_in_ex_files_detected: root.join("BepInEx/core").is_dir() })
 }
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn open_group_installer(installation_id: String, center: State<'_, ExtensionCenter>) -> HubResult<()> {
     let game = get_game(&center.db, &installation_id)?;
     let root = game_root(&game)?;

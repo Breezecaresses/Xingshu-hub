@@ -83,13 +83,20 @@ try {
     );
   }
 
-  // Scenario 3: NOT_YET_AUDITED null unknown fields -> PASS: Bilibili / WeGame with null fields pass validation
+  // Audited channel defaults and a separate unknown-profile schema fixture.
   {
     const unverifiedIds: PlatformId[] = [PlatformId.BILIBILI, PlatformId.WEGAME];
     for (const id of unverifiedIds) {
-      const p = getDefaultPlatformProfile(id);
-      assert(p !== undefined, `Scenario 3: ${id} profile exists`);
-      if (!p) throw new Error('Unreachable');
+      const audited = getDefaultPlatformProfile(id);
+      assert(audited !== undefined, `Scenario 3: ${id} profile exists`);
+      if (!audited) throw new Error('Unreachable');
+      assert(audited.compatibilityStatus === 'PARTIALLY_AUDITED', `${id}: static compatibility is audited without claiming live verification`);
+      assert(!!audited.installRoot && !!audited.bundleRelativePath && /^[0-9A-F]{64}$/.test(audited.gameRuntimeDllSha256 || ''), `${id}: selected game directory and native fingerprint are recorded`);
+      assert(validatePlatformProfile(audited).valid, `${id}: audited profile validates`);
+      const p: PlatformProfile = { ...audited, compatibilityStatus: 'NOT_YET_AUDITED',
+        installRoot: null, gameVersion: null, gameBuild: null, gameRuntimeDllPath: null,
+        gameRuntimeDllSha256: null, xingshuRuntimeDllSha256: null, bundleRelativePath: null,
+        bundleId: null, containerSha256: null, hookTextAssetPathId: null, hookSignatures: [], lastVerifiedAt: null };
 
       assert(p.compatibilityStatus === 'NOT_YET_AUDITED', `Scenario 3: ${id} status === NOT_YET_AUDITED`);
       assert(p.steamAppId === null, `Scenario 3: ${id} steamAppId is null`);

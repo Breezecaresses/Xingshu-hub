@@ -18,7 +18,7 @@ internal sealed class StatsWidgetPreferences
 
 	internal const float Width = 360f;
 
-	internal const float Height = 376f;
+	internal const float Height = 328f;
 
 	internal static float Limit(float v, float min, float max, float fallback)
 	{

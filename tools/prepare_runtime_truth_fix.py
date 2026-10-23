@@ -1,5 +1,6 @@
 """Prepare reversible runtime updates from the currently installed containers."""
 import hashlib
+import argparse
 import copy
 import json
 from pathlib import Path
@@ -87,14 +88,23 @@ def write_inventory(manifest):
 
 
 def main():
+    global OUT
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--out', type=Path, default=OUT, help='Candidate directory; does not install files')
+    parser.add_argument('--previous-manifest', type=Path, help='Previously verified installed candidates')
+    parser.add_argument('--skip-inventory', action='store_true', help='Keep Hub deployment inventory unchanged')
+    parser.add_argument('--platform', choices=['STEAM_CN', 'TAPTAP', 'BILIBILI', 'WEGAME'], action='append', help='Prepare only selected Windows channels')
+    args = parser.parse_args()
+    OUT = args.out.resolve()
     OUT.mkdir(parents=True, exist_ok=True)
     manifest = []
     dll = DLL.read_bytes()
     patcher, bootstrap = build_bootstrap()
-    previous = json.loads((OUT / 'deployment.json').read_text(encoding='utf8')) if (OUT / 'deployment.json').exists() else []
+    previous_path = args.previous_manifest or OUT / 'deployment.json'
+    previous = json.loads(previous_path.read_text(encoding='utf8')) if previous_path.exists() else []
     for profile in json.loads(PROFILES.read_text(encoding='utf8')):
         platform = profile['platformId']
-        if platform not in ('STEAM_CN', 'TAPTAP'):
+        if platform not in (args.platform or ['STEAM_CN', 'TAPTAP', 'BILIBILI', 'WEGAME']):
             continue
         target = Path(profile['installRoot']) / profile['bundleRelativePath']
         folder = OUT / platform
@@ -146,7 +156,8 @@ def main():
                          'candidateSha256': sha(candidate.read_bytes())})
         print(f'{platform}: prepared; {len(before)-len(set(before) & changed)} other assemblies unchanged; bootstrap, hooks, real-clock decisions and statistics observers updated', flush=True)
     (OUT / 'deployment.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf8')
-    write_inventory(manifest)
+    if not args.skip_inventory:
+        write_inventory(manifest)
 
 if __name__ == '__main__':
     main()

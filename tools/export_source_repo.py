@@ -8,20 +8,23 @@ FOLDERS = [
     'AndroidInstaller',
     'XingShu-Dev/src/XingShu.Runtime', 'XingShu-Dev/assets/vanilla-ui-r3',
     'XingShu-Dev/tools/MatchLifecycleTests',
+    'XingShu-Dev/tools/PlatformProfileConformanceRunner',
     'XingShu-Dev/tools/RuntimeBootstrap',
     'AstralParty-Hub/src', 'AstralParty-Hub/src-tauri/src',
     'AstralParty-Hub/src-tauri/tests', 'AstralParty-Hub/src-tauri/capabilities',
     'AstralParty-Hub/src-tauri/icons', 'AstralParty-Hub/public',
+    'AstralParty-Hub/native-windows',
 ]
 FILES = [
     'CARD_ASSET_INVENTORY_V2.csv', 'card_metadata_official.json',
     'card_names_zh_cn_official.json', 'runtime_card_registry.generated.json',
-    'HAND_TRUTH_SOURCE_ARCHITECTURE.md', 'OVERLAY_LIFECYCLE_RECONCILIATION.md', 'GAME_UI_R1.md', 'GAME_UI_R2.md', 'GAME_UI_R3.md', 'GAME_UI_R4.md', 'MONSTER_TARGETING.md',
+    'HAND_TRUTH_SOURCE_ARCHITECTURE.md', 'OVERLAY_LIFECYCLE_RECONCILIATION.md', 'GAME_UI_R1.md', 'GAME_UI_R2.md', 'GAME_UI_R3.md', 'GAME_UI_R4.md', 'GAME_UI_R7.md', 'R7_VERIFICATION_20261022.md', 'R7_LIVE_VERIFICATION_20261022.md', 'MONSTER_TARGETING.md',
     'AUTO_FOLLOW_PROTOCOL.md', 'AUTO_FOLLOW_STATE_MACHINE.md',
     'XingShu-Dev/tools/build.ps1', 'XingShu-Dev/tools/generate_platform_profiles_cs.py',
+    'XingShu-Dev/tools/run_csharp_platform_conformance.py',
     'XingShu-Dev/tools/TestMonsterTargetRunner.cs', 'XingShu-Dev/tools/TestMonsterTargetContextRunner.cs',
     'XingShu-Dev/tools/test_monster_targeting.ps1',
-    'XingShu-Dev/tools/test_decision_stats.ps1', 'XingShu-Dev/tools/test_native_ipc_harness.py',
+    'XingShu-Dev/tools/test_decision_stats.ps1', 'XingShu-Dev/tools/test_match_lifecycle.ps1', 'XingShu-Dev/tools/test_preference_migration.ps1', 'XingShu-Dev/tools/test_native_ipc_harness.py',
     'XingShu-Dev/tools/generate_canonical_card_registries.py',
     'XingShu-Dev/tools/build_game_ui_skin.py', 'XingShu-Dev/tools/generate_ui_payloads.py',
     'AstralParty-Hub/package.json', 'AstralParty-Hub/package-lock.json',
@@ -44,7 +47,13 @@ FILES = [
     'tools/GroupTestInstaller.cs', 'tools/package_group_test.py', 'tools/package_android_preview.py', 'tools/publish_release.py', 'GROUP_DISTRIBUTION_20261021_2.md', 'GROUP_DISTRIBUTION_20261021_3.md',
     'tools/AndroidPreviewInstaller.cs', 'XingShu-Dev/tools/test_preference_migration.ps1',
     'tools/build_android_installer.py', 'ANDROID_PHONE_INSTALL.md', 'GROUP_DISTRIBUTION_20261022_2.md',
+    'tools/android_payload.py', 'tools/prepare_android_hub_bundle.py', 'tools/test_android_desktop_installer.py', 'HUB_ANDROID_INSTALL_20261023.md',
+    'tools/prepare_mod_library.py', 'tools/test_mod_library_package.py', 'MOD_MANAGEMENT_20261023.md',
+    'tools/HubUpdater.cs', 'tools/SignUpdate.java', 'tools/update-public-cert.txt',
+    'tools/prepare_update_release.py', 'tools/test_app_updates.py', 'APP_UPDATES_20261023.md', 'CHANNEL_COMPATIBILITY_20261023.md',
     'XingShu-Dev/tools/test_assist_ball.ps1',
+    'NATIVE_WINDOWS.md', 'tools/build_native_hub.py', 'tools/test_native_core.py',
+    'tools/migrate_native_host.py', 'tools/export_map_guides.py', 'tools/catalog_schema.json',
 ]
 SKIP_DIRS = {'.git', '.gradle', 'build', 'bin', 'obj', 'target', 'node_modules', '__pycache__', 'dist', 'release'}
 SKIP_SUFFIXES = {'.dll', '.exe', '.pdb', '.bundle', '.7z', '.zip', '.rar', '.log', '.pyc', '.tsbuildinfo'}
@@ -76,13 +85,16 @@ def main():
         relative = source.relative_to(ROOT)
         if any(part in SKIP_DIRS for part in relative.parts) or source.suffix.lower() in SKIP_SUFFIXES:
             continue
+        # Hub is a desktop app; the icon CLI also emits unused mobile launchers.
+        if relative.parts[:3] == ('AstralParty-Hub', 'src-tauri', 'icons') and len(relative.parts) > 4 and relative.parts[3] in {'android', 'ios'}:
+            continue
         if source.name.startswith('.env') or 'credentials' in source.name.lower() or source.name == 'local.properties' or source.suffix.lower() in {'.jks', '.keystore', '.apk'}:
             continue
         target = destination / relative
         if destination not in target.resolve().parents:
             raise SystemExit('Target escaped source checkout')
         target.parent.mkdir(parents=True, exist_ok=True)
-        if source.suffix.lower() in {'.cs', '.rs', '.ts', '.tsx', '.json', '.css', '.ps1', '.py', '.md', '.toml', '.html', '.lock', '.java', '.gradle', '.xml', '.aidl', '.txt', '.c', '.cpp', '.h'}:
+        if source.suffix.lower() in {'.cs', '.rs', '.ts', '.tsx', '.json', '.css', '.ps1', '.py', '.md', '.toml', '.html', '.lock', '.java', '.gradle', '.xml', '.aidl', '.txt', '.c', '.cpp', '.h', '.xaml', '.csproj', '.manifest'}:
             normalized = b'\n'.join(line.rstrip(b'\r') for line in source.read_bytes().split(b'\n'))
             existing = target.read_bytes() if target.exists() else b''
             previous = b'\n'.join(line.rstrip(b'\r') for line in existing.split(b'\n'))

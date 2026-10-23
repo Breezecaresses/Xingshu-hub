@@ -275,9 +275,9 @@ export const zhCN: TranslationSchema = {
   },
   maintenance: {
     transactionsTitle: '安装事务',
-    transactionsSubtitle: '全生命周期原子变更日记、文件快照与安全回滚系统',
+    transactionsSubtitle: '带星枢清单的模组包安装、更新与回滚记录；星枢本体和纹理库在各自页面还原',
     backupsTitle: '数据备份',
-    backupsSubtitle: '游戏运行时与数据快照沙盒归档',
+    backupsSubtitle: '查看模组包事务的备份；星枢本体与纹理替换备份在对应安装入口管理',
     createBackup: '创建新备份',
     creatingBackup: '创建备份中...',
     rollback: '回滚此事务',

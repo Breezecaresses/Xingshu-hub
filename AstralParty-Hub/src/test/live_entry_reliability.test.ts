@@ -61,9 +61,12 @@ function assertStrictEqual<T>(actual: T, expected: T, scenario: string): void {
 }
 
 async function runAsyncTest(name: string, fn: () => Promise<void> | void): Promise<void> {
+  const failuresBefore = failCount;
   try {
     await fn();
   } catch (err: any) {
+    // Missing fixtures and other exceptions must fail the suite too.
+    if (failCount === failuresBefore) failCount++;
     console.error(`[TEST_EXCEPTION] ${name}:`, err.message);
   }
 }
@@ -356,10 +359,11 @@ async function runSuite() {
   // ---------------------------------------------------------------------------
   console.log('\n--- Part 4: Static Source Code Audit ---');
 
-  const spectatorPagePath = path.resolve('src/pages/spectator/SpectatorPage.tsx');
-  const spectatorSelectorPath = path.resolve('src/pages/spectator/components/SpectatorAccountSelector.tsx');
-  const useSpectatorStatePath = path.resolve('src/pages/spectator/useSpectatorState.ts');
-  const tauriApiPath = path.resolve('src/shared/api/tauri.ts');
+  const sourceRoot = fileURLToPath(new URL('../', import.meta.url));
+  const spectatorPagePath = path.join(sourceRoot, 'pages/spectator/SpectatorPage.tsx');
+  const spectatorSelectorPath = path.join(sourceRoot, 'pages/spectator/components/SpectatorAccountSelector.tsx');
+  const useSpectatorStatePath = path.join(sourceRoot, 'pages/spectator/useSpectatorState.ts');
+  const tauriApiPath = path.join(sourceRoot, 'shared/api/tauri.ts');
 
   await runAsyncTest('Static 0: SpectatorPage wires isGameRunning and launchGame to selector', () => {
     const pageCode = fs.readFileSync(spectatorPagePath, 'utf-8');
@@ -371,7 +375,8 @@ async function runSuite() {
     const code = fs.readFileSync(useSpectatorStatePath, 'utf-8');
     assert(code.includes('api.checkGameProcessStatus'), 'Calls api.checkGameProcessStatus');
     assert(code.includes('setGameProcess'), 'Stores gameProcess state');
-    assert(code.includes('procStatus?.isRunning'), 'Derives isGameRunning with procStatus');
+    assert(code.includes('const isGameRunning = !!spectator?.processId'), 'Spectator availability is scoped to the resolved spectator process');
+    assert(code.includes('const isGameRunning = !!effectiveSpectatorSession?.processId'), 'Displayed spectator availability does not borrow the main game process');
   });
 
   await runAsyncTest('Static 2: useSpectatorState implements cross-route session storage persistence', () => {

@@ -418,11 +418,11 @@ mod tests {
 
         let bilibili = get_profile(PlatformId::Bilibili).expect("BILIBILI profile");
         assert_eq!(bilibili.channel, "CN_BILIBILI");
-        assert_eq!(bilibili.compatibility_status, CompatibilityStatus::NotYetAudited);
+        assert_eq!(bilibili.compatibility_status, CompatibilityStatus::PartiallyAudited);
 
         let wegame = get_profile(PlatformId::WeGame).expect("WEGAME profile");
         assert_eq!(wegame.channel, "CN_WEGAME");
-        assert_eq!(wegame.compatibility_status, CompatibilityStatus::NotYetAudited);
+        assert_eq!(wegame.compatibility_status, CompatibilityStatus::PartiallyAudited);
     }
 
     #[test]
@@ -614,12 +614,29 @@ mod tests {
         );
     }
 
-    // Scenario 3: NOT_YET_AUDITED null unknown fields -> PASS: Bilibili / WeGame with null fields pass validation.
+    // Retain unknown-profile schema coverage independently of audited channel defaults.
     #[test]
     fn test_scenario_3_not_yet_audited_null_unknown_fields_pass() {
         let unverified_ids = [PlatformId::Bilibili, PlatformId::WeGame];
         for id in unverified_ids {
-            let profile = get_profile(id).unwrap_or_else(|| panic!("{id} profile must exist"));
+            let mut profile = get_profile(id).unwrap_or_else(|| panic!("{id} profile must exist"));
+            assert_eq!(profile.compatibility_status, CompatibilityStatus::PartiallyAudited);
+            assert!(profile.install_root.is_some() && profile.bundle_relative_path.is_some());
+            assert!(profile.game_runtime_dll_sha256.as_ref().is_some_and(|h| h.len() == 64));
+            assert!(profile.validate_profile().is_ok());
+            profile.compatibility_status = CompatibilityStatus::NotYetAudited;
+            profile.install_root = None;
+            profile.game_version = None;
+            profile.game_build = None;
+            profile.game_runtime_dll_path = None;
+            profile.game_runtime_dll_sha256 = None;
+            profile.xingshu_runtime_dll_sha256 = None;
+            profile.bundle_relative_path = None;
+            profile.bundle_id = None;
+            profile.container_sha256 = None;
+            profile.hook_text_asset_path_id = None;
+            profile.hook_signatures.clear();
+            profile.last_verified_at = None;
             assert_eq!(profile.compatibility_status, CompatibilityStatus::NotYetAudited);
             assert_eq!(profile.steam_app_id, None);
             assert!(profile.install_root.is_none());

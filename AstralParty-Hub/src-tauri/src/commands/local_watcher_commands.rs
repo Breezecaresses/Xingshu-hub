@@ -3,9 +3,9 @@ use crate::xing_shu::{
     local_watcher::{LocalWatcher, LocalWatcherInfo},
 };
 use std::sync::Arc;
-use tauri::State;
+use crate::desktop_host::State;
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub fn managed_local_status(
     watcher: State<'_, LocalWatcher>,
     bridge: State<'_, Arc<BridgeServer>>,
@@ -14,7 +14,7 @@ pub fn managed_local_status(
     watcher.status(&bridge, session_id.as_deref())
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub fn managed_local_allocate(
     watcher: State<'_, LocalWatcher>,
     bridge: State<'_, Arc<BridgeServer>>,
@@ -30,7 +30,7 @@ pub fn managed_local_allocate(
     )
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub fn managed_local_release(
     watcher: State<'_, LocalWatcher>,
     session_id: String,

@@ -242,7 +242,7 @@ namespace XingShuRuntime.UI
             toggleRt.anchorMin = toggleRt.anchorMax = toggleRt.pivot = new Vector2(1f, 1f);
             toggleRt.anchoredPosition = new Vector2(-24f, -16f);
             toggleRt.sizeDelta = new Vector2(180f, 32f);
-            Text hint = XingShuUIFactory.CreateText(card, "Hint", "按未攻击状态和最大骰10格推演（先行1格＋剩余9格），技能加步暂不计入。", 12, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
+            Text hint = XingShuUIFactory.CreateText(card, "Hint", "沿怪物箭头前进，不掉头；最大10格（先行1格＋剩余9格），技能加步暂不计入。", 12, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
             PlaceTargetControl(hint.rectTransform, new Vector2(24f, -52f), new Vector2(820f, 24f));
             _targetingSummary = XingShuUIFactory.CreateText(card, "Summary", "等待进入 PVE 对局", 13, XingShuUITheme.PrimaryText, TextAnchor.UpperLeft);
             _targetingSummary.supportRichText = false;

@@ -13,6 +13,17 @@ pub mod security;
 pub mod storage;
 pub mod xing_shu;
 
+pub mod desktop_host;
+#[cfg(feature = "web-ui")]
+pub mod android_installer;
+#[cfg(feature = "web-ui")]
+pub mod external_mods;
+#[cfg(feature = "web-ui")]
+pub mod app_update;
+
+#[cfg(feature = "web-ui")]
+mod web_host {
+use super::*;
 use std::sync::Arc;
 use tauri::Manager;
 use tracing::info;
@@ -107,6 +118,8 @@ pub fn run() {
             // Manage services in Tauri state
             app.manage(game_service);
             app.manage(extension_center::ExtensionCenter { db: db.clone() });
+            app.manage(android_installer::AndroidInstaller::default());
+            app.manage(app_update::AppUpdater::default());
             app.manage(game_library_store);
             app.manage(player_service);
             app.manage(catalog_service);
@@ -166,6 +179,15 @@ pub fn run() {
             extension_center::get_extension_inventory,
             extension_center::get_extension_runtime_state,
             extension_center::open_group_installer,
+            android_installer::get_android_installer_status,
+            android_installer::android_installer_action,
+            external_mods::get_external_mod_report,
+            external_mods::external_mod_action,
+            external_mods::archive_external_mod_report,
+            app_update::get_app_build,
+            app_update::check_app_update,
+            app_update::prepare_app_update,
+            app_update::apply_app_update,
             // Player commands
             get_player_profile,
             list_character_progress,
@@ -214,3 +236,7 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running XingShu Hub application");
 }
+
+}
+#[cfg(feature = "web-ui")]
+pub use web_host::run;

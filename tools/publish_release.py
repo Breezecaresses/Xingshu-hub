@@ -17,6 +17,7 @@ def main():
     parser.add_argument('--repo', default='Breezecaresses/Xingshu-hub')
     parser.add_argument('--tag', default='v0.1.0-test.20261021.3')
     parser.add_argument('--extra-package', type=Path, action='append', default=[])
+    parser.add_argument('--update-manifest', type=Path, help='Signed xingshu-update.json for both application updaters')
     args = parser.parse_args()
     archive = args.package.resolve(strict=True)
     checksum = Path(str(archive) + '.sha256').resolve(strict=True)
@@ -28,6 +29,14 @@ def main():
         extra_checksum=Path(str(extra)+'.sha256').resolve(strict=True)
         assert hashlib.sha256(extra.read_bytes()).hexdigest()==extra_checksum.read_text('utf8').split()[0], 'Extra ZIP checksum mismatch'
         upload_paths.extend([extra,extra_checksum])
+    if args.update_manifest:
+        from prepare_update_release import verify_envelope, verify_assets
+        manifest = args.update_manifest.resolve(strict=True)
+        assert manifest.name == 'xingshu-update.json'
+        metadata = verify_envelope(manifest)
+        assert metadata['tag'] == args.tag, 'Signed update targets another release'
+        verify_assets(metadata, upload_paths)
+        upload_paths.append(manifest)
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=args.source, text=True).strip()
     tag_commit = subprocess.check_output(['git', 'rev-parse', args.tag + '^{commit}'], cwd=args.source, text=True).strip()
     assert commit == tag_commit, 'Source and release tag differ'
@@ -64,7 +73,7 @@ def main():
             assert asset.get('digest') == digest and asset['size'] == path.stat().st_size, 'Existing draft asset differs'
         else:
             upload = release['upload_url'].split('{', 1)[0] + '?name=' + urllib.parse.quote(path.name)
-            content_types={'.zip':'application/zip','.apk':'application/vnd.android.package-archive'}
+            content_types={'.zip':'application/zip','.apk':'application/vnd.android.package-archive','.json':'application/json'}
             asset = request('POST', upload, path.read_bytes(), content_types.get(path.suffix,'text/plain'))
             assert asset.get('digest') == digest and asset['size'] == path.stat().st_size, 'Uploaded asset mismatch'
         print('Verified upload: ' + path.name, flush=True)

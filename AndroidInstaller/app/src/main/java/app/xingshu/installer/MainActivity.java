@@ -18,7 +18,11 @@ import rikka.shizuku.Shizuku;
 public final class MainActivity extends Activity {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private TextView status, log;
-    private Button install, restore, connect, inspect, pair, shizuku;
+    private Button install, restore, connect, inspect, pair, shizuku, updateCheck;
+    private Switch previewUpdates;
+    private TextView updateStatus;
+    private ReleaseUpdates.Update pendingUpdate;
+    private boolean waitingInstallPermission;
     private EditText pairingPort, pairingCode, connectionPort;
     private volatile LocalAdbInstaller local;
     private boolean useShizuku;
@@ -55,6 +59,12 @@ public final class MainActivity extends Activity {
         scroll.addView(page); setContentView(scroll);
         TextView title = text("星枢 · 手机安装助手",25); title.setTypeface(null,Typeface.BOLD); page.addView(title);
         page.addView(text("安卓预览更新  ·  " + BuildConfig.VERSION_NAME,12));
+        updateStatus=text("助手版本："+BuildConfig.VERSION_NAME+"\n助手内置游戏插件："+PayloadSpec.VERSION,13); page.addView(updateStatus);
+        updateCheck=button(page,"检查助手更新",true,v -> checkAssistantUpdate());
+        previewUpdates=new Switch(this); previewUpdates.setText("包含测试版");
+        previewUpdates.setChecked(getPreferences(0).getBoolean("previewUpdates",true));
+        previewUpdates.setOnCheckedChangeListener((b,checked) -> getPreferences(0).edit().putBoolean("previewUpdates",checked).apply()); page.addView(previewUpdates);
+        page.addView(text("助手更新会保留设置和配对身份。更新助手后，游戏内插件仍需连接授权，再点“安装 / 更新星枢”。",13));
         page.addView(text("先完成官方游戏资源更新并进过大厅，再正常退出游戏。助手会核对版本、备份缓存并校验写入。",15));
         page.addView(text("只用手机即可安装：Android 11 及以上，通过本机无线调试授权。无需电脑、无需 Shizuku 通知。",15));
         status = text("尚未连接本机无线调试",16); page.addView(status);
@@ -162,6 +172,7 @@ public final class MainActivity extends Activity {
         install.setEnabled(!busy&&ready); restore.setEnabled(!busy&&ready); inspect.setEnabled(!busy&&ready);
         connect.setEnabled(!busy&&!binding); pair.setEnabled(!busy&&!binding); shizuku.setEnabled(!busy&&!binding);
         pairingPort.setEnabled(!busy); pairingCode.setEnabled(!busy); connectionPort.setEnabled(!busy);
+        updateCheck.setEnabled(!busy&&!binding); previewUpdates.setEnabled(!busy);
         for(Button b:new Button[]{install,restore,inspect,connect,pair,shizuku})b.setAlpha(b.isEnabled()?1f:.45f);
     }
     private void connectShizuku() {
@@ -207,7 +218,63 @@ public final class MainActivity extends Activity {
         }
         return f;
     }
-    @Override protected void onResume() { super.onResume(); if (status!=null) refresh(); }
+    private void updateFinished() { busy=false; if(!destroyed)refresh(); }
+    private void checkAssistantUpdate() {
+        if(busy)return; busy=true; refresh(); updateStatus.setText("正在检查助手更新…");
+        final boolean preview=previewUpdates.isChecked();
+        worker.execute(() -> {
+            try {
+                final ReleaseUpdates.Update found=ReleaseUpdates.check(preview,() -> getAssets().open("update-public-cert.txt"));
+                final boolean newer=found!=null&&found.code()>BuildConfig.VERSION_CODE;
+                final String label=found==null?"当前发布尚未提供签名更新清单，可从官方发布页下载。":newer?"发现新版助手："+found.version():"没有比当前助手更新的可校验发布。";
+                runOnUiThread(() -> { updateFinished(); if(destroyed)return; updateStatus.setText(label);
+                    try {
+                        AlertDialog.Builder dialog=new AlertDialog.Builder(this).setTitle("助手更新").setMessage(label+(newer?"\n\n"+found.notes()+"\n\n只更新助手 APK，安装后仍需单独更新游戏插件。":""))
+                            .setNegativeButton("关闭",null).setNeutralButton("官方发布页",(d,w) -> open(ReleaseUpdates.RELEASES));
+                        if(newer)dialog.setPositiveButton("下载新版 APK",(d,w) -> downloadAssistant(found)); dialog.show();
+                    } catch(Exception e) { write("检查更新未完成："+e.getMessage()); }
+                });
+            } catch(Exception e) { runOnUiThread(() -> { updateFinished(); if(!destroyed) { updateStatus.setText("检查更新未完成，可稍后重试。"); write("更新检查："+e.getMessage()); } }); }
+        });
+    }
+    private void downloadAssistant(ReleaseUpdates.Update update) {
+        if(busy)return; busy=true; refresh(); updateStatus.setText("正在下载并校验新版 APK，请保持助手在前台…");
+        worker.execute(() -> {
+            try {
+                File apk=ReleaseUpdates.download(update,getCacheDir()); verifySelfApk(apk,update);
+                runOnUiThread(() -> { updateFinished(); if(!destroyed) { pendingUpdate=update; updateStatus.setText("新版 APK 已校验，请确认安装。"); requestAssistantInstall(); } });
+            } catch(Exception e) { runOnUiThread(() -> { updateFinished(); if(!destroyed) { updateStatus.setText("下载或校验未完成，当前助手保持原样。"); write("助手更新："+e.getMessage()); } }); }
+        });
+    }
+    @SuppressWarnings("deprecation")
+    private void verifySelfApk(File apk,ReleaseUpdates.Update update) throws Exception {
+        android.content.pm.PackageInfo next=getPackageManager().getPackageArchiveInfo(apk.getAbsolutePath(),PackageManager.GET_SIGNATURES);
+        android.content.pm.PackageInfo own=getPackageManager().getPackageInfo(getPackageName(),PackageManager.GET_SIGNATURES);
+        if(next==null||!getPackageName().equals(next.packageName)||next.versionCode!=update.code()||next.versionCode<=BuildConfig.VERSION_CODE ||
+            next.signatures==null||own.signatures==null||next.signatures.length!=1||own.signatures.length!=1||!next.signatures[0].equals(own.signatures[0]))
+            throw new IOException("APK 包名、版本或签名与当前助手不一致，拒绝安装");
+        java.security.MessageDigest digest=java.security.MessageDigest.getInstance("SHA-256");
+        try(InputStream in=new FileInputStream(apk)) { byte[] b=new byte[65536]; int n; while((n=in.read(b))!=-1)digest.update(b,0,n); }
+        if(!ReleaseUpdates.hex(digest.digest()).equals(update.manifest.getJSONObject("android").getString("sha256")))throw new IOException("APK 文件已变化");
+    }
+    private void requestAssistantInstall() {
+        try {
+            File apk=new File(getCacheDir(),"update.apk"); verifySelfApk(apk,pendingUpdate);
+            if(!getPackageManager().canRequestPackageInstalls()) {
+                new AlertDialog.Builder(this).setTitle("允许助手更新")
+                    .setMessage("请在接下来的系统页面允许本助手安装应用，返回后由系统确认覆盖安装。无需卸载旧版。")
+                    .setNegativeButton("暂不安装",null).setPositiveButton("打开设置",(d,w) -> {
+                        try { waitingInstallPermission=true; startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName()))); }
+                        catch(Exception e) { waitingInstallPermission=false; write("请在系统设置中允许星枢安装助手安装应用，然后重试。"); }
+                    }).show(); return;
+            }
+            Uri uri=Uri.parse("content://"+BuildConfig.APPLICATION_ID+".update/update.apk");
+            startActivity(new Intent(Intent.ACTION_VIEW).setDataAndType(uri,"application/vnd.android.package-archive").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
+        } catch(Exception e) { write("未能打开系统安装页面："+e.getMessage()); }
+    }
+    @Override protected void onResume() { super.onResume(); if (status!=null)refresh();
+        if(waitingInstallPermission) { waitingInstallPermission=false; if(pendingUpdate!=null&&getPackageManager().canRequestPackageInstalls())requestAssistantInstall(); }
+    }
     @Override protected void onDestroy() {
         destroyed=true; Shizuku.removeBinderReceivedListener(received); Shizuku.removeBinderDeadListener(dead);
         Shizuku.removeRequestPermissionResultListener(permission);

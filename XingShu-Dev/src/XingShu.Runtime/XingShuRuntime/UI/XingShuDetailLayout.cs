@@ -44,7 +44,7 @@ namespace XingShuRuntime.UI
 
     internal sealed class XingShuMatchPlayerCard
     {
-        internal static readonly string[] Labels = { "击杀", "死亡", "输出", "承伤", "治疗", "累计金币", "转账", "行动回合", "结算金币", "移动步数" };
+        internal static readonly string[] Labels = { "击杀", "死亡", "输出", "承伤", "治疗", "累计金币", "转账", "行动回合", "移动步数" };
         private readonly Text _name, _character, _score, _state;
         private readonly Text[] _values = new Text[Labels.Length];
         private readonly GameObject _root;
@@ -68,7 +68,7 @@ namespace XingShuRuntime.UI
                 var rect = label.rectTransform; rect.anchorMin = rect.anchorMax = new Vector2(1, 1); rect.pivot = new Vector2(1, 1);
                 rect.anchoredPosition = new Vector2(-18, label == _score ? -12 : -44); label.alignment = TextAnchor.MiddleRight;
             }
-            int columns = compact ? 3 : 10;
+            int columns = compact ? 3 : Labels.Length;
             for (int i = 0; i < Labels.Length; i++)
             {
                 int col = i % columns, row = i / columns;

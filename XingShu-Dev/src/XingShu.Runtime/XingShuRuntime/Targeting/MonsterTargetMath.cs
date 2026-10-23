@@ -7,7 +7,7 @@ namespace XingShuRuntime.Targeting
     /// 怪物索敌与路径预测纯数学计算引擎 (Phase 2D-5B)
     /// 纯 C#，无 Unity/MonoBehaviour/GameLogic 依赖
     /// 严格区分：
-    /// PROVEN GAME FACTS: 有向图邻接关系 (GraphEdges), 出度>1路口判定, 角色类型
+    /// PROVEN GAME FACTS: 地块邻接、箭头首步和排除来路的移动规则。
     /// USER RULE MODEL: 有限步数 (SearchRange), 最短图拓扑距离, 位置最靠前 (RouteProgress),
     ///                  红>蓝>绿分支优先级 (RED > BLUE > GREEN), Slot 稳定保底
     /// </summary>
@@ -17,6 +17,7 @@ namespace XingShuRuntime.Targeting
 
         private sealed class NodeSearchState
         {
+            public int PreviousNode;
             public int Distance;
             public List<int> Path;
             public int BranchScore; // 0 for RED, 1 for BLUE, 2 for GREEN, 999 for unranked/none
@@ -212,7 +213,8 @@ namespace XingShuRuntime.Targeting
             }
 
             // 9. 执行 Priority-Aware BFS 搜索
-            var searchResult = PerformPriorityAwareBFS(startNode, input.SearchRange, input.GraphEdges, input.BranchPriorities);
+            var searchResult = PerformPriorityAwareBFS(startNode, input.SearchRange, input.GraphEdges, input.BranchPriorities,
+                input.CurrentNode != startNode ? input.CurrentNode : 0);
 
             // 10. 筛选位于搜索范围内的可达候选玩家
             List<EvaluatedCandidate> reachableCandidates = new List<EvaluatedCandidate>();
@@ -459,7 +461,8 @@ namespace XingShuRuntime.Targeting
                 !input.SearchRangeKnown || input.SearchRange < 0) return candidates;
 
             // A one-step budget can still reach a player on the post-move node itself.
-            var reached = PerformPriorityAwareBFS(input.PostMoveNode, Math.Max(1, input.SearchRange), input.GraphEdges, input.BranchPriorities);
+            var reached = PerformPriorityAwareBFS(input.PostMoveNode, input.SearchRange, input.GraphEdges, input.BranchPriorities,
+                input.CurrentNode != input.PostMoveNode ? input.CurrentNode : 0);
             int nearest = int.MaxValue;
             foreach (var player in input.Players)
             {
@@ -540,16 +543,18 @@ namespace XingShuRuntime.Targeting
             int startNode,
             int maxRange,
             IReadOnlyDictionary<int, List<int>> graphEdges,
-            IReadOnlyDictionary<int, BranchPriorityEntry> branchPriorities)
+            IReadOnlyDictionary<int, BranchPriorityEntry> branchPriorities,
+            int previousNode = 0)
         {
             var result = new Dictionary<int, NodeSearchState>();
-            if (graphEdges == null || maxRange <= 0)
+            if (graphEdges == null || maxRange < 0)
             {
                 return result;
             }
 
             result[startNode] = new NodeSearchState
             {
+                PreviousNode = previousNode,
                 Distance = 0,
                 Path = new List<int> { startNode },
                 BranchScore = 999
@@ -559,8 +564,11 @@ namespace XingShuRuntime.Targeting
             queue.Add(result[startNode]);
             int queueHead = 0;
 
-            var visitedAtDepth = new Dictionary<int, int>();
-            visitedAtDepth[startNode] = 0;
+            // AdjacencyLandIds includes both directions. The legal exits depend
+            // on the incoming edge, so visitation must retain (from, current).
+            // A forward loop may revisit a tile with a different incoming edge.
+            var visited = new Dictionary<long, NodeSearchState>();
+            visited[RouteStateKey(previousNode, startNode)] = result[startNode];
 
             while (queueHead < queue.Count)
             {
@@ -596,46 +604,59 @@ namespace XingShuRuntime.Targeting
                 for (int i = 0; i < sortedNeighbors.Count; i++)
                 {
                     int v = sortedNeighbors[i];
+                    if (v <= 0 || v == u || v == current.PreviousNode) continue;
 
                     int edgeScore = hasBranchPriorities ? branchEntry.GetPriority(v) : 999;
                     int newBranchScore = current.BranchScore != 999 ? current.BranchScore : edgeScore;
 
-                    int prevDepth;
-                    if (visitedAtDepth.TryGetValue(v, out prevDepth))
+                    long stateKey = RouteStateKey(u, v);
+                    NodeSearchState existingState;
+                    if (visited.TryGetValue(stateKey, out existingState))
                     {
-                        if (nextDepth > prevDepth)
+                        if (nextDepth > existingState.Distance)
                         {
                             continue;
                         }
-                        else if (nextDepth == prevDepth)
+                        else if (nextDepth == existingState.Distance)
                         {
-                            NodeSearchState existingState;
-                            if (result.TryGetValue(v, out existingState))
+                            if (newBranchScore < existingState.BranchScore)
                             {
-                                if (newBranchScore < existingState.BranchScore)
-                                {
-                                    existingState.Path = new List<int>(current.Path) { v };
-                                    existingState.BranchScore = newBranchScore;
-                                }
+                                existingState.Path = new List<int>(current.Path) { v };
+                                existingState.BranchScore = newBranchScore;
+                                KeepBestPath(result, v, existingState);
                             }
                             continue;
                         }
                     }
 
-                    visitedAtDepth[v] = nextDepth;
                     var newPath = new List<int>(current.Path) { v };
                     var newState = new NodeSearchState
                     {
+                        PreviousNode = u,
                         Distance = nextDepth,
                         Path = newPath,
                         BranchScore = newBranchScore
                     };
-                    result[v] = newState;
+                    visited[stateKey] = newState;
+                    KeepBestPath(result, v, newState);
                     queue.Add(newState);
                 }
             }
 
             return result;
+        }
+
+        private static long RouteStateKey(int previousNode, int node)
+        {
+            return ((long)(uint)previousNode << 32) | (uint)node;
+        }
+
+        private static void KeepBestPath(Dictionary<int, NodeSearchState> paths, int node, NodeSearchState candidate)
+        {
+            NodeSearchState existing;
+            if (!paths.TryGetValue(node, out existing) || candidate.Distance < existing.Distance ||
+                (candidate.Distance == existing.Distance && candidate.BranchScore < existing.BranchScore))
+                paths[node] = candidate;
         }
     }
 }

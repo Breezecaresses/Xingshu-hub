@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Link } from 'react-router-dom';
-import { FolderOpen, Package, Puzzle, RefreshCw, Sparkles, Trash2, Upload } from 'lucide-react';
+import { FolderOpen, Package, Puzzle, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { api } from '../../shared/api/tauri';
 import type { GameInstallation } from '../../shared/types';
+import { AndroidInstallPanel } from './AndroidInstallPanel';
+import { ExternalModsPanel } from './ExternalModsPanel';
+import { ImportPackagePage } from './ImportPackagePage';
 import './extensions.css';
 
 export const extensionChannels = [['STEAM_CN', 'Steam 国服'], ['STEAM_GLOBAL', 'Steam 国际服'], ['TAPTAP', 'TapTap Windows'], ['BILIBILI', '哔哩哔哩'], ['WEGAME', 'WeGame']] as const;
 export interface ExtensionEntry { id: string; packageId: string; name: string; category: string; version: string | null; path: string; source: string; status: string; description: string; managed: boolean }
 export interface Inventory { entries: ExtensionEntry[]; pluginDirectory: string; modDirectory: string; resourceDirectory: string; warnings: string[]; installerAvailable: boolean }
 const message = (e: unknown) => e && typeof e === 'object' && 'message' in e ? String(e.message) : String(e);
-export const categoryName = (category: string) => ({ 'xingshu-plugin': '运行时插件', mod: '游戏模组', 'resource-pack': '资源包' }[category] || category);
+export const categoryName = (category: string) => ({ 'xingshu-plugin': 'DLL / 功能插件', mod: '游戏模组', 'resource-pack': '资源包' }[category] || category);
 
 export function useExtensionTarget() {
   const [channel, setChannelState] = useState(() => localStorage.getItem('extensions.channel') || 'STEAM_CN');
@@ -39,9 +42,9 @@ export function useExtensionTarget() {
   };
   return { channel, setChannel, targets, options, selected, select, path, setPath, error, busy, save, refresh };
 }
-export function ExtensionTargetPicker({ target, disabled = false }: { target: ReturnType<typeof useExtensionTarget>; disabled?: boolean }) {
+export function ExtensionTargetPicker({ target, disabled = false, purpose = 'install' }: { target: ReturnType<typeof useExtensionTarget>; disabled?: boolean; purpose?: 'install' | 'diagnose' }) {
   return <section className="panel extension-target" aria-label="扩展安装位置">
-    <div className="extension-target-title"><FolderOpen size={19} /><strong>渠道与安装位置</strong><span>扩展只安装到下方选定目录</span></div>
+    <div className="extension-target-title"><FolderOpen size={19} /><strong>{purpose === 'diagnose' ? '检查渠道与游戏目录' : '渠道与安装位置'}</strong><span>{purpose === 'diagnose' ? '仅检查下方选定目录的文件、进程与连接' : '扩展只安装到下方选定目录'}</span></div>
     <div className="extension-channels">{extensionChannels.map(([id, name]) => <button key={id} className={`btn ${target.channel === id ? 'btn-primary' : 'btn-secondary'}`} onClick={() => target.setChannel(id)} disabled={disabled}>{name}<small>{target.targets.filter(g => g.platform === id).length || '未配置'}</small></button>)}</div>
     <div className="extension-location"><select aria-label="选择游戏安装位置" value={target.selected?.id || ''} disabled={disabled || !target.options.length} onChange={e => target.select(e.target.value)}>{!target.options.length && <option value="">此渠道尚未配置安装位置</option>}{target.options.map(g => <option key={g.id} value={g.id}>{g.install_path}</option>)}</select><button className="btn btn-secondary" disabled={target.busy || disabled} onClick={() => void target.refresh()}><RefreshCw size={14} />重新检测</button></div>
     <form className="extension-location" onSubmit={e => { e.preventDefault(); void target.save(); }}><input aria-label="添加游戏安装路径" value={target.path} disabled={disabled} onChange={e => target.setPath(e.target.value)} placeholder="添加另一安装位置：粘贴实际游戏 exe 或所在文件夹的完整路径" /><button className="btn btn-secondary" disabled={target.busy || disabled || !target.path.trim()}>保存此位置</button></form>
@@ -50,7 +53,7 @@ export function ExtensionTargetPicker({ target, disabled = false }: { target: Re
   </section>;
 }
 
-export function ExtensionManager({ view }: { view: 'packages' | 'plugins' | 'mods' }) {
+export function ExtensionManager({ view }: { view: 'packages' | 'mods' }) {
   const target = useExtensionTarget();
   const [inventory, setInventory] = useState<Inventory | null>(null);
   const [loadedId, setLoadedId] = useState('');
@@ -58,7 +61,7 @@ export function ExtensionManager({ view }: { view: 'packages' | 'plugins' | 'mod
   const [busy, setBusy] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState('all');
+  const [importOpen, setImportOpen] = useState(false);
   const request = useRef(0);
   const refresh = useCallback(async () => {
     const ticket = ++request.current;
@@ -69,9 +72,10 @@ export function ExtensionManager({ view }: { view: 'packages' | 'plugins' | 'mod
     catch (e) { if (ticket === request.current) setError(message(e)); } finally { if (ticket === request.current) setBusy(false); }
   }, [target.selected?.id]);
   useEffect(() => { void refresh(); return () => { request.current++; }; }, [refresh]);
-  const title = view === 'packages' ? '星枢包管理器' : view === 'plugins' ? '运行时插件' : '游戏模组';
-  const entries = loadedId === target.selected?.id ? inventory?.entries || [] : [];
-  const visible = entries.filter(e => (view === 'packages' || (view === 'plugins' ? e.category === 'xingshu-plugin' : e.category !== 'xingshu-plugin')) && (filter === 'all' || e.category === filter) && `${e.name} ${e.packageId} ${e.description}`.toLowerCase().includes(query.toLowerCase()));
+  const current = loadedId === target.selected?.id ? inventory : null;
+  const runtime = current?.entries.find(e => e.id === 'builtin.runtime');
+  const entries = (current?.entries || []).filter(e => e.id !== 'builtin.runtime');
+  const visible = entries.filter(e => `${e.name} ${e.packageId} ${e.description}`.toLowerCase().includes(query.toLowerCase()));
   const uninstall = async (entry: ExtensionEntry) => {
     if (!target.selected || !confirm(`从 ${target.selected.install_path} 移除“${entry.name}”？只删除此位置由 Hub 记录且校验一致的文件；安装前备份仍保留。`)) return;
     setActionBusy(true); setError('');
@@ -84,19 +88,28 @@ export function ExtensionManager({ view }: { view: 'packages' | 'plugins' | 'mod
     try { await invoke('open_group_installer', { installationId: target.selected.id }); }
     catch (e) { setError(message(e)); } finally { setActionBusy(false); }
   };
-  const runtimeSupported = ['STEAM_CN', 'TAPTAP'].includes(target.channel);
+  const packages = view === 'packages';
+  const runtimeSupported = ['STEAM_CN', 'TAPTAP', 'BILIBILI', 'WEGAME'].includes(target.channel);
   return <div>
-    <header className="extension-header"><div><h1>{title}</h1><p>{view === 'packages' ? '按渠道和安装目录管理本地扩展、运行时与资源包' : view === 'plugins' ? '查看实际运行时文件及独立插件，管理当前安装位置' : '查看当前安装位置的模型、卡面、贴图与资源替换'}</p></div><div><button className="btn btn-secondary" onClick={() => void refresh()} disabled={busy || actionBusy}><RefreshCw size={14} />刷新</button><Link to="/extensions/import" className="btn btn-primary"><Upload size={14} />导入安装包</Link></div></header>
+    <header className="extension-header"><div><h1>{packages ? '星枢包管理器' : '游戏模组'}</h1><p>{packages ? '安装、更新和还原电脑端或安卓端的星枢' : '统一管理外部 DLL、加速组件、立绘、模型、卡面与语音替换'}</p></div><div><button className="btn btn-secondary" onClick={() => void refresh()} disabled={busy || actionBusy}><RefreshCw size={14} />刷新</button>{!packages && <button className="btn btn-primary" disabled={actionBusy} onClick={() => setImportOpen(v => !v)}><Upload size={14} />{importOpen ? '收起模组包安装' : '安装模组包'}</button>}</div></header>
+    {packages && <AndroidInstallPanel />}
+    {packages && <h2 className="extension-section-title">电脑端星枢</h2>}
     <ExtensionTargetPicker target={target} disabled={actionBusy} />
-    {target.selected && <>
-      <div className="extension-summary"><div><strong>{entries.filter(e => e.category === 'xingshu-plugin').length}</strong><span>检测到的运行时与插件</span></div><div><strong>{entries.filter(e => e.category !== 'xingshu-plugin').length}</strong><span>本地模组与资源</span></div><div><strong>{entries.filter(e => e.managed).length}</strong><span>可由 Hub 管理的扩展</span></div></div>
-      {view !== 'mods' && <section className="panel extension-runtime"><Puzzle size={25} /><div><h2>星枢运行时安装 / 更新</h2><p>{runtimeSupported ? '本版为此渠道提供已校验的运行时文件。打开安装助手后，所选渠道与目录会自动带入，安装和还原均保留备份。' : '此渠道已纳入目录管理；本版尚未提供经过验证的运行时安装文件。可导入明确声明支持此渠道的独立扩展。'}</p></div>{runtimeSupported && <button className="btn btn-primary" disabled={actionBusy || !inventory?.installerAvailable} onClick={() => void openInstaller()}>打开安装助手</button>}</section>}
-      {view !== 'mods' && runtimeSupported && inventory && !inventory.installerAvailable && <p className="extension-hint">请完整解压发布 ZIP，并从其中的 Hub 文件夹启动，以使用配套安装助手。</p>}
-      <div className="extension-directories"><span>插件 <code>{inventory?.pluginDirectory || '读取中…'}</code></span><span>模组 <code>{inventory?.modDirectory || '读取中…'}</code></span><span>资源 <code>{inventory?.resourceDirectory || '读取中…'}</code></span></div>
+    {target.selected && packages && <>
+      <section className="panel extension-runtime"><Puzzle size={25} /><div><h2>安装 / 更新 / 还原</h2><p>{runtimeSupported ? '打开配套助手，自动带入所选渠道和目录。写入前需关闭游戏，安装与还原保留备份。' : '此渠道尚未提供经过验证的星枢安装文件。'}</p><p>{busy ? '正在检查当前文件…' : runtime ? `当前文件：${runtime.version || '已识别星枢'} · ${runtime.status}` : '当前文件未识别为本版星枢，请使用助手检查。'}</p></div>{runtimeSupported && <button className="btn btn-primary" disabled={actionBusy || !current?.installerAvailable} onClick={() => void openInstaller()}>打开安装助手</button>}</section>
+      {runtimeSupported && current && !current.installerAvailable && <p className="extension-hint">请完整解压发布 ZIP，并从其中的 Hub 文件夹启动，以使用配套安装助手。</p>}
+      <div className="extension-tags"><Link className="btn btn-secondary" to="/diagnostics?section=runtime">检查安装与连接状态</Link><Link className="btn btn-secondary" to="/extensions/mods">管理游戏模组</Link></div>
     </>}
-    {(error || inventory?.warnings.length) && <div className="extension-hint" role="status">{error || inventory?.warnings.join(' ')}</div>}
-    <section className="panel extension-toolbar"><div>{['all', 'xingshu-plugin', 'mod', 'resource-pack'].filter(c => view === 'packages' || c === 'all' || (view === 'plugins' ? c === 'xingshu-plugin' : c !== 'xingshu-plugin')).map(c => <button key={c} className={`btn btn-sm ${filter === c ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter(c)}>{c === 'all' ? '全部' : categoryName(c)}</button>)}</div><input aria-label="搜索本地扩展" value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索名称、包标识或描述…" /></section>
-    <div className="extension-grid">{visible.map(entry => <article className="panel extension-card" key={entry.id}><div className="extension-card-heading">{entry.category === 'xingshu-plugin' ? <Puzzle size={22} /> : <Sparkles size={22} />}<h2>{entry.name}</h2>{entry.version && <span className="sidebar-tag">{entry.version}</span>}</div><div className="extension-tags"><span>{categoryName(entry.category)}</span><span>{entry.source}</span></div>{entry.packageId && <code>{entry.packageId}</code>}<p>{entry.description}</p><code className="extension-path">{entry.path}</code><footer><span className={entry.status === '文件缺失' ? 'extension-error' : ''}>{entry.status}</span>{entry.managed && <button className="btn btn-danger btn-sm" disabled={actionBusy} onClick={() => void uninstall(entry)}><Trash2 size={13} />卸载</button>}</footer></article>)}</div>
-    {!visible.length && <div className="panel extension-empty"><Package size={32} /><h2>{busy || target.busy ? '正在读取本地安装状态…' : !target.selected ? '先配置此渠道的游戏位置' : query || filter !== 'all' ? '没有符合筛选条件的扩展' : '此位置尚未检测到独立扩展'}</h2><p>{target.selected ? '可导入声明支持所选渠道的 .xspkg 或 .zip 包。外部安装的资源会显示检测结果，不会被当作 Hub 已管理的包。' : '各渠道和不同客户端目录分别保存，配置后即可查看插件与模组。'}</p><Link to="/extensions/import" className="btn btn-secondary">导入本地扩展包</Link></div>}
+    {!packages && target.selected && <>
+      {importOpen && <ImportPackagePage key={target.selected.id} target={target} onBusy={setActionBusy} disabled={actionBusy} onInstalled={() => void refresh()} />}
+      <ExternalModsPanel key={target.selected.id} installationId={target.selected.id} onBusy={setActionBusy} disabled={actionBusy} />
+      <details className="mod-notes"><summary>其他本地文件与模组包安装记录（{entries.length}）</summary>
+        <section className="panel extension-toolbar"><input aria-label="搜索其他本地模组" value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索名称或描述…" /></section>
+        <div className="extension-grid">{visible.map(entry => <article className="panel extension-card" key={entry.id}><h2>{entry.name}</h2><div className="extension-tags"><span>{categoryName(entry.category)}</span><span>{entry.source}</span></div><p>{entry.description}</p><code className="extension-path">{entry.path}</code><footer><span>{entry.status}</span>{entry.managed && <button className="btn btn-danger btn-sm" disabled={actionBusy} onClick={() => void uninstall(entry)}><Trash2 size={13} />卸载</button>}</footer></article>)}</div>
+        {!visible.length && <p className="extension-path">尚未检测到其他本地模组。</p>}
+      </details>
+    </>}
+    {!target.selected && <div className="panel extension-empty"><Package size={32} /><h2>先配置此渠道的游戏位置</h2><p>选择或添加实际游戏目录后，即可{packages ? '安装电脑端星枢' : '检查和管理该位置的模组'}。</p></div>}
+    {(!!error || !!current?.warnings.length) && <div className="extension-hint" role="status">{error || current?.warnings.join(' ')}</div>}
   </div>;
 }

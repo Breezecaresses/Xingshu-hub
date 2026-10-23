@@ -521,7 +521,8 @@ runScenario(10, 'Match end clears active context without destroying account bind
   });
 
   assert.strictEqual(endRes.nextState, 'MAIN_MATCH_ENDED', 'Machine transitions to MAIN_MATCH_ENDED');
-  assert.ok(machine.getContext().activeTarget !== null, 'Active target retained during MAIN_MATCH_ENDED for match summary');
+  assert.strictEqual(machine.getContext().activeTarget, null, 'Match end immediately retires the target so a late reply cannot revive the old room');
+  assert.strictEqual(machine.getContext().lastRequestId, null, 'Match end retires the pending watch request');
 
   // Reset to idle clears active context
   machine.dispatch({ type: 'RESET_TO_IDLE' });

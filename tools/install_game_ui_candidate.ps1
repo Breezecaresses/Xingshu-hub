@@ -1,7 +1,11 @@
-param([switch]$CheckOnly)
+param([switch]$CheckOnly, [string]$CandidateDirectory, [switch]$ManagedOnly)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
 $taskBuild = Join-Path $taskRoot 'XingShu-Dev/build/runtime-truth-fix'
+if ($CandidateDirectory) {
+    $taskBuild = [IO.Path]::GetFullPath($CandidateDirectory)
+    if (!$taskBuild.StartsWith($taskRoot + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Candidate directory escaped workspace' }
+}
 $taskVersionSource = Get-Content -LiteralPath (Join-Path $taskRoot 'XingShu-Dev/src/XingShu.Runtime/XingShu/Runtime/XingShuRuntimeHost.cs') -Raw
 $taskVersionMatch = [regex]::Match($taskVersionSource, '#else\s+public const string RuntimeVersion = "(1\.0\.0(?:-game-ui-(r[0-9]+))?)";')
 if (!$taskVersionMatch.Success) { throw 'Unknown game UI candidate version' }
@@ -33,6 +37,7 @@ foreach ($taskItem in $taskManifest) {
     if ($taskCurrent -ne $taskItem.beforeSha256 -and $taskCurrent -ne $taskItem.candidateSha256) { throw "Unknown installed runtime: $($taskItem.platform)" }
     $taskPlan.Add([pscustomobject]@{ Kind=$taskItem.platform; Target=$taskItem.target; Source=$taskItem.candidate; Backup=$taskItem.backup; Before=$taskCurrent; After=$taskItem.candidateSha256 })
 }
+if (!$ManagedOnly) {
 $taskNative = Join-Path $taskRoot 'XingShu-Dev/build/native-speed-10x/release/version.dll'
 $taskNativeHash = '36e7df0fce281c95dccd237760fdc982fba3d56d25883d55ded86b87a0588e20'
 if ((Task-Hash $taskNative) -ne $taskNativeHash) { throw 'Unknown native 10x component' }
@@ -46,6 +51,7 @@ foreach ($taskTarget in @('E:\Steam\steamapps\common\Astral Party\8vJXn6CN\versi
         if ((Task-Hash $taskBackup) -ne $taskBefore) { throw 'Native backup hash mismatch' }
     }
     $taskPlan.Add([pscustomobject]@{ Kind='Native10x'; Target=$taskTarget; Source=$taskNative; Backup=$taskBackup; Before=$taskBefore; After=$taskNativeHash })
+}
 }
 if ($CheckOnly) { $taskPlan | Select-Object Kind, Target, Before, After; return }
 $taskChanged = [Collections.Generic.List[object]]::new()

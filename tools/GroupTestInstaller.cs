@@ -70,8 +70,8 @@ internal static class GroupTest
             throw new InvalidOperationException("发布包清单校验失败，请重新完整解压原始压缩包。");
         Release = Json.Deserialize<ReleaseInfo>(File.ReadAllText(manifest, Encoding.UTF8));
         if (Release == null || Release.FormatVersion != 1 || Release.Platforms == null ||
-            Release.Platforms.Length < 1 || Release.Platforms.Length > 2 ||
-            Release.Platforms.Any(p => p == null || (p.Id != "STEAM_CN" && p.Id != "TAPTAP")) ||
+            Release.Platforms.Length < 1 || Release.Platforms.Length > 4 ||
+            Release.Platforms.Any(p => p == null || !new[] { "STEAM_CN", "TAPTAP", "BILIBILI", "WEGAME" }.Contains(p.Id)) ||
             Release.Platforms.Select(p => p.Id).Distinct().Count() != Release.Platforms.Length)
             throw new InvalidOperationException("不支持的发布包格式。");
     }
@@ -339,7 +339,7 @@ internal sealed class InstallerWindow : Form
         status.Multiline = true;
         status.ReadOnly = true;
         status.ScrollBars = ScrollBars.Vertical;
-        status.Text = "星枢群发测试版。\r\n\r\n请先点“说明”。安装成功后通过 Steam / TapTap 官方启动器进入游戏。完整观战手牌仍需已登录的官方观战客户端。";
+        status.Text = "星枢群发测试版。\r\n\r\n请先点“说明”。安装成功后通过对应渠道的官方启动器进入游戏。完整观战手牌仍需已登录的官方观战客户端。";
         Controls.Add(status);
     }
 

@@ -1,2 +1,2 @@
-import { ExtensionManager } from './ExtensionWorkspace';
-export const PluginsPage = () => <ExtensionManager view="plugins" />;
+// Legacy route alias; runtime diagnostics live in one place.
+export { RuntimeDiagnosticsPanel as PluginsPage } from '../runtime/RuntimePage';

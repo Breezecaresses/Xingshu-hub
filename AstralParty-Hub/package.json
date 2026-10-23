@@ -5,6 +5,7 @@
   "description": "星枢 Hub (XingShu Hub) - Astral Party Next-Gen Management, Spectator & Runtime Integration Platform",
   "type": "module",
   "scripts": {
+    "test:all": "node src/test/run-all.mjs",
     "test:game-library": "node --experimental-strip-types src/test/game_library.test.ts",
     "test:match-ratings": "node --experimental-strip-types src/test/match_rating.test.ts",
     "test:match-results": "node --experimental-strip-types src/test/match_results.test.ts",

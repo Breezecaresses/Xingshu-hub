@@ -4,6 +4,7 @@ Does not write to a device, alter PC runtime inventory, or package Windows nativ
 """
 import argparse
 import json
+import re
 from pathlib import Path
 import subprocess
 
@@ -73,8 +74,10 @@ def main():
     assert after[99992000] == ("XingShu.Runtime.dll", shared.sha(hooks))
     assert all(after[key] == value for key, value in before.items() if key != runtime_obj.path_id)
     assert all(int(obj.assets_file.target_platform) == 13 for obj in verified.objects)
+    source = (ROOT / "XingShu-Dev/src/XingShu.Runtime/XingShu/Runtime/XingShuRuntimeHost.cs").read_text("utf8")
+    runtime_version = re.search(r'#if XINGSHU_ANDROID_PREVIEW\s+public const string RuntimeVersion = "([^"]+)"', source).group(1)
     manifest = {"platform": "ANDROID_CN", "package": "com.feimo.astralparty",
-                "appVersion": "3.3.0", "runtimeVersion": "1.0.0-android-preview5",
+                "appVersion": "3.3.0", "runtimeVersion": runtime_version,
                 "originalSha256": shared.sha(original),
                 "candidateSha256": shared.sha(candidate.read_bytes()),
                 "hooksSha256": shared.sha(hooks), "candidate": str(candidate),

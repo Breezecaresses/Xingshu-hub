@@ -146,15 +146,8 @@ namespace XingShuRuntime.Targeting
                 input.HasAttackedKnown = _attackedMonsterId == input.MonsterId && turn == input.MonsterId &&
                     _attackedRound == monster.player.Hero.Round;
                 input.HasAttackedThisTurn = input.HasAttackedKnown;
-                var steps = new List<int>();
-                List<int> neighbors;
-                if (input.GraphEdges != null && input.GraphEdges.TryGetValue(input.CurrentNode, out neighbors))
-                {
-                    int from = monster.CharacterInst != null ? monster.CharacterInst.fromLandId : monster.player.BackNodeId;
-                    // A corridor has one forward exit. At a fork, retain every possible exit.
-                    foreach (int next in neighbors)
-                        if (next != from && !steps.Contains(next)) steps.Add(next);
-                }
+                string directionSource;
+                var steps = MonsterTargetContext.ExtractForwardSteps(monster, input.GraphEdges, out directionSource);
                 var preview = MonsterTargetPreview.Calculate(input, steps);
                 string compact;
                 string reason;
@@ -165,13 +158,13 @@ namespace XingShuRuntime.Targeting
                 }
                 else if (!preview.IsValid)
                 {
-                    compact = "索敌：等待路径数据";
-                    reason = "当前位置、地图连接或玩家位置尚未同步完整。";
+                    compact = steps == null ? "索敌：等待箭头同步" : "索敌：等待路径数据";
+                    reason = steps == null ? directionSource + "，暂不推测目标。" : "地图连接或玩家位置尚未同步完整，暂不推测目标。";
                 }
                 else if (preview.Candidates.Count == 0)
                 {
                     compact = "10格推演：无候选 · 沿原路线";
-                    reason = "先行一格后，剩余9格内没有可达的存活玩家。";
+                    reason = "仅沿箭头前进，每步排除来路；先行一格后，剩余9格内没有可达的存活玩家。";
                 }
                 else
                 {
@@ -184,12 +177,21 @@ namespace XingShuRuntime.Targeting
                     }
                     if (preview.Candidates.Count == 1) text.Append(" · ").Append(preview.Candidates[0].Distance).Append("格");
                     compact = text.ToString();
-                    reason = uncertain ? "岔路方向或同距离先后未确认，保留可能目标。" : "按未攻击、最大骰10格计算最近目标；实际骰点可能不足。";
+                    reason = uncertain ? "仅沿箭头前进；多个箭头出口或同距离先后未确认，保留可能目标。" : "仅沿箭头前进，不掉头；按未攻击、最大骰10格推演，实际骰点可能不足。";
                     if (preview.SomeRoutesHaveNoTarget) reason += " 部分出口无可达目标。";
                 }
 
                 var detail = new StringBuilder();
                 detail.Append(monster.player.GetNick()).Append("  ·  地图格 #").Append(input.CurrentNode).Append('\n');
+                detail.Append("当前箭头：");
+                if (steps == null) detail.Append("等待同步");
+                else for (int i = 0; i < steps.Count; i++)
+                {
+                    if (i > 0) detail.Append(" / ");
+                    detail.Append('#').Append(steps[i]);
+                }
+                detail.Append('\n');
+                detail.Append("方向来源：").Append(directionSource).Append('\n');
                 detail.Append(compact).Append('\n').Append(reason);
                 if (preview.Candidates.Count > 0)
                 {
@@ -211,7 +213,7 @@ namespace XingShuRuntime.Targeting
                 }
             }
             PruneRows();
-            _status = _details.Count == 0 ? "当前没有可推演的怪物" : "最大10格（含先行1格）；暂不计增加步数的技能。";
+            _status = _details.Count == 0 ? "当前没有可推演的怪物" : "沿箭头前进 · 最大10格（含先行1格）；暂不计技能加步。";
             if (_selected >= _details.Count) _selected = 0;
         }
 

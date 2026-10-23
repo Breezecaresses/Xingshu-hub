@@ -7,7 +7,7 @@
  *    Four watched remote players rotating payload.playerId (212667, 958038, 151220, 1946346) NEVER contaminate local identity.
  * 2. Reconnect, room change, epoch advance, and Runtime restart resilience.
  * 3. Simultaneous Steam MAIN (1556514, STEAM_CN) + TapTap USER_SPECTATOR (3045259, TAPTAP) dual-session coexistence and mutual isolation.
- * 4. Repaired account binding truth: USER_SPECTATOR has PID 3045259, Platform TAPTAP (not STEAM_CN).
+ * 4. Explicit account bindings retain the user's chosen ID and platform; remote snapshots never rewrite them.
  * 5. Unknown accounts resolve to UNBOUND_ACCOUNT with zero automatic binding.
  * 6. Zero credential storage and security whitelist audit.
  */
@@ -199,14 +199,12 @@ runTest('Suite 1.3: Direct negative test: watched remote players MUST NEVER reso
   assert.strictEqual(contaminatedIdentity.resolvedRole, ResolvedAccountRole.UNBOUND_ACCOUNT, '212667 is UNBOUND, cannot be USER_SPECTATOR');
   assert.strictEqual(contaminatedIdentity.binding, null, '212667 has null binding');
 
-  // Attempting to bind 212667 as USER_SPECTATOR is rejected by strict identity invariant
-  assert.throws(
-    () => {
-      gameAccountSvc.bindAccount(212667, GameAccountRole.USER_SPECTATOR, 'TAPTAP', 'ContaminatedBot');
-    },
-    /IDENTITY_CONTAMINATION_REJECTED/,
-    'Attempting to bind 212667 as USER_SPECTATOR must throw error'
-  );
+  // Observing a remote player cannot rewrite the binding. An explicit user
+  // rebind is allowed for any valid account, without a developer-ID denylist.
+  assert.strictEqual(gameAccountSvc.getBindingByRole(GameAccountRole.USER_SPECTATOR)?.playerId, 3045259);
+  gameAccountSvc.bindAccount(212667, GameAccountRole.USER_SPECTATOR, 'TAPTAP', 'Explicit user choice');
+  assert.strictEqual(gameAccountSvc.getBindingByRole(GameAccountRole.USER_SPECTATOR)?.playerId, 212667);
+  assert.strictEqual(gameAccountSvc.getBindingByRole(GameAccountRole.MAIN)?.playerId, 1556514);
 });
 
 // =============================================================================
@@ -534,32 +532,33 @@ runTest('Suite 3.3: Steam MAIN disconnects -> TapTap spectator streaming remains
 // =============================================================================
 console.log('\n--- SUITE 4: Repaired Account Binding Truth & Non-Auto-Binding Guarantee ---');
 
-runTest('Suite 4.1: USER_SPECTATOR binding truth: PID 3045259, Platform TAPTAP (not STEAM_CN)', () => {
+runTest('Suite 4.1: Explicit spectator channel is preserved across reload', () => {
   const storage = new MemoryStorage();
   const gameAccountSvc = new GameAccountService(storage);
 
-  // Even if legacy caller passed STEAM_CN for spectator account 3045259, it normalizes to TAPTAP
+  // The user can choose Steam as the spectator channel. Do not silently
+  // replace it with the developer's historical TapTap configuration.
   const binding = gameAccountSvc.bindAccount(3045259, GameAccountRole.USER_SPECTATOR, 'STEAM_CN', '我的专用观战账号');
   assert.strictEqual(binding.playerId, 3045259);
   assert.strictEqual(binding.role, GameAccountRole.USER_SPECTATOR);
-  assert.strictEqual(binding.platformId, 'TAPTAP', 'USER_SPECTATOR platform MUST BE TAPTAP, not STEAM_CN');
+  assert.strictEqual(binding.platformId, 'STEAM_CN', 'Explicit spectator channel is retained');
 
-  // Verify reload from storage preserves TAPTAP
+  // Verify reload preserves the explicit channel.
   const reloaded = gameAccountSvc.reloadBindings();
   const specBinding = reloaded.find((b) => b.role === GameAccountRole.USER_SPECTATOR);
   assert.strictEqual(specBinding?.playerId, 3045259);
-  assert.strictEqual(specBinding?.platformId, 'TAPTAP');
+  assert.strictEqual(specBinding?.platformId, 'STEAM_CN');
 });
 
-runTest('Suite 4.2: Storage repair corrects legacy contaminated binding (212667 -> 3045259, STEAM_CN -> TAPTAP)', () => {
+runTest('Suite 4.2: Loading stored bindings never substitutes historical developer accounts', () => {
   const storage = new MemoryStorage();
 
-  // Simulate old contaminated record in storage
+  // Stored bindings describe user intent, not proof of a live login.
   const contaminatedRecord = [
     {
       bindingId: 'bind-legacy-contaminated',
       platformId: 'STEAM_CN',
-      playerId: 212667, // Contaminated watched player ID
+      playerId: 212667,
       role: 'USER_SPECTATOR',
       boundAt: '2026-10-18T10:00:00Z',
       displayName: '观战账号',
@@ -568,15 +567,16 @@ runTest('Suite 4.2: Storage repair corrects legacy contaminated binding (212667 
   ];
   storage.setItem(STORAGE_KEY_GAME_ACCOUNT_BINDINGS, JSON.stringify(contaminatedRecord));
 
-  // Reloading through GameAccountService repairs the contamination
+  // Reload keeps the account choice; an absent runtime still has no live ID.
   const service = new GameAccountService(storage);
   const bindings = service.getBindings();
   assert.strictEqual(bindings.length, 1);
 
   const repaired = bindings[0];
-  assert.strictEqual(repaired.playerId, 3045259, 'Contaminated PID 212667 repaired to authentic spectator UID 3045259');
-  assert.strictEqual(repaired.platformId, 'TAPTAP', 'Repaired platform is TAPTAP, not STEAM_CN');
+  assert.strictEqual(repaired.playerId, 212667, 'Loading does not invent a replacement account');
+  assert.strictEqual(repaired.platformId, 'STEAM_CN', 'Loading does not invent a replacement channel');
   assert.strictEqual(repaired.role, GameAccountRole.USER_SPECTATOR);
+  assert.strictEqual(service.resolveSession(null, 'STEAM_CN', false).currentSessionPlayerId, null);
 });
 
 runTest('Suite 4.3: Unbound accounts resolve to UNBOUND_ACCOUNT with zero automatic binding', () => {

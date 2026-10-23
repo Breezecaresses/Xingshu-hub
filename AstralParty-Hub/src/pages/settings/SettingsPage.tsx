@@ -5,6 +5,7 @@ import { api } from '../../shared/api/tauri';
 import type { GameInstallation, ProbeResult, ProviderMetadata } from '../../shared/types';
 import { Folder, Save, Database, Shield, RefreshCw, Globe, Check } from 'lucide-react';
 import { useTranslation } from '../../i18n';
+import { AppUpdatePanel } from './AppUpdatePanel';
 
 export const SettingsPage: React.FC = () => {
   const { locale, setLocale, t } = useTranslation();
@@ -52,6 +53,7 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <AppUpdatePanel />
         {/* Language Selection Card */}
         <div className="panel">
           <h2 className="panel-title" style={{ marginBottom: 8 }}>

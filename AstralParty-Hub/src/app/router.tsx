@@ -7,11 +7,8 @@ import { CharactersPage } from '../pages/player/CharactersPage';
 import { CardsPage } from '../pages/player/CardsPage';
 import { ChipsPage, MapsPage } from '../pages/player/EncyclopediaPage';
 import { MatchesPage } from '../pages/player/MatchesPage';
-import { PluginsPage } from '../pages/extensions/PluginsPage';
 import { ModsPage } from '../pages/extensions/ModsPage';
-import { ImportPackagePage } from '../pages/extensions/ImportPackagePage';
 import { PackagesPage } from '../pages/packages/PackagesPage';
-import { RuntimePage } from '../pages/runtime/RuntimePage';
 import { SpectatorPage } from '../pages/spectator/SpectatorPage';
 import { BridgePage } from '../pages/bridge/BridgePage';
 import { TransactionsPage } from '../pages/maintenance/TransactionsPage';
@@ -85,7 +82,7 @@ export const router = createBrowserRouter([
       // XingShu Core Integration
       {
         path: 'runtime',
-        element: <RuntimePage />,
+        element: <Navigate to="/diagnostics?section=runtime" replace />,
       },
       {
         path: 'spectator',
@@ -98,7 +95,7 @@ export const router = createBrowserRouter([
       // Extensions & Packages
       {
         path: 'extensions/plugins',
-        element: <PluginsPage />,
+        element: <Navigate to="/diagnostics?section=runtime" replace />,
       },
       {
         path: 'extensions/mods',
@@ -110,7 +107,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'extensions/import',
-        element: <ImportPackagePage />,
+        element: <Navigate to="/extensions/mods" replace />,
       },
       // Maintenance & System
       {

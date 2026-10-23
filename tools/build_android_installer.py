@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+from android_payload import previous_hashes
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -30,6 +31,7 @@ def main():
     assert m['bundleRelativePath']=='com.unity.addressables/AssetBundles/4da1f23c112208b0f8df2a1327b4e4ce/3c7700aa58877b365d45231b1225fcbb/__data'
     assert sha(patch)==m['candidateSha256'] and sha(a.vanilla)==m['originalSha256']
     source=ROOT/'AndroidInstaller'
+    assert (source/'app/src/main/assets/update-public-cert.txt').read_bytes() == (ROOT/'tools/update-public-cert.txt').read_bytes(), 'Desktop and Android update identities differ'
     if a.build_dir:
         project=a.build_dir.resolve()
         if project.exists() and any(project.iterdir()): raise RuntimeError('Build directory must be empty')
@@ -47,7 +49,7 @@ def main():
     shutil.copy2(patch,assets/'candidate.__data'); shutil.copy2(a.vanilla,assets/'vanilla.__data')
     java=generated/'java/app/xingshu/installer/PayloadSpec.java'; java.parent.mkdir(parents=True,exist_ok=True)
     # Only previously published, verified preview4; unknown cache variants require official repair.
-    known=['3d94697f4dc6d64c2cb5fcca56339090f54e920cd7dab6de7bcc1912347e5a0f']
+    known=previous_hashes(m)
     constants={'RELATIVE':m['bundleRelativePath'],'VERSION':m['runtimeVersion'], 'VANILLA':m['originalSha256'],'PATCH':m['candidateSha256']}
     java.write_text('package app.xingshu.installer;\nfinal class PayloadSpec {\n'+''.join('static final String '+k+' = '+json.dumps(v)+';\n' for k,v in constants.items())+'static final String[] PREVIOUS = {'+','.join(json.dumps(v) for v in known)+'};\n}\n',encoding='utf8')
     env=os.environ.copy(); env['ANDROID_HOME']=str(a.sdk)

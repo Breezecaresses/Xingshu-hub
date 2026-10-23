@@ -16,7 +16,7 @@ pub struct SpectatorService {
     latest_snapshot: Arc<Mutex<Option<SpectatorMatchSnapshot>>>,
     latest_hand_payload: Arc<Mutex<Option<SpectatorHandPayload>>>,
     bridge_server: Arc<BridgeServer>,
-    app_handle: Arc<Mutex<Option<tauri::AppHandle>>>,
+    app_handle: Arc<Mutex<Option<crate::desktop_host::AppHandle>>>,
     is_listener_started: Arc<AtomicBool>,
 }
 
@@ -49,7 +49,7 @@ impl SpectatorService {
             if tokio::runtime::Handle::try_current().is_ok() {
                 tokio::spawn(task);
             } else {
-                tauri::async_runtime::spawn(task);
+                crate::desktop_host::spawn(task);
             }
             true
         } else {
@@ -75,7 +75,7 @@ impl SpectatorService {
         *self.latest_hand_payload.lock().unwrap() = Some(snapshot.clone());
 
         if let Some(ref handle) = *self.app_handle.lock().unwrap() {
-            use tauri::Emitter;
+            use crate::desktop_host::Emitter;
             let _ = handle.emit("spectator://hand-snapshot", &snapshot);
         }
 
@@ -86,7 +86,7 @@ impl SpectatorService {
         self.latest_hand_payload.lock().unwrap().clone()
     }
 
-    pub fn set_app_handle(&self, handle: tauri::AppHandle) {
+    pub fn set_app_handle(&self, handle: crate::desktop_host::AppHandle) {
         *self.app_handle.lock().unwrap() = Some(handle);
     }
 

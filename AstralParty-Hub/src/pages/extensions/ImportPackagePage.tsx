@@ -1,24 +1,26 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { api } from '../../shared/api/tauri';
 import type { HubPackageManifestV1, InstallTransaction } from '../../shared/types';
 import { Upload, CheckCircle2, ShieldCheck, AlertTriangle, FileArchive, ArrowRight, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from '../../i18n';
-import { ExtensionTargetPicker, useExtensionTarget, extensionChannels } from './ExtensionWorkspace';
+import { useExtensionTarget, extensionChannels } from './ExtensionWorkspace';
 
-export const ImportPackagePage: React.FC = () => {
+export const ImportPackagePage: React.FC<{ target: ReturnType<typeof useExtensionTarget>; onBusy: (busy: boolean) => void; onInstalled: () => void; disabled?: boolean }> = ({ target, onBusy, onInstalled, disabled = false }) => {
   const { locale, t } = useTranslation();
-  const target = useExtensionTarget();
   const [zipPath, setZipPath] = useState('');
   const [manifest, setManifest] = useState<HubPackageManifestV1 | null>(null);
   const [loading, setLoading] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transaction, setTransaction] = useState<InstallTransaction | null>(null);
+  const acting = useRef(false);
 
   const handleInspect = async () => {
-    if (!zipPath.trim()) return;
+    if (disabled || acting.current || !zipPath.trim()) return;
+    acting.current = true;
     setLoading(true);
+    onBusy(true);
     setError(null);
     setManifest(null);
     setTransaction(null);
@@ -30,21 +32,28 @@ export const ImportPackagePage: React.FC = () => {
       setError(e.message || String(e));
     } finally {
       setLoading(false);
+      acting.current = false;
+      onBusy(false);
     }
   };
 
   const handleInstall = async () => {
-    if (!zipPath.trim() || !target.selected || !compatible) return;
+    if (disabled || acting.current || !zipPath.trim() || !target.selected || !compatible) return;
+    acting.current = true;
     setInstalling(true);
+    onBusy(true);
     setError(null);
 
     try {
       const tx = await api.installPackage(zipPath.trim(), target.selected!.id);
       setTransaction(tx);
+      onInstalled();
     } catch (e: any) {
       setError(e.message || String(e));
     } finally {
       setInstalling(false);
+      acting.current = false;
+      onBusy(false);
     }
   };
 
@@ -55,13 +64,12 @@ export const ImportPackagePage: React.FC = () => {
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>{t('packages.importTitle')}</h1>
+        <h2 style={{ fontSize: 18, fontWeight: 700 }}>安装带星枢清单的模组包</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
-          {t('packages.importSubtitle')}
+          用于作者提供了 manifest.json 的 .xspkg / .zip 包。普通纹理或 RAR 原包不能直接在这里安装；请使用下方已适配模组库。此入口不安装星枢本体。
         </p>
       </div>
 
-      <ExtensionTargetPicker target={target} disabled={installing} />
       <div className="panel">
         <h2 className="panel-title" style={{ marginBottom: 12 }}>
           <FileArchive size={18} color="var(--primary)" />
@@ -72,12 +80,13 @@ export const ImportPackagePage: React.FC = () => {
             type="text"
             className="form-input"
             style={{ flex: 1 }}
-            placeholder={isZh ? '输入扩展包绝对路径 (支持 .xspkg, .zip, .xingshu 等)' : 'Enter absolute path to .xspkg or .zip package'}
+            placeholder={isZh ? '粘贴带 manifest.json 的模组包完整路径' : 'Enter full path to a mod package containing manifest.json'}
             value={zipPath}
+            disabled={disabled || loading || installing}
             onChange={(e) => { setZipPath(e.target.value); setManifest(null); setTransaction(null); }}
             onKeyDown={(e) => e.key === 'Enter' && handleInspect()}
           />
-          <button className="btn btn-primary" onClick={handleInspect} disabled={loading || !zipPath}>
+          <button className="btn btn-primary" onClick={handleInspect} disabled={disabled || loading || installing || !zipPath}>
             {loading ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
             <span>{t('packages.inspectPackage')}</span>
           </button>
@@ -105,7 +114,7 @@ export const ImportPackagePage: React.FC = () => {
               </div>
             </div>
             {!transaction && (
-              <button className="btn btn-primary" onClick={handleInstall} disabled={installing || !target.selected || !compatible}>
+              <button className="btn btn-primary" onClick={handleInstall} disabled={disabled || installing || !target.selected || !compatible}>
                 {installing ? (
                   <>
                     <RefreshCw size={14} className="spin" />

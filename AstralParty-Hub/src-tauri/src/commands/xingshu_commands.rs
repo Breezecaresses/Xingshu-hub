@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use std::sync::Arc;
-use tauri::State;
+use crate::desktop_host::State;
 
 use crate::xing_shu::bridge::protocol::XINGSHU_BRIDGE_LOCALHOST_PORT;
 use crate::xing_shu::bridge::server::BridgeServer;
@@ -34,7 +34,7 @@ pub struct BridgeStatusResponse {
     pub tcp_addr: Option<String>,
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn get_bridge_status(
     bridge_server: State<'_, Arc<BridgeServer>>,
 ) -> Result<BridgeStatusResponse, String> {
@@ -61,7 +61,7 @@ pub async fn get_bridge_status(
     })
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn send_bridge_test_event(
     message: Option<String>,
     bridge_server: State<'_, Arc<BridgeServer>>,
@@ -69,7 +69,7 @@ pub async fn send_bridge_test_event(
     bridge_server.send_test_event(message)
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn send_watch_target(
     connection_id: String,
     target: serde_json::Value,
@@ -80,7 +80,7 @@ pub async fn send_watch_target(
 }
 
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn clear_bridge_logs(
     bridge_server: State<'_, Arc<BridgeServer>>,
 ) -> Result<(), String> {
@@ -88,14 +88,14 @@ pub async fn clear_bridge_logs(
     Ok(())
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn get_runtime_sessions(
     bridge_server: State<'_, Arc<BridgeServer>>,
 ) -> Result<Vec<crate::xing_shu::bridge::session::RuntimeSession>, String> {
     Ok(bridge_server.get_runtime_sessions())
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn configure_runtime_bindings(
     bindings: Vec<crate::xing_shu::bridge::session::RuntimeBinding>,
     bridge_server: State<'_, Arc<BridgeServer>>,
@@ -103,28 +103,28 @@ pub async fn configure_runtime_bindings(
     bridge_server.configure_runtime_bindings(bindings)
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn get_spectator_session(
     spectator_service: State<'_, Arc<SpectatorService>>,
 ) -> Result<SpectatorSessionInfo, String> {
     Ok(spectator_service.get_session_info())
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn get_spectator_snapshot(
     spectator_service: State<'_, Arc<SpectatorService>>,
 ) -> Result<Option<SpectatorMatchSnapshot>, String> {
     Ok(spectator_service.get_latest_snapshot())
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn get_spectator_hand_payload(
     spectator_service: State<'_, Arc<SpectatorService>>,
 ) -> Result<Option<SpectatorHandPayload>, String> {
     Ok(spectator_service.get_latest_hand_payload())
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn login_spectator(
     account_name: String,
     spectator_service: State<'_, Arc<SpectatorService>>,
@@ -134,7 +134,7 @@ pub async fn login_spectator(
         .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn start_spectating(
     room_id: String,
     spectator_service: State<'_, Arc<SpectatorService>>,
@@ -144,7 +144,7 @@ pub async fn start_spectating(
         .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn stop_spectating(
     spectator_service: State<'_, Arc<SpectatorService>>,
 ) -> Result<SpectatorSessionInfo, String> {
@@ -153,7 +153,7 @@ pub async fn stop_spectating(
         .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn inspect_xspkg(
     file_path: String,
     package_mgr: State<'_, Arc<XingShuPackageManager>>,
@@ -163,7 +163,7 @@ pub async fn inspect_xspkg(
         .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn verify_xspkg(
     file_path: String,
     package_mgr: State<'_, Arc<XingShuPackageManager>>,
@@ -246,7 +246,7 @@ where
     startup_eval
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn get_startup_locale(
     locale_state: State<'_, StartupLocale>,
 ) -> Result<Option<String>, String> {
@@ -308,7 +308,7 @@ where
     }
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn get_startup_route(
     route_state: State<'_, StartupRoute>,
 ) -> Result<Option<String>, String> {
@@ -375,7 +375,7 @@ pub fn validate_and_resolve_launch_uri(
     Ok((target_uri, exec_name, p_id.to_string()))
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn check_game_process_status(
     platform_id: Option<String>,
 ) -> Result<GameProcessStatus, String> {
@@ -414,7 +414,7 @@ pub async fn check_game_process_status(
     }
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn launch_game_uri(
     uri: Option<String>,
     platform_id: Option<String>,

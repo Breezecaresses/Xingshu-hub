@@ -18,7 +18,9 @@ foreach ($taskType in (Get-TaskTypes $taskAssembly.MainModule.Types)) {
 }
 $taskHost = $taskAssembly.MainModule.Types | Where-Object FullName -eq 'XingShu.Runtime.XingShuRuntimeHost'
 $taskVersion = ($taskHost.Fields | Where-Object Name -eq 'RuntimeVersion').Constant
-if ($taskVersion -ne '1.0.0-android-preview5') { throw "Unexpected preview version: $taskVersion" }
+$taskVersionSource = Get-Content -LiteralPath (Join-Path $taskRoot 'XingShu-Dev/src/XingShu.Runtime/XingShu/Runtime/XingShuRuntimeHost.cs') -Raw
+$taskExpectedVersion = [regex]::Match($taskVersionSource, '#if XINGSHU_ANDROID_PREVIEW\s+public const string RuntimeVersion = "([^"]+)"').Groups[1].Value
+if (!$taskExpectedVersion -or $taskVersion -ne $taskExpectedVersion) { throw "Unexpected preview version: $taskVersion; expected $taskExpectedVersion" }
 $taskClock = $taskAssembly.MainModule.Types | Where-Object FullName -eq 'XingShuRuntime.Utilities.ThinkingClock'
 $taskClockSource = $taskClock.Methods | Where-Object Name -eq 'RealSeconds'
 if (!($taskClockSource.Body.Instructions | Where-Object { $_.Operand -and $_.Operand.ToString().Contains('System.DateTime::get_UtcNow') })) {

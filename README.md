@@ -18,6 +18,14 @@
 
 ---
 
+## Windows native migration candidate (on hold)
+
+2026-10-22: Native migration is on hold at the user's request. The existing React / Tauri Hub and R7 game runtime remain the active baseline. Native sources and the local ZIP are preserved without replacing the installed app. See the [R7 verification checklist](R7_VERIFICATION_20261022.md) for background checks and pending live acceptance.
+
+The locally built `0.2.0-native1` candidate uses WPF / .NET 10 for its interface and a Rust core built without Tauri or WebView. It includes 18 native pages, map guides, character progression details, and spectator following. The previous UI and published packages remain available; this candidate has not been uploaded or substituted for the group build.
+
+Offline checks are complete. Live online validation is pending, and Spine/WebM playback plus the full LocalManaged management UI remain to be migrated. See [native build and validation notes](NATIVE_WINDOWS.md).
+
 ## Group distribution build
 
 The current [group distribution build](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261022.2) is a prerelease, not the first stable version. Assets are grouped by desktop and Android. The desktop ZIP includes both Steam CN and TapTap Windows; extract it and run `星枢安装助手.exe`. Supports Steam CN and TapTap 3.3.0 / resource 026. The hand dock defaults to 60% overall size, adjustable from 40% to 120%. See [build notes](GROUP_DISTRIBUTION_20261022_2.md) for known limitations. The local-only native speed prototype is excluded.

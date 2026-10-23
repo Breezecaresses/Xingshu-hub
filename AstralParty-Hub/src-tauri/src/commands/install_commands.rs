@@ -1,10 +1,10 @@
 use std::path::Path;
-use tauri::State;
+use crate::desktop_host::State;
 use crate::application::InstallService;
 use crate::domain::error::HubResult;
 use crate::domain::installation::{Backup, InstallTransaction};
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn install_package(
     archive_path: String,
     installation_id: String,
@@ -13,7 +13,7 @@ pub async fn install_package(
     install_service.install_package_from_zip(Path::new(&archive_path), &installation_id)
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn rollback_transaction(
     transaction_id: String,
     install_service: State<'_, InstallService>,
@@ -21,7 +21,7 @@ pub async fn rollback_transaction(
     install_service.rollback_transaction(&transaction_id)
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn list_install_transactions(
     limit: Option<usize>,
     install_service: State<'_, InstallService>,
@@ -29,7 +29,7 @@ pub async fn list_install_transactions(
     install_service.list_transactions(limit.unwrap_or(20))
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "web-ui", tauri::command)]
 pub async fn list_backups(
     install_service: State<'_, InstallService>,
 ) -> HubResult<Vec<Backup>> {

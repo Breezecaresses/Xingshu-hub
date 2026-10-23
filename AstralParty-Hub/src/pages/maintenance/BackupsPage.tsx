@@ -43,7 +43,7 @@ export const BackupsPage: React.FC = () => {
             <Archive size={36} style={{ marginBottom: 12, opacity: 0.5 }} />
             <p style={{ fontSize: 14 }}>{isZh ? '暂无备份记录。' : 'No backups recorded yet.'}</p>
             <p style={{ fontSize: 12, marginTop: 4 }}>
-              {isZh ? '系统在修改或替换游戏文件前将自动创建备份快照。' : 'Backups are automatically taken before modifying or replacing game files.'}
+              {isZh ? '通过带星枢清单的模组包安装创建的备份会显示在这里。星枢本体和纹理库请在对应安装入口还原。' : 'Backups from manifest-based mod packages appear here. Restore XingShu itself or texture-library changes from their respective installation panels.'}
             </p>
           </div>
         ) : (

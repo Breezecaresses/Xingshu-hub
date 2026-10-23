@@ -41,6 +41,8 @@ import {
   AUTO_FOLLOW_STATE_CONFIG_ZH,
 } from '../services/autoFollowStateMachine.ts';
 import { AutoFollowService } from '../services/autoFollowService.ts';
+import { gameAccountService } from '../services/gameAccountService.ts';
+import { GameAccountRole } from '../types/gameAccount.ts';
 
 declare const process: {
   exit(code?: number): never;
@@ -249,7 +251,13 @@ runTest('3.2 Resolver effectivePlayerId fallback prevents "未识别" for connec
 console.log('\n--- Test Group 4: Auto-Follow State Machine & Service Ingestion ---');
 
 runTest('4.1 AutoFollowService ingests matchContext with 3 separate identifiers and dispatches MAIN_MATCH_DETECTED', () => {
+  // Tests must bind their own accounts, just as a real user does. Empty
+  // storage must never implicitly select the developer's historical IDs.
+  gameAccountService.bindAccount(1556514, GameAccountRole.MAIN, 'STEAM_CN');
+  gameAccountService.bindAccount(3045259, GameAccountRole.USER_SPECTATOR, 'TAPTAP');
   const service = new AutoFollowService();
+  service.setExecutionMode('LOCAL_MANAGED', async () => 'isolated-test-request');
+  try {
   const steamSession: RuntimeSession = {
     connectionId: 'conn_steam_1',
     platformId: 'STEAM_CN',
@@ -296,6 +304,11 @@ runTest('4.1 AutoFollowService ingests matchContext with 3 separate identifiers 
     ['SPECTATOR_READY', 'AUTO_JOINING', 'MAIN_IN_MATCH'].includes(state),
     `Expected state to advance out of IDLE, got: ${state}`
   );
+  } finally {
+    service.destroy();
+    gameAccountService.unbindRole(GameAccountRole.MAIN);
+    gameAccountService.unbindRole(GameAccountRole.USER_SPECTATOR);
+  }
 });
 
 runTest("4.2 State machine MUST NOT say 'IDLE' while visibly in match", () => {

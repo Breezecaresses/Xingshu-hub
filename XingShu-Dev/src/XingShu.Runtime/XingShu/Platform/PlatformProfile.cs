@@ -300,7 +300,7 @@ namespace XingShu.Platform
 
         /// <summary>
         /// Baseline governance verification rule for HS4-A:
-        /// Exactly one platform profile (STEAM_CN) must be VERIFIED.
+        /// Only STEAM_CN may be VERIFIED. Updated resources may await renewed verification.
         /// If any other platform profile is marked VERIFIED without audit, governance fails closed.
         /// </summary>
         public static bool VerifyHs4ABaselineGovernance(List<PlatformProfile> profiles, out string error)
@@ -311,7 +311,6 @@ namespace XingShu.Platform
                 error = "Profiles list is null";
                 return false;
             }
-            int verifiedCount = 0;
             for (int i = 0; i < profiles.Count; i++)
             {
                 var p = profiles[i];
@@ -322,13 +321,7 @@ namespace XingShu.Platform
                         error = "Governance violation: platform " + p.platformId + " cannot be marked VERIFIED in HS4-A baseline; only STEAM_CN is authorized";
                         return false;
                     }
-                    verifiedCount++;
                 }
-            }
-            if (verifiedCount != 1)
-            {
-                error = "Governance violation: exactly one platform profile must be VERIFIED in HS4-A baseline, found " + verifiedCount;
-                return false;
             }
             return true;
         }

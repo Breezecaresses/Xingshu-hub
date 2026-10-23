@@ -83,11 +83,14 @@ namespace XingShuRuntime.UI
             img.type = (bgSprite != null && bgSprite.border != Vector4.zero) ? Image.Type.Sliced : Image.Type.Simple;
 
             Button btn = go.AddComponent<Button>();
+            btn.targetGraphic = img;
+            btn.navigation = new Navigation { mode = Navigation.Mode.None };
             ColorBlock cb = btn.colors;
             cb.normalColor = Color.white;
-            cb.highlightedColor = new Color(1.15f, 1.15f, 1.15f, 1f);
-            cb.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1f);
-            cb.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+            cb.highlightedColor = new Color(1f, 0.93f, 0.97f, 1f);
+            cb.pressedColor = new Color(0.88f, 0.78f, 0.83f, 1f);
+            cb.disabledColor = new Color(0.72f, 0.72f, 0.72f, 0.5f);
+            cb.fadeDuration = 0.08f;
             btn.colors = cb;
 
             if (onClick != null)
@@ -114,6 +117,7 @@ namespace XingShuRuntime.UI
             GameObject sliderRoot = CreateUIObject(name, parent);
             RectTransform sliderRt = sliderRoot.GetComponent<RectTransform>();
             sliderRt.sizeDelta = new Vector2(240f, 28f);
+            AddPointerSurface(sliderRoot);
 
             // White capsule and official pink bar, with a four-point star handle.
             Sprite trackSprite = XingShuUIAssetService.GetSprite("slider_track.png");
@@ -170,6 +174,7 @@ namespace XingShuRuntime.UI
 
             // 4. Slider Component
             Slider slider = sliderRoot.AddComponent<Slider>();
+            slider.navigation = new Navigation { mode = Navigation.Mode.None };
             slider.fillRect = fillRt;
             slider.handleRect = handleRt;
             slider.targetGraphic = handleImg;
@@ -191,6 +196,7 @@ namespace XingShuRuntime.UI
             GameObject toggleRoot = CreateUIObject(name, parent);
             RectTransform toggleRt = toggleRoot.GetComponent<RectTransform>();
             toggleRt.sizeDelta = new Vector2(220f, 32f);
+            AddPointerSurface(toggleRoot);
 
             // Background Switch Box (Capsule)
             Sprite trackOnSprite = XingShuUIAssetService.GetSprite("toggle_track_on.png");
@@ -200,6 +206,7 @@ namespace XingShuRuntime.UI
             GameObject bgGo = CreateUIObject("Background", toggleRoot);
             Image bgImg = bgGo.AddComponent<Image>();
             bgImg.sprite = initialValue ? trackOnSprite : trackOffSprite;
+            bgImg.raycastTarget = false;
             bgImg.type = Image.Type.Sliced;
             bgImg.color = Color.white;
             RectTransform bgRt = bgGo.GetComponent<RectTransform>();
@@ -233,6 +240,7 @@ namespace XingShuRuntime.UI
             labelRt.offsetMax = Vector2.zero;
 
             Toggle toggle = toggleRoot.AddComponent<Toggle>();
+            toggle.navigation = new Navigation { mode = Navigation.Mode.None };
             toggle.transition = Selectable.Transition.None;
             toggle.graphic = null; // Do not let UGUI automatically hide checkImg when isOn is false
             toggle.targetGraphic = bgImg;
@@ -266,6 +274,7 @@ namespace XingShuRuntime.UI
             toggleRt.anchorMax = new Vector2(1f, 1f);
             toggleRt.pivot = new Vector2(0.5f, 1f);
             toggleRt.sizeDelta = new Vector2(0f, 32f);
+            AddPointerSurface(toggleRoot);
 
             // Label (Left side, primary text)
             Text labelTxt = CreateText(toggleRoot, "Label", label, 14, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Normal, HorizontalWrapMode.Overflow, VerticalWrapMode.Truncate);
@@ -283,6 +292,7 @@ namespace XingShuRuntime.UI
             GameObject bgGo = CreateUIObject("Background", toggleRoot);
             Image bgImg = bgGo.AddComponent<Image>();
             bgImg.sprite = initialValue ? trackOnSprite : trackOffSprite;
+            bgImg.raycastTarget = false;
             bgImg.type = Image.Type.Sliced;
             bgImg.color = Color.white;
             RectTransform bgRt = bgGo.GetComponent<RectTransform>();
@@ -308,6 +318,7 @@ namespace XingShuRuntime.UI
             checkRt.anchoredPosition = initialValue ? new Vector2(14f, 0f) : new Vector2(-14f, 0f);
 
             Toggle toggle = toggleRoot.AddComponent<Toggle>();
+            toggle.navigation = new Navigation { mode = Navigation.Mode.None };
             toggle.transition = Selectable.Transition.None;
             toggle.graphic = null;
             toggle.targetGraphic = bgImg;
@@ -420,6 +431,7 @@ namespace XingShuRuntime.UI
             textComp.color = XingShuUITheme.PrimaryText;
             textComp.alignment = TextAnchor.MiddleLeft;
             textComp.supportRichText = false;
+            textComp.raycastTarget = false;
             RectTransform textRt = textObj.GetComponent<RectTransform>();
             textRt.anchorMin = Vector2.zero;
             textRt.anchorMax = Vector2.one;
@@ -434,6 +446,7 @@ namespace XingShuRuntime.UI
             phComp.color = XingShuUITheme.MutedText;
             phComp.alignment = TextAnchor.MiddleLeft;
             phComp.text = placeholder ?? "";
+            phComp.raycastTarget = false;
             phComp.fontStyle = FontStyle.Italic;
             RectTransform phRt = phObj.GetComponent<RectTransform>();
             phRt.anchorMin = Vector2.zero;
@@ -445,8 +458,8 @@ namespace XingShuRuntime.UI
             inputField.textComponent = textComp;
             inputField.placeholder = phComp;
             inputField.text = initialValue ?? "";
-            inputField.caretColor = new Color(0.22f, 0.74f, 0.97f, 1f); // #38bdf8
-            inputField.selectionColor = new Color(0.22f, 0.74f, 0.97f, 0.35f);
+            inputField.caretColor = XingShuUITheme.Pink;
+            inputField.selectionColor = new Color(1f, 0.153f, 0.58f, 0.22f);
             inputField.caretWidth = 2;
             inputField.targetGraphic = bgImg;
 
@@ -487,6 +500,9 @@ namespace XingShuRuntime.UI
             vpRt.offsetMax = Vector2.zero;
             vpRt.pivot = new Vector2(0f, 1f);
             viewport.AddComponent<RectMask2D>();
+            // Empty space between cards must still receive scrolling and touch
+            // drags instead of dropping input onto the page below it.
+            AddPointerSurface(viewport);
 
             contentArea = CreateUIObject("Content", viewport);
             RectTransform contentRt = contentArea.GetComponent<RectTransform>();
@@ -514,6 +530,16 @@ namespace XingShuRuntime.UI
             scrollRect.scrollSensitivity = 25f;
 
             return scrollRect;
+        }
+
+        private static void AddPointerSurface(GameObject root)
+        {
+            // A transparent Graphic makes the entire control row clickable,
+            // including its label, without changing its visible layout.
+            Image hit = root.AddComponent<Image>();
+            hit.sprite = XingShuUIAssetService.WhiteSprite;
+            hit.color = Color.clear;
+            hit.raycastTarget = true;
         }
     }
 }
