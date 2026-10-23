@@ -13,14 +13,37 @@ import android.view.View;
 import android.widget.*;
 import java.io.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import rikka.shizuku.Shizuku;
 
 public final class MainActivity extends Activity {
+    // Activity recreation must not start another transfer against the same update cache.
+    private static final AtomicBoolean UPDATE_TASK_ACTIVE = new AtomicBoolean();
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private TextView status, log;
     private Button install, restore, connect, inspect, pair, shizuku, updateCheck;
     private Switch previewUpdates;
     private TextView updateStatus;
+    private TextView updateDetails;
+    private ProgressBar updateProgress;
+    private DownloadProgress downloadProgress;
+    private final Handler progressHandler = new Handler(Looper.getMainLooper());
+    private long checkStarted;
+    private String checkStage;
+    private final Runnable checkTick = new Runnable() {
+        @Override public void run() {
+            if(destroyed || checkStage==null)return;
+            updateStatus.setText(checkStage+"\n已等待 "+Math.max(0,(SystemClock.elapsedRealtime()-checkStarted)/1000)+" 秒");
+            progressHandler.postDelayed(this,1000);
+        }
+    };
+    private final Runnable progressTick = new Runnable() {
+        @Override public void run() {
+            if(destroyed || downloadProgress==null)return;
+            updateDetails.setText(downloadProgress.description(SystemClock.elapsedRealtime()));
+            progressHandler.postDelayed(this,1000);
+        }
+    };
     private ReleaseUpdates.Update pendingUpdate;
     private boolean waitingInstallPermission;
     private EditText pairingPort, pairingCode, connectionPort;
@@ -49,7 +72,7 @@ public final class MainActivity extends Activity {
         getWindow().setStatusBarColor(Color.rgb(255,35,143));
         getWindow().setNavigationBarColor(Color.rgb(255,246,222));
         ScrollView scroll = new ScrollView(this); scroll.setFillViewport(true);
-        LinearLayout page = new LinearLayout(this); page.setOrientation(1); page.setPadding(dp(22),dp(24),dp(22),dp(24));
+        LinearLayout page = new LinearLayout(this); page.setOrientation(LinearLayout.VERTICAL); page.setPadding(dp(22),dp(24),dp(22),dp(24));
         page.setBackgroundColor(Color.rgb(255,246,222));
         page.setOnApplyWindowInsetsListener((view,insets) -> {
             view.setPadding(dp(22)+insets.getSystemWindowInsetLeft(),dp(24)+insets.getSystemWindowInsetTop(),
@@ -61,6 +84,10 @@ public final class MainActivity extends Activity {
         page.addView(text("安卓预览更新  ·  " + BuildConfig.VERSION_NAME,12));
         updateStatus=text("助手版本："+BuildConfig.VERSION_NAME+"\n助手内置游戏插件："+PayloadSpec.VERSION,13); page.addView(updateStatus);
         updateCheck=button(page,"检查助手更新",true,v -> checkAssistantUpdate());
+        updateProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
+        updateProgress.setMax(100); updateProgress.setProgressTintList(android.content.res.ColorStateList.valueOf(0xffff238f));
+        page.addView(updateProgress,new LinearLayout.LayoutParams(-1,dp(12))); updateProgress.setVisibility(View.GONE);
+        updateDetails=text("",13); page.addView(updateDetails); updateDetails.setVisibility(View.GONE);
         previewUpdates=new Switch(this); previewUpdates.setText("包含测试版");
         previewUpdates.setChecked(getPreferences(0).getBoolean("previewUpdates",true));
         previewUpdates.setOnCheckedChangeListener((b,checked) -> getPreferences(0).edit().putBoolean("previewUpdates",checked).apply()); page.addView(previewUpdates);
@@ -218,32 +245,84 @@ public final class MainActivity extends Activity {
         }
         return f;
     }
-    private void updateFinished() { busy=false; if(!destroyed)refresh(); }
+    private void updateFinished() { busy=false; checkStage=null; progressHandler.removeCallbacks(checkTick); if(!destroyed)refresh(); }
+    private void stopDownloadProgress() { progressHandler.removeCallbacks(progressTick); downloadProgress=null; }
+    private boolean acquireUpdateTask() {
+        if(UPDATE_TASK_ACTIVE.compareAndSet(false,true))return true;
+        updateStatus.setText("上一次更新任务仍在进行，请稍后重试。");
+        write("上一次更新检查或下载尚未结束，已阻止重复更新任务。");
+        return false;
+    }
+    private void runUpdateTask(Runnable task) {
+        try {
+            worker.execute(() -> {
+                try { task.run(); }
+                finally { UPDATE_TASK_ACTIVE.set(false); }
+            });
+        } catch(RejectedExecutionException e) {
+            UPDATE_TASK_ACTIVE.set(false); updateFinished();
+            if(!destroyed) {
+                updateProgress.setVisibility(View.GONE);
+                updateStatus.setText("更新任务未启动，请重新打开助手后重试。");
+            }
+        }
+    }
     private void checkAssistantUpdate() {
-        if(busy)return; busy=true; refresh(); updateStatus.setText("正在检查助手更新…");
+        if(busy||!acquireUpdateTask())return; stopDownloadProgress(); updateProgress.setVisibility(View.GONE); updateDetails.setVisibility(View.GONE);
+        busy=true; refresh(); checkStarted=SystemClock.elapsedRealtime(); checkStage="正在连接官方更新服务…";
+        updateProgress.setVisibility(View.VISIBLE); updateProgress.setIndeterminate(true); progressHandler.post(checkTick);
         final boolean preview=previewUpdates.isChecked();
-        worker.execute(() -> {
+        runUpdateTask(() -> {
             try {
-                final ReleaseUpdates.Update found=ReleaseUpdates.check(preview,() -> getAssets().open("update-public-cert.txt"));
+                final ReleaseUpdates.Update found=ReleaseUpdates.check(preview,() -> getAssets().open("update-public-cert.txt"),label -> runOnUiThread(() -> { if(!destroyed)checkStage=label; }));
                 final boolean newer=found!=null&&found.code()>BuildConfig.VERSION_CODE;
-                final String label=found==null?"当前发布尚未提供签名更新清单，可从官方发布页下载。":newer?"发现新版助手："+found.version():"没有比当前助手更新的可校验发布。";
-                runOnUiThread(() -> { updateFinished(); if(destroyed)return; updateStatus.setText(label);
+                final String warning=found==null||found.checkWarning==null?"":found.checkWarning.trim();
+                final String label=found==null?"当前发布尚未提供签名更新清单，可从官方发布页下载。":!warning.isEmpty()?
+                    (newer?"已核验新版助手：":"已核验发布：")+found.version()+"\n\n"+warning+"\n此次检查未完整完成，不能确认是否还有更新版本。":
+                    newer?"发现新版助手："+found.version():"没有比当前助手更新的可校验发布。";
+                runOnUiThread(() -> { updateFinished(); if(destroyed)return; updateProgress.setVisibility(View.GONE); updateStatus.setText(label);
                     try {
                         AlertDialog.Builder dialog=new AlertDialog.Builder(this).setTitle("助手更新").setMessage(label+(newer?"\n\n"+found.notes()+"\n\n只更新助手 APK，安装后仍需单独更新游戏插件。":""))
                             .setNegativeButton("关闭",null).setNeutralButton("官方发布页",(d,w) -> open(ReleaseUpdates.RELEASES));
                         if(newer)dialog.setPositiveButton("下载新版 APK",(d,w) -> downloadAssistant(found)); dialog.show();
                     } catch(Exception e) { write("检查更新未完成："+e.getMessage()); }
                 });
-            } catch(Exception e) { runOnUiThread(() -> { updateFinished(); if(!destroyed) { updateStatus.setText("检查更新未完成，可稍后重试。"); write("更新检查："+e.getMessage()); } }); }
+            } catch(Exception e) {
+                android.util.Log.w("XingShuUpdate","Assistant update check failed",e);
+                runOnUiThread(() -> { String failedStage=checkStage; updateFinished(); if(!destroyed) {
+                    updateProgress.setVisibility(View.GONE);
+                    updateStatus.setText("检查更新未完成。\n"+(failedStage==null?"":failedStage+"\n")+ReleaseUpdates.failureMessage(e));
+                    write("更新检查："+ReleaseUpdates.failureMessage(e));
+                } });
+            }
         });
     }
     private void downloadAssistant(ReleaseUpdates.Update update) {
-        if(busy)return; busy=true; refresh(); updateStatus.setText("正在下载并校验新版 APK，请保持助手在前台…");
-        worker.execute(() -> {
+        if(busy||!acquireUpdateTask())return; busy=true; refresh(); updateStatus.setText("正在连接下载服务器，请保持助手在前台…");
+        stopDownloadProgress(); downloadProgress=new DownloadProgress(update.manifest.optJSONObject("android").optLong("size"),SystemClock.elapsedRealtime());
+        updateProgress.setVisibility(View.VISIBLE); updateProgress.setIndeterminate(true); updateProgress.setProgress(0);
+        updateDetails.setVisibility(View.VISIBLE); progressHandler.post(progressTick);
+        runUpdateTask(() -> {
             try {
-                File apk=ReleaseUpdates.download(update,getCacheDir()); verifySelfApk(apk,update);
-                runOnUiThread(() -> { updateFinished(); if(!destroyed) { pendingUpdate=update; updateStatus.setText("新版 APK 已校验，请确认安装。"); requestAssistantInstall(); } });
-            } catch(Exception e) { runOnUiThread(() -> { updateFinished(); if(!destroyed) { updateStatus.setText("下载或校验未完成，当前助手保持原样。"); write("助手更新："+e.getMessage()); } }); }
+                File apk=ReleaseUpdates.download(update,getCacheDir(),new ReleaseUpdates.DownloadListener() {
+                    public void progress(long received,long total) {
+                        runOnUiThread(() -> { if(destroyed||downloadProgress==null)return;
+                            downloadProgress.received(received,SystemClock.elapsedRealtime());
+                            updateProgress.setIndeterminate(false); updateProgress.setProgress(downloadProgress.percent());
+                            updateStatus.setText("正在下载新版 APK，请保持助手在前台…");
+                            updateDetails.setText(downloadProgress.description(SystemClock.elapsedRealtime()));
+                        });
+                    }
+                    public void verifying() {
+                        runOnUiThread(() -> { if(destroyed)return; stopDownloadProgress();
+                            updateProgress.setIndeterminate(false); updateProgress.setProgress(100);
+                            updateStatus.setText("下载完成，正在校验 APK 完整性、版本和签名…");
+                            updateDetails.setText("下载 100% · 校验通过后才会打开系统安装页面");
+                        });
+                    }
+                }); verifySelfApk(apk,update);
+                runOnUiThread(() -> { stopDownloadProgress(); updateFinished(); if(!destroyed) { pendingUpdate=update; updateStatus.setText("新版 APK 校验通过，请确认安装。"); updateDetails.setText("下载和校验已完成，等待系统确认覆盖安装"); requestAssistantInstall(); } });
+            } catch(Exception e) { runOnUiThread(() -> { stopDownloadProgress(); updateFinished(); if(!destroyed) { updateProgress.setIndeterminate(false); updateStatus.setText("下载或校验未完成，当前助手保持原样。"); updateDetails.setText("原因："+e.getMessage()+"\n可重新检查更新后重试，或从官方发布页下载 APK。"); write("助手更新："+e.getMessage()); } }); }
         });
     }
     @SuppressWarnings("deprecation")
@@ -276,7 +355,7 @@ public final class MainActivity extends Activity {
         if(waitingInstallPermission) { waitingInstallPermission=false; if(pendingUpdate!=null&&getPackageManager().canRequestPackageInstalls())requestAssistantInstall(); }
     }
     @Override protected void onDestroy() {
-        destroyed=true; Shizuku.removeBinderReceivedListener(received); Shizuku.removeBinderDeadListener(dead);
+        destroyed=true; checkStage=null; progressHandler.removeCallbacks(checkTick); stopDownloadProgress(); Shizuku.removeBinderReceivedListener(received); Shizuku.removeBinderDeadListener(dead);
         Shizuku.removeRequestPermissionResultListener(permission);
         // A foreground install must finish its rollback even if Android recreates the Activity.
         worker.execute(() -> { try { if(local!=null)local.close(); } catch(Exception ignored) {} try { if (Shizuku.pingBinder()) Shizuku.unbindUserService(serviceArgs,connection,true); } catch(Exception ignored) {} });
