@@ -39,7 +39,7 @@ FILES = [
     'AstralParty-Hub/docs/specs/extension_channels.md',
     'AstralParty-Hub/docs/specs/package_manifest_v1_schema.json',
     'tools/export_game_catalog.py',
-    'tools/patch_thinking_time.ps1', 'tools/verify_thinking_time.ps1', 'docs/records/RELEASE_PACKAGING_20261024.md',
+    'tools/patch_thinking_time.ps1', 'tools/verify_thinking_time.ps1', 'docs/records/RELEASE_PACKAGING_20261024.md', 'docs/records/RELEASE_20261024.md',
     'tools/patch_thinking_clock.cs', 'tools/install_game_ui_r2.ps1', 'tools/install_game_ui_candidate.ps1',
     'tools/prepare_runtime_truth_fix.py', 'tools/install_runtime_truth_fix.ps1',
     'tools/patch_taptap_runtime.cs', 'tools/legacy_runtime_names.json',
