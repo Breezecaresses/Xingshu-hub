@@ -53,12 +53,16 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--desktop', type=Path, required=True)
     p.add_argument('--android', type=Path, required=True)
+    p.add_argument('--android-package', type=Path, required=True, help='Distribution ZIP; its APK must match the direct updater asset')
     p.add_argument('--notes', type=Path, required=True)
     p.add_argument('--out', type=Path, required=True)
     p.add_argument('--aapt', type=Path, default=Path('C:/Android/sdk/build-tools/35.0.0/aapt2.exe'))
     args = p.parse_args()
     build = json.loads((ROOT / 'AstralParty-Hub/src-tauri/src/update_build.json').read_text('utf-8'))
     version, sequence = build['version'], build['sequence']
+    from package_android_preview import verify_android_archive
+    phone_package = verify_android_archive(args.android_package, args.android)
+    assert phone_package['releaseVersion'] == version, 'Android ZIP build identity differs'
     with zipfile.ZipFile(args.desktop) as z:
         names = [n for n in z.namelist() if n.endswith('/release.json') and n.count('/') == 1]
         assert len(names) == 1, 'Not a complete desktop release'

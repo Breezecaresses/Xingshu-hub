@@ -86,6 +86,21 @@ class Harness { static int Main(string[] a) { try {
         envelope.write_text(json.dumps(e))
         self.run_case('verify', envelope, m['tag'], ok=False)
 
+    def test_distribution_zip_does_not_change_signed_update_targets(self):
+        from prepare_update_release import verify_assets
+        folder, archive, m = self.fixture()
+        phone_apk, phone_zip = folder / 'phone.apk', folder / 'android.zip'
+        phone_apk.write_bytes(b'isolated APK download')
+        with zipfile.ZipFile(phone_zip, 'w') as package:
+            package.writestr('phone.apk', phone_apk.read_bytes())
+            package.writestr('manual/__data', b'isolated manual payload')
+        m['android'].update(size=phone_apk.stat().st_size, sha256=hashlib.sha256(phone_apk.read_bytes()).hexdigest())
+        envelope = self.sign(folder, m)
+        self.run_case('verify', envelope, m['tag'])
+        verify_assets(m, [archive, phone_zip, phone_apk])
+        self.assertEqual(m['desktop']['asset'], archive.name)
+        self.assertEqual(m['android']['asset'], phone_apk.name)
+
     def test_repository_tag_size_and_downgrade_identity(self):
         for key, value in [('repository', 'other/repo'), ('tag', 'vother'), ('sequence', -1), ('version', 'other')]:
             folder, archive, m = self.fixture()

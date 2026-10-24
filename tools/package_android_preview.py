@@ -1,123 +1,129 @@
-"""Stage one verified phone APK; optionally retain legacy archives for local troubleshooting."""
+"""Build one phone ZIP with its APK/manual files, plus the identical APK for existing updaters."""
 import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import shutil
-import subprocess
+import tempfile
 import zipfile
+from android_payload import previous_hashes
 from project_paths import project_document
 
-ROOT=Path(__file__).resolve().parents[1]
-def sha(path): return hashlib.sha256(path.read_bytes()).hexdigest()
+ROOT = Path(__file__).resolve().parents[1]
+APK_NAME = '星枢手机安装助手.apk'
+MANUAL = '手动替换'
+PACKAGE_FILES = {'candidate.json', APK_NAME, f'{MANUAL}/__data', f'{MANUAL}/官方原版.__data',
+                 f'{MANUAL}/文件校验.json', '手机安装与手动替换.md', '兼容性说明.md',
+                 'LICENSE.txt', '先读我.txt', 'SHA256SUMS.txt'}
+
+
+def sha(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def verify_android_archive(archive, phone_apk):
+    """Bind the distribution ZIP, manual payloads and updater APK without extracting anything."""
+    with zipfile.ZipFile(archive) as package:
+        names = package.namelist()
+        assert names and len(names) == len(set(names)), 'Duplicate Android ZIP entries'
+        roots = {name.split('/')[0] for name in names}
+        assert len(roots) == 1, 'Android ZIP must have one root directory'
+        root = roots.pop()
+        assert re.fullmatch(r'XingShu_Android_[0-9A-Za-z][0-9A-Za-z.\-]{0,79}', root), 'Invalid Android ZIP root'
+        assert set(names) == {root + '/' + name for name in PACKAGE_FILES}, 'Unexpected or missing Android ZIP files'
+        assert sum(entry.file_size for entry in package.infolist()) <= 1024**3, 'Android ZIP is too large'
+        assert package.testzip() is None, 'Corrupt Android ZIP'
+        read = lambda name: package.read(root + '/' + name)
+        manifest = json.loads(read('candidate.json'))
+        assert root == 'XingShu_Android_' + manifest['releaseVersion'], 'Android ZIP version differs'
+        assert manifest['platform'] == 'ANDROID_CN' and manifest['package'] == 'com.feimo.astralparty'
+        assert manifest['nativeLibraries'] == []
+        assert manifest['candidate'] == f'{MANUAL}/__data' and manifest['vanilla'] == f'{MANUAL}/官方原版.__data'
+        assert hashlib.sha256(read(APK_NAME)).hexdigest() == sha(phone_apk), 'ZIP APK differs from updater APK'
+        for name, key in [(manifest['candidate'], 'candidateSha256'), (manifest['vanilla'], 'originalSha256')]:
+            assert hashlib.sha256(read(name)).hexdigest() == manifest[key], 'Manual payload differs: ' + name
+        manual = json.loads(read(f'{MANUAL}/文件校验.json'))
+        assert manual == {**manifest, 'candidate': '__data', 'vanilla': '官方原版.__data'}, 'Manual metadata differs'
+        with zipfile.ZipFile(phone_apk) as apk:
+            assert hashlib.sha256(apk.read('assets/candidate.__data')).hexdigest() == manifest['candidateSha256']
+            assert hashlib.sha256(apk.read('assets/vanilla.__data')).hexdigest() == manifest['originalSha256']
+        checksums = {}
+        for line in read('SHA256SUMS.txt').decode('utf8').splitlines():
+            digest, name = line.split('  ', 1)
+            assert name not in checksums, 'Duplicate checksum entry'
+            checksums[name] = digest
+        assert set(checksums) == PACKAGE_FILES - {'SHA256SUMS.txt'}, 'Incomplete Android ZIP checksums'
+        for name, digest in checksums.items():
+            assert hashlib.sha256(read(name)).hexdigest() == digest, 'Android ZIP checksum mismatch: ' + name
+    return manifest
+
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--manifest',type=Path,required=True)
-    parser.add_argument('--version',required=True)
-    parser.add_argument('--source-commit',required=True)
-    parser.add_argument('--phone-apk',type=Path,required=True)
-    parser.add_argument('--vanilla',type=Path,required=True)
-    parser.add_argument('--legacy-archives',action='store_true',help='Also generate legacy tool/manual ZIPs for local troubleshooting, not release Assets')
-    args=parser.parse_args()
-    import re
-    if not re.fullmatch('[a-f0-9]{40}',args.source_commit): raise SystemExit('Expected full source commit')
-    if not re.fullmatch(r'[0-9A-Za-z][0-9A-Za-z.\-]{0,79}',args.version): raise SystemExit('Invalid version')
-    manifest=json.loads(args.manifest.read_text('utf8'))
-    candidate=Path(manifest['candidate'])
-    assert sha(candidate)==manifest['candidateSha256']
-    assert manifest['platform']=='ANDROID_CN' and manifest['nativeLibraries']==[]
-    assert sha(args.vanilla)==manifest['originalSha256']
-    with zipfile.ZipFile(args.phone_apk) as apk:
-        assert hashlib.sha256(apk.read('assets/candidate.__data')).hexdigest()==manifest['candidateSha256']
-        assert hashlib.sha256(apk.read('assets/vanilla.__data')).hexdigest()==manifest['originalSha256']
-    name='XingShu_Android_'+args.version
-    publish=ROOT/'发布包'; publish.mkdir(exist_ok=True)
-    phone_asset=publish/(name+'.apk')
-    phone_checksum=Path(str(phone_asset)+'.sha256')
-    if phone_asset.exists() or phone_checksum.exists(): raise SystemExit('This phone package already exists; choose a new version')
-    shutil.copy2(args.phone_apk,phone_asset)
-    assert sha(phone_asset)==sha(args.phone_apk), 'Copied phone APK did not verify'
-    phone_checksum.write_text(sha(phone_asset)+'  '+phone_asset.name+'\n',encoding='utf8')
-    print(f'PHONE: {phone_asset}\nSHA256: {sha(phone_asset)}')
-    if not args.legacy_archives:
-        return
-    destination=publish/name
-    archive=publish/(name+'.zip')
-    assert not destination.exists() and not archive.exists(), 'Choose a new version'
-    destination.mkdir()
-    shutil.copy2(candidate,destination/'__data')
-    manifest['candidate']='__data'
-    manifest['sourceCommit']=args.source_commit
-    (destination/'candidate.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf8')
-    shutil.copy2(ROOT/'tools/android_runtime_device.py',destination/'android_runtime_device.py')
-    shutil.copy2(project_document(ROOT,'ANDROID_COMPATIBILITY.md'),destination/'兼容性说明.md')
-    shutil.copy2(ROOT/'LICENSE',destination/'LICENSE.txt')
-    shutil.copy2(args.phone_apk,destination/'星枢手机安装助手.apk')
-    shutil.copy2(project_document(ROOT,'ANDROID_PHONE_INSTALL.md'),destination/'手机安装与手动替换.md')
-    manual=destination/'手动替换'; manual.mkdir()
-    shutil.copy2(candidate,manual/'__data')
-    shutil.copy2(args.vanilla,manual/'官方原版.__data')
-    shutil.copy2(project_document(ROOT,'ANDROID_PHONE_INSTALL.md'),manual/'替换说明.md')
-    (manual/'文件校验.json').write_text(json.dumps({**manifest,
-        'candidate':'__data','vanilla':'官方原版.__data',
-        'supportedPreviousSha256':['3d94697f4dc6d64c2cb5fcca56339090f54e920cd7dab6de7bcc1912347e5a0f']},ensure_ascii=False,indent=2)+'\n',encoding='utf8')
-    compiler=Path(r'D:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/Roslyn/csc.exe')
-    installer=destination/'星枢安卓安装助手.exe'
-    subprocess.run([str(compiler),'/nologo','/target:winexe','/out:'+str(installer),
-                    '/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll',
-                    '/reference:System.Web.Extensions.dll',str(ROOT/'tools/AndroidPreviewInstaller.cs')],check=True)
-    subprocess.run([str(installer),'--verify-package'],check=True)
-    (destination/'先读我.txt').write_text(f'''星枢安卓预览 {args.version}
-适配游戏 com.feimo.astralparty 3.3.0，已在 TapTap 内置 MuMu 5 号实例验证。
-包含手机 APK 安装助手、电脑 ADB 安装助手与手动替换文件。
-手机 APK 是独立安装工具，通过本机无线调试配对和连接即可使用，无需电脑或 Shizuku 通知，不替换游戏 APK。
-小米 14 Pro Android 16 / HyperOS 3 已验证配对、连接、还原与安装；其他机型权限仍需实测。
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--manifest', type=Path, required=True)
+    parser.add_argument('--version', required=True)
+    parser.add_argument('--source-commit', required=True)
+    parser.add_argument('--phone-apk', type=Path, required=True)
+    parser.add_argument('--vanilla', type=Path, required=True)
+    args = parser.parse_args()
+    if not re.fullmatch('[a-f0-9]{40}', args.source_commit): raise SystemExit('Expected full source commit')
+    if not re.fullmatch(r'[0-9A-Za-z][0-9A-Za-z.\-]{0,79}', args.version): raise SystemExit('Invalid version')
+    manifest = json.loads(args.manifest.read_text('utf8'))
+    candidate = Path(manifest['candidate'])
+    assert sha(candidate) == manifest['candidateSha256'] and sha(args.vanilla) == manifest['originalSha256']
+    assert manifest['platform'] == 'ANDROID_CN' and manifest['nativeLibraries'] == []
+    name = 'XingShu_Android_' + args.version
+    publish = (ROOT / '发布包').resolve()
+    publish.mkdir(exist_ok=True)
+    destination, archive, phone_asset = publish / name, publish / (name + '.zip'), publish / (name + '.apk')
+    outputs = [destination, archive, phone_asset, Path(str(archive) + '.sha256'), Path(str(phone_asset) + '.sha256')]
+    if any(path.exists() for path in outputs): raise SystemExit('This phone package already exists; choose a new version')
+    with tempfile.TemporaryDirectory(prefix='.building-' + name + '-', dir=publish) as temp:
+        stage = Path(temp).resolve()
+        assert stage.parent == publish
+        package = stage / name
+        manual = package / MANUAL
+        manual.mkdir(parents=True)
+        shutil.copy2(args.phone_apk, package / APK_NAME)
+        shutil.copy2(candidate, manual / '__data')
+        shutil.copy2(args.vanilla, manual / '官方原版.__data')
+        manifest.update(candidate=f'{MANUAL}/__data', vanilla=f'{MANUAL}/官方原版.__data',
+                        sourceCommit=args.source_commit, releaseVersion=args.version,
+                        supportedPreviousSha256=previous_hashes(manifest))
+        (package / 'candidate.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf8')
+        (manual / '文件校验.json').write_text(json.dumps({**manifest, 'candidate': '__data', 'vanilla': '官方原版.__data'}, ensure_ascii=False, indent=2) + '\n', encoding='utf8')
+        shutil.copy2(project_document(ROOT, 'ANDROID_PHONE_INSTALL.md'), package / '手机安装与手动替换.md')
+        shutil.copy2(project_document(ROOT, 'ANDROID_COMPATIBILITY.md'), package / '兼容性说明.md')
+        shutil.copy2(ROOT / 'LICENSE', package / 'LICENSE.txt')
+        (package / '先读我.txt').write_text(f'''星枢安卓手机包 {args.version}
+适配游戏：{manifest['package']} {manifest['appVersion']}；插件：{manifest['runtimeVersion']}。
 
-本版：安卓悬浮球默认大小 64、最小 48，旧默认 44 自动迁移为 64。
-修复自动隐藏设置不生效和触屏残留悬停；启用贴边隐藏后闲置 2 秒收起，保留可点击露出区域。
-保留粉黄界面、移动步数、模组加载、触屏叠放手牌；桌面网桥仍暂停。
+推荐安装：解压后安装“{APK_NAME}”。在官方游戏更新资源、进入过大厅并正常退出后，按“手机安装与手动替换.md”完成本机无线调试配对、连接及安装。
+已有助手可直接覆盖安装，保留数据与配对身份。APK 是安装工具，不是修改后的游戏 APK。
 
-手机安装：
-1. 安装“星枢手机安装助手.apk”。在官方游戏更新资源并进过大厅后正常退出。
-2. 将助手与系统无线调试页面分屏。打开“使用配对码配对设备”，在助手填写配对端口和六位码，点“配对这部手机”。
-3. 配对后关闭配对码弹窗，从无线调试主页面读取连接端口，在助手填写并连接。两个端口不同；支持粘贴完整IP:端口，只连接本机。
-4. 检查游戏与目录权限，再点击“安装 / 更新星枢”。撤销时点“还原官方原版”；必须等待SHA256校验通过。
-5. 支持原版、本版和已验证预览4，未知资源禁止覆盖。游戏运行时拒绝替换；安装后可关闭无线调试。
-6. 已正常运行的Shizuku可选用，不是安装前提。普通APK仍需用户完成系统调试授权。
-详细步骤、手动文件位置、系统权限处理见“手机安装与手动替换.md”。
+手动替换：“{MANUAL}/__data”为插件文件，“{MANUAL}/官方原版.__data”用于还原；具体目标路径和 SHA256 见 candidate.json、文件校验.json 及安装说明。先正常退出游戏并保留备份；未知资源版本不要强行覆盖。普通文件管理器可能无权访问 Android/data，推荐使用助手完成授权安装。
 
-安装（电脑连接手机，需已安装 Android platform-tools；不需要 Python）：
-1. 在官方游戏中完成资源更新并进过一次大厅，正常退出。
-2. 连接已授权的设备；执行 adb devices 确认序列号，只选择自己的目标设备。
-3. 完整解压，运行“星枢安卓安装助手.exe”，选择 adb.exe、刷新设备并选择目标，点击“安装 / 更新”。
-4. 安装器先核对游戏版本与原版缓存 SHA256，备份原版后才安装；不清除账号数据、不修改 APK、不启用 root。
-5. 正常从官方渠道启动游戏。助手保留每台设备的备份与记录，后续新版继续使用；未知缓存会被拒绝。
-6. 以前用 Python 脚本装过预览的设备，请先沿用原 backup 文件夹和 deployment.json 还原，再使用助手。
-
-还原：选择原设备，点击“还原原版”。备份在 %LOCALAPPDATA%/XingShu/AndroidBackups 中，请保留。
-游戏仍在运行时助手会拒绝替换，请正常退出后重试。资源版本不匹配时使用官方游戏修复，再更新并重进大厅。
-备用 Python 命令行工具也保留在包内。手机与电脑安装记录分别保存；跨工具出现未知版本提示时先还原原版。
-
-十倍思考仍受服务端截止限制。MuMu 曾出现一次原生音频引擎崩溃，未确认原因；完整已知边界见兼容性说明。
+电脑连接手机的安装工具已包含在另一个电脑端 ZIP 内，本包不再附带 Windows EXE。
+GitHub 会另外保留与包内完全相同的 APK 和签名更新清单，供“检查助手更新”直接下载，无需手机先下载并解压整个 ZIP。
 源码：https://github.com/Breezecaresses/Xingshu-hub
 提交：{args.source_commit}
-游戏资源版权归原权利人；不含账号凭据、个人日志或原生变速 DLL。
-''',encoding='utf-8-sig')
-    entries=sorted(p for p in destination.rglob('*') if p.is_file())
-    assert all('apx' not in str(p.relative_to(destination)).lower() for p in entries)
-    (destination/'SHA256SUMS.txt').write_text(''.join(f'{sha(p)}  {p.relative_to(destination).as_posix()}\n' for p in entries),encoding='utf8')
-    with zipfile.ZipFile(archive,'x',zipfile.ZIP_DEFLATED,compresslevel=9) as output:
-        for file in sorted(destination.rglob('*')):
-            if file.is_file(): output.write(file,Path(name)/file.relative_to(destination))
-    with zipfile.ZipFile(archive) as output: assert output.testzip() is None
-    Path(str(archive)+'.sha256').write_text(sha(archive)+'  '+archive.name+'\n',encoding='utf8')
-    print(f'READY: {archive}\nSIZE: {archive.stat().st_size/1024/1024:.2f} MiB\nSHA256: {sha(archive)}')
-    manual_archive=publish/('XingShu_Android_Manual_'+args.version+'.zip')
-    with zipfile.ZipFile(manual_archive,'x',zipfile.ZIP_DEFLATED,compresslevel=9) as output:
-        for file in sorted(manual.iterdir()): output.write(file,Path(manual_archive.stem)/file.name)
-    with zipfile.ZipFile(manual_archive) as output: assert output.testzip() is None
-    Path(str(manual_archive)+'.sha256').write_text(sha(manual_archive)+'  '+manual_archive.name+'\n',encoding='utf8')
-    print(f'MANUAL: {manual_archive}\nSHA256: {sha(manual_archive)}')
+''', encoding='utf-8-sig')
+        entries = sorted(path for path in package.rglob('*') if path.is_file())
+        (package / 'SHA256SUMS.txt').write_text(''.join(f'{sha(path)}  {path.relative_to(package).as_posix()}\n' for path in entries), encoding='utf8')
+        staged_archive = stage / archive.name
+        with zipfile.ZipFile(staged_archive, 'x', zipfile.ZIP_DEFLATED, compresslevel=9) as output:
+            for path in sorted(package.rglob('*')):
+                if path.is_file(): output.write(path, Path(name) / path.relative_to(package))
+        verify_android_archive(staged_archive, args.phone_apk)
+        package.rename(destination)
+        staged_archive.rename(archive)
+        shutil.copy2(destination / APK_NAME, phone_asset)
+        for asset in (archive, phone_asset):
+            Path(str(asset) + '.sha256').write_text(sha(asset) + '  ' + asset.name + '\n', encoding='utf8')
+    print(f'PHONE ZIP: {archive}\nSIZE: {archive.stat().st_size / 1024 / 1024:.2f} MiB\nSHA256: {sha(archive)}')
+    print(f'UPDATER APK: {phone_asset}\nSHA256: {sha(phone_asset)}')
 
-if __name__=='__main__': main()
+
+if __name__ == '__main__':
+    main()

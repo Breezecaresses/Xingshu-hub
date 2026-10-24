@@ -30,7 +30,7 @@
 
 ## 群发测试包
 
-后续[发布页](https://github.com/Breezecaresses/Xingshu-hub/releases)暂时只提供两个安装包：电脑端 `XingShu_Desktop_<版本>.zip`、安卓手机 `XingShu_Android_<版本>.apk`。电脑各渠道合在同一个 ZIP 内选择；手机 APK 内含安装助手与对应插件。电脑端完整解压后运行“星枢安装助手.exe”。不再单独发布手机工具或手动替换 ZIP，校验文件与签名更新清单仍保留。具体约定见[发布下载项](docs/guides/RELEASE_PACKAGING.md)。旧版本内容与验证范围以各版本记录为准。
+后续[发布页](https://github.com/Breezecaresses/Xingshu-hub/releases)按两个 ZIP 群发：电脑端 `XingShu_Desktop_<版本>.zip`、安卓手机 `XingShu_Android_<版本>.zip`。电脑各渠道合在同一个 ZIP 内选择；安卓 ZIP 同时包含手机安装助手 APK、手动替换文件和说明。电脑端完整解压后运行“星枢安装助手.exe”。GitHub 另外保留相同的独立 APK、校验文件与签名清单供自动更新，群发只需两个 ZIP。具体约定见[发布下载项](docs/guides/RELEASE_PACKAGING.md)。旧版本内容与验证范围以各版本记录为准。
 
 安卓手机助手支持内置无线调试配对与连接，Android 11+ 可在手机上独立安装、更新和还原，无需电脑或 Shizuku 通知；步骤见[手机安装说明](docs/guides/ANDROID_PHONE_INSTALL.md)。电脑 Hub 包内仍保留连接手机安装、更新和还原所需的配套组件。
 
