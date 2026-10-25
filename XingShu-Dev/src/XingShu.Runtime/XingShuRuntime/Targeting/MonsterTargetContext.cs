@@ -38,7 +38,7 @@ namespace XingShuRuntime.Targeting
             if (monster == null || monster.player == null || graph == null) return null;
             var character = monster.CharacterInst;
             int node = character != null && character.standLand != null ? character.standLand.Id : monster.player.NodeId;
-            if (node <= 0) return null;
+            if (node < 0) return null;
             List<int> neighbors;
             if (!graph.TryGetValue(node, out neighbors) || neighbors == null) return null;
 
@@ -61,20 +61,20 @@ namespace XingShuRuntime.Targeting
                     facing.y = 0;
                     if (facing.sqrMagnitude < 0.0001f) return null;
                     facing = facing.normalized;
-                    int matched = 0;
+                    int matched = -1;
                     foreach (int next in neighbors)
                     {
                         UnitLand land;
-                        if (next <= 0 || next == node || !graph.ContainsKey(next) ||
+                        if (next < 0 || next == node || !graph.ContainsKey(next) ||
                             !LandManager.inst.NodeDict.TryGetValue(next, out land) || land == null) continue;
                         Vector3 direction = land.transform.localPosition - character.standLand.transform.localPosition;
                         direction.y = 0;
                         if (direction.sqrMagnitude < 0.0001f || Vector3.Dot(facing, direction.normalized) < 0.999f) continue;
                         // Collinear exits cannot be distinguished by an arrow.
-                        if (matched != 0) { source = "箭头对应多个重合出口，等待确认"; return null; }
+                        if (matched >= 0) { source = "箭头对应多个重合出口，等待确认"; return null; }
                         matched = next;
                     }
-                    if (matched == 0) { source = "地图箭头与当前格出口暂不一致"; return null; }
+                    if (matched < 0) { source = "地图箭头与当前格出口暂不一致"; return null; }
                     if (!visible.Contains(matched)) visible.Add(matched);
                 }
                 source = "地图可见箭头";
@@ -89,7 +89,7 @@ namespace XingShuRuntime.Targeting
             var forward = new List<int>();
             foreach (int next in arrows)
             {
-                if (next <= 0 || next == node || !neighbors.Contains(next) || !graph.ContainsKey(next)) return null;
+                if (next < 0 || next == node || !neighbors.Contains(next) || !graph.ContainsKey(next)) return null;
                 if (!forward.Contains(next)) forward.Add(next);
             }
             return forward;
@@ -108,7 +108,7 @@ namespace XingShuRuntime.Targeting
             var input = new TargetPredictionInput
             {
                 MonsterId = monsterId,
-                CurrentNode = 0,
+                CurrentNode = -1,
                 PostMoveNode = postMoveNode,
                 PostMoveNodeKnown = postMoveNodeKnown,
                 HasAttackedThisTurn = hasAttackedThisTurn,
@@ -148,6 +148,7 @@ namespace XingShuRuntime.Targeting
                     }
                     input.GraphEdges = edges;
                     input.GraphKnown = edges.Count > 0;
+                    input.BranchPriorities = MonsterBranchProfiles.Match(edges);
                 }
 
                 // 2. 只读提取对局玩家与怪物状态
@@ -175,7 +176,7 @@ namespace XingShuRuntime.Targeting
                             float progress = 0f;
                             bool slotKnown = bpd.player != null;
                             int slot = slotKnown ? bpd.player.Slot : -1;
-                            bool isValid = isAlive && nodeId > 0;
+                            bool isValid = isAlive && nodeId >= 0;
 
                             candidatePlayers.Add(new CandidatePlayer(pId, nodeId, progress, progressKnown, slot, slotKnown, isAlive, isValid));
                         }
@@ -190,7 +191,7 @@ namespace XingShuRuntime.Targeting
                             {
                                 input.MonsterId = bpd.player.Id;
                                 input.CurrentNode = mNodeId;
-                                input.MonsterNodeKnown = mNodeId > 0;
+                                input.MonsterNodeKnown = mNodeId >= 0;
                                 // 严禁将 PostMoveNode 默认等同于 CurrentNode！真实运行时来源未闭环前保持 PostMoveNodeKnown = false
                             }
                         }

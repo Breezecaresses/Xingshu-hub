@@ -1996,6 +1996,18 @@ impl BridgeServer {
         }
 
         match envelope.message_type.as_str() {
+            "GAME_LIBRARY_LIVE_SETTLEMENT" => {
+                if self.connection_manager.get_generation(connection_id) != Some(generation) { return; }
+                let Some(session) = self.get_runtime_session(connection_id) else { return; };
+                if session.generation != generation || session.platform_id != platform_id { return; }
+                let data = match serde_json::from_value::<crate::game_library::MatchDetail>(envelope.payload) {
+                    Ok(data) => data,
+                    Err(e) => { warn!("Invalid live settlement: {}", e); return; }
+                };
+                if let Some(store) = self.game_library.lock().unwrap().as_ref() {
+                    if let Err(e) = store.save_live_settlement(&session, data) { warn!("Live settlement rejected: {}", e); }
+                }
+            }
             "GAME_LIBRARY_MATCH_DETAIL" => {
                 if self.connection_manager.get_generation(connection_id) != Some(generation) { return; }
                 let Some(session) = self.get_runtime_session(connection_id) else { return; };

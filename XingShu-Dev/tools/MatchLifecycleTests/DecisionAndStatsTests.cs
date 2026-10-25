@@ -1,10 +1,15 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using XingShuRuntime.MatchPort;
 using XingShuRuntime.Utilities;
 
 class DecisionAndStatsTests
 {
+    sealed class EqualToken
+    {
+        public override bool Equals(object other) => other is EqualToken;
+        public override int GetHashCode() => 1;
+    }
     static int count;
     static void Check(bool ok, string text) { if (!ok) throw new Exception(text); count++; Console.WriteLine("PASS " + text); }
     static bool Near(double a, double b) => Math.Abs(a - b) < .0001;
@@ -88,11 +93,36 @@ class DecisionAndStatsTests
         ledger.Hp("match-a", new object(), 2, 1, 3, 0, 3);
         Check(ledger.Rows[1].Healing == 3, "identified healer receives actual recovered HP");
         ledger.Hp("match-a", new object(), 2, 0, 2, 3, 5);
-        Check(!ledger.Rows[1].HealingKnown && !ledger.Rows[2].HealingKnown, "unknown healing attribution withholds reference scores");
+        Check(!ledger.Rows[1].HealingKnown && !ledger.Rows[2].HealingKnown, "unattributed healing waits for official totals instead of inventing a healer");
+        ledger.ServerHealing("match-a", 1, 0, false);
+        ledger.Hp("match-a", new object(), 2, 1, 2, 3, 5);
+        Check(ledger.Rows[1].Healing == 5 && !ledger.Rows[1].HealingFromServer,
+            "PVE zero diagnostic cannot overwrite confirmed healing or suppress later recovery");
+        ledger.ServerHealing("match-a", 1, 99, false);
+        Check(ledger.Rows[1].Healing == 5, "an unvalidated PVE positive field is not silently mixed with effective HP healing");
+        ledger.Hp("match-a", new object(), 2, 1, 2, 9, 10);
+        Check(ledger.Rows[1].Healing == 6, "overheal counts only the observed HP recovery instead of the reported effect amount");
+        ledger.Hp("match-a", new object(), 2, 1, 2, 10, 10);
+        Check(ledger.Rows[1].Healing == 6, "full-HP card effects do not invent effective healing");
+        ledger.ServerHealing("match-a", 1, 0);
+        Check(ledger.Rows[1].HealingKnown && ledger.Rows[1].HealingFromServer && ledger.Rows[1].Healing == 0,
+            "official zero healing restores confidence and replaces an inaccurate observed total");
+        ledger.Hp("match-a", new object(), 2, 0, 2, 3, 5);
+        Check(ledger.Rows[1].HealingKnown && !ledger.Rows[2].HealingKnown,
+            "later unassigned regeneration cannot erase another participant's official healing");
+        ledger.ServerHealing("match-a", 1, 23);
+        ledger.Hp("match-a", new object(), 2, 1, 3, 5, 8);
+        Check(ledger.Rows[1].Healing == 23, "delayed healing animation is not added on top of an official total");
+        ledger.ServerHealing("old-match", 1, 99); ledger.ServerHealing("match-a", 1, -1);
+        Check(ledger.Rows[1].Healing == 23, "wrong-match and invalid official healing cannot replace confirmed data");
+        ledger.ServerHealing("match-a", 2, 4);
+        Check(ledger.Rows[2].Healing == 4 && ledger.Rows[2].HealingKnown,
+            "each participant independently recovers from unknown healing attribution");
         var row = ledger.Rows[1]; row.MetricsReady = row.HpReady = row.MovementReady = row.TransferReady = true; row.Gold = 27;
         var live = new HashSet<long> { 1, 2 };
         var frame = StatsWidgetPresenter.Build(ledger, live, true, DateTime.Now, "test");
-        Check(frame.Players[0].Metrics.Length == 9 && Array.IndexOf(frame.Players[0].Metrics, "27") == -1 && frame.Players[0].Score == "—", "live card has nine metrics without settlement gold");
+        Check(frame.Players[0].Metrics.Length == 9 && Array.IndexOf(frame.Players[0].Metrics, "27") == -1,
+            "live card has nine metrics without settlement gold");
         row.Settled = true;
         frame = StatsWidgetPresenter.Build(ledger, live, true, DateTime.Now, "test");
         Check(Array.IndexOf(frame.Players[0].Metrics, "27") == -1 && row.Gold == 27 && frame.Status.Contains("服务器结算"), "settlement updates source without exposing or discarding stored gold");
@@ -105,6 +135,90 @@ class DecisionAndStatsTests
         row.MovementKnown = false;
         frame = StatsWidgetPresenter.Build(ledger, live, true, DateTime.Now, "test");
         Check(frame.Players[0].Metrics[8] == "—", "invalidated movement is withheld instead of becoming zero");
+        ledger.Settlement(1, 4, 1, 234, 51, 23, 90, 15, 42);
+        Check(row.Kills == 4 && row.Deaths == 1 && row.Damage == 234 && row.Taken == 51 && row.Healing == 23 && row.Coins == 90 && row.Transferred == 15 && row.Movement == 42, "official settlement replaces partial observed metrics exactly");
+        Check(row.MetricsReady && row.HealingKnown && row.KillsKnown && row.DamageKnown && row.TransferKnown && row.MovementKnown && row.Settled, "official metrics restore attribution confidence");
+        ledger.ServerHealing("match-a", 1, 1);
+        Check(row.Healing == 23, "late hero-info reply cannot overwrite frozen settlement healing");
+        ledger.Hp("match-a", new object(), 1, 2, -5, 5, 0);
+        ledger.Hp("match-a", new object(), 2, 1, -5, 5, 0);
+        ledger.Movement("match-a", 1, 99);
+        ledger.Transfer("match-a", "late", 1, 2, 50);
+        Check(row.Deaths == 1 && row.Taken == 51 && row.Damage == 234 && row.Kills == 4 && row.Movement == 42 && row.Transferred == 15,
+            "late HP, movement and transfer events cannot mutate calibrated settlement values");
+        ledger.Settlement(1, 4, 1, 234, 51, 23, 90, 15, 42);
+        Check(row.Damage == 234 && row.Kills == 4, "duplicate settlement is idempotent");
+        var refresh = new XingShu.Runtime.CareerRefreshWindow();
+        Check(!refresh.Due(0), "career refresh does not start unsolicited");
+        refresh.Request(100,2);
+        Check(!refresh.Due(101) && refresh.Due(102), "career refresh honours settlement delay");
+        refresh.Sent(102);Check(!refresh.Due(116) && refresh.Due(117), "career retry is bounded in frequency");
+        refresh.Retry(117);Check(!refresh.Due(121) && refresh.Due(122), "failed profile request retries after five seconds");
+        Check(!refresh.Due(168), "career retry stops after its bounded window");
+        var liveLedger = new MatchLedger(); liveLedger.Clear("live-healing");
+        var liveFour = new HashSet<long> { 1, 2, 3, 4 };
+        for (int i = 1; i <= 4; i++) {
+            liveLedger.Register(i, i - 1, "P" + i);
+            var participant = liveLedger.Rows[i];
+            participant.MetricsReady = participant.HpReady = participant.TransferReady = participant.MovementReady = true;
+            participant.Damage = i * 10; participant.Coins = i * 5;
+        }
+        liveLedger.Hp("live-healing", new object(), 1, 0, 3, 2, 5);
+        var estimated = StatsWidgetPresenter.Build(liveLedger, liveFour, true, DateTime.Now, "");
+        Check(estimated.Players[0].Metrics[4] == "≥0" && Array.TrueForAll(estimated.Players, p => p.Score.StartsWith("≈")),
+            "unattributed recovery preserves a visible confirmed lower bound and explicitly estimated scores");
+        Check(estimated.Partial && estimated.Footer.Contains("估算") && Array.TrueForAll(estimated.Players, p => !p.Mvp),
+            "incomplete healing is disclosed and never declares a definite MVP");
+        liveLedger.Hp("live-healing", new object(), 1, 1, 2, 5, 7);
+        estimated = StatsWidgetPresenter.Build(liveLedger, liveFour, true, DateTime.Now, "");
+        Check(estimated.Players[0].Metrics[4] == "≥2", "confirmed healing still grows after an unknown-source effect");
+        var fullHpLedger = new MatchLedger(); fullHpLedger.Clear("full"); fullHpLedger.Register(1, 0, "P1");
+        fullHpLedger.Hp("full", new object(), 1, 0, 2, 10, 10);
+        Check(fullHpLedger.Rows[1].Healing == 0 && fullHpLedger.Rows[1].HealingKnown,
+            "unassigned full-HP effects do not invalidate observed effective healing");
+        for (int i = 1; i <= 4; i++) liveLedger.ServerHealing("live-healing", i, i == 1 ? 8 : 0);
+        var restored = StatsWidgetPresenter.Build(liveLedger, liveFour, true, DateTime.Now, "");
+        Check(Array.TrueForAll(restored.Players, p => p != null && p.Score != "—") && restored.Players[0].Metrics[4] == "8",
+            "official healing restores all four live scores and the treatment metric after unknown regeneration");
+        liveLedger.Hp("live-healing", new object(), 2, 0, 2, 3, 5);
+        restored = StatsWidgetPresenter.Build(liveLedger, liveFour, true, DateTime.Now, "");
+        Check(Array.TrueForAll(restored.Players, p => p.Score != "—"),
+            "unknown regeneration no longer makes every live score disappear once totals are confirmed");
+        var retained = new LastSettlementCache();
+        var sourceMap = new HealingSourceMap(); sourceMap.Clear("match-a");
+        object hpEffect = new EqualToken(); sourceMap.Remember("match-a", hpEffect, 2, 1);
+        Check(sourceMap.Resolve("match-a", hpEffect, 2, 0) == 1, "card/skill enclosing message supplies the source for the same HP object");
+        Check(sourceMap.Resolve("match-a", new EqualToken(), 2, 0) == 0, "equal-valued protobuf effects are not confused with identical message references");
+        Check(sourceMap.Resolve("match-a", hpEffect, 3, 0) == 0 && sourceMap.Resolve("match-b", hpEffect, 2, 0) == 0,
+            "HP source mapping requires the same target and match");
+        Check(sourceMap.Resolve("match-a", hpEffect, 2, 9) == 9, "explicit nonzero protocol source is never overwritten by an enclosing actor");
+        sourceMap.Remember("match-a", hpEffect, 2, 3);
+        Check(sourceMap.Resolve("match-a", hpEffect, 2, 0) == 0, "conflicting enclosing actors remain unknown");
+        sourceMap.Clear("match-b");
+        Check(sourceMap.Resolve("match-a", hpEffect, 2, 0) == 0, "switching context discards former HP source associations");
+        sourceMap.Remember("match-b", hpEffect, 2, 1);
+        for (int i = 0; i < 512; i++) sourceMap.Remember("match-b", new object(), 2, 1);
+        Check(sourceMap.Resolve("match-b", hpEffect, 2, 0) == 0, "source identity cache is bounded and evicts old effects");
+        var finalFrame = StatsWidgetPresenter.Build(ledger, live, true, DateTime.Now, "official settlement");
+        retained.Capture(101, "match-a", finalFrame);
+        Check(retained.Read(101, "match-a").Players[0].Metrics[4] == "23", "completed treatment is retained separately from the live ledger");
+        ledger.Clear(null);
+        var previousResult = retained.Read(101, null);
+        Check(previousResult != null && previousResult.Players[0].Metrics[2] == "234" && previousResult.Players[0].Metrics[4] == "23",
+            "returning to the room and clearing live observation preserves the completed result");
+        Check(previousResult.Status.Contains("上一局结算") && previousResult.Footer.Contains("人机局不加入官方战绩"),
+            "retained result is visibly distinguished from live data and official history");
+        Check(retained.Read(101, "match-b") == null && retained.Read(101, null) == null,
+            "starting a different match permanently invalidates the previous display snapshot");
+        retained.Capture(101, "match-a", finalFrame);
+        Check(retained.Read(202, null) == null && retained.Read(101, null) == null,
+            "account switching cannot expose or resurrect another account's result");
+        retained.Capture(101, "match-a", finalFrame);
+        Check(retained.Read(0, null) == null, "logout clears the retained result");
+        retained.Capture(101, "match-a", restored);
+        Check(retained.Read(101, null) == null, "an unfinished live frame is not retained as a settlement");
+        retained.Capture(101, "match-a", finalFrame); retained.Clear();
+        Check(retained.Read(101, null) == null, "turning off collection can explicitly clear the retained result");
         ledger.Clear("match-b");
         Check(ledger.Rows.Count == 0 && ledger.Issues.Count == 0, "new match clears observed statistics");
         Console.WriteLine(count + " decision/statistics checks passed");

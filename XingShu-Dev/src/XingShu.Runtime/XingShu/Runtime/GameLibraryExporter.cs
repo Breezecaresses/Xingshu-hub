@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,8 +21,26 @@ namespace XingShu.Runtime
         private static float _next;
         private static string _last;
         private static bool _force;
-        private static bool _careerPending;
-        private static float _lastCareerRequest = -60f;
+        private static readonly CareerRefreshWindow CareerRefresh = new CareerRefreshWindow();
+        // Native speed plugins can accelerate even Unity's unscaled clock. Network
+        // throttles, request deadlines and settlement retention use wall-clock time.
+        // Reuse the decision timer's clock: Stopwatch/QPC is also intercepted by
+        // the desktop native accelerator. Keep UTC fallback adjustments monotonic.
+        private static double _clockLast = XingShuRuntime.Utilities.ThinkingClock.RealSeconds(), _clockElapsed;
+        private static float Now
+        {
+            get
+            {
+                double now = XingShuRuntime.Utilities.ThinkingClock.RealSeconds();
+                _clockElapsed += Math.Max(0d, now - _clockLast);
+                _clockLast = Math.Max(_clockLast, now);
+                return (float)_clockElapsed;
+            }
+        }
+        private static PendingMatch _settlement;
+        private static PlayerCareer _ownCareer;
+        private static AccountLogic _careerAccount;
+        private static RPCAsyncResult _profileRpc;
         private static readonly FieldInfo CareerField = typeof(AccountLogic).GetField("playerCareer", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly FieldInfo ReplayCdnField = typeof(ReplayLogic).GetField("_cdnBaseUrl", BindingFlags.Instance | BindingFlags.NonPublic);
         private const int MaxReplayBytes = 32 * 1024 * 1024;
@@ -61,13 +79,41 @@ namespace XingShu.Runtime
             public ReplayReadException(string code) : base(code) { }
         }
 
-        public static void Request(float delay = 0f) { _force = true; _careerPending = true; _next = Time.unscaledTime + delay; }
+        public static void Request(float delay = 0f) { CareerRefresh.Request(Now, delay); _next = Now + delay; }
+
+        // Keep an account-scoped copy of official replies. The game's shared
+        // profile cache may be empty or may currently show another player.
+        internal static void ObserveCareer(party.protocol.GetShowPlayerS2C reply)
+        {
+            var account = SimpleSingletonProvider<GameLogicManager>.inst.account;
+            if (account == null || !account.online || reply?.ShowData == null ||
+                reply.ShowData.PlayerId != account.GetPlayerID()) return;
+            var career = new PlayerCareer(); career.UpdateData(reply);
+            _careerAccount = account; _ownCareer = career;
+            _force = true; _next = 0f;
+            XingShuRuntimeHost.LogLifecycle("[GameLibrary] Own career reply captured; records=" + (career.Records?.Count ?? 0));
+        }
+
+        internal static void ObserveDetail(party.protocol.GetPlayerFightRecordS2C reply)
+        {
+            var request = _detail;
+            if (request == null || reply == null || _careerAccount != request.Account ||
+                _ownCareer == null || _ownCareer.playerId != request.PlayerId) return;
+            _ownCareer.UpdateFightRecordDetail(reply.RecordData);
+        }
+
+        private static PlayerCareer OwnCareer(AccountLogic account, long pid)
+        {
+            if (_careerAccount == account && _ownCareer != null && _ownCareer.playerId == pid) return _ownCareer;
+            var shared = CareerField == null ? null : CareerField.GetValue(account) as PlayerCareer;
+            return shared != null && shared.playerId == pid ? shared : null;
+        }
 
         public static void Tick()
         {
             TickMatchDetail();
-            if (Time.unscaledTime < _next) return;
-            _next = Time.unscaledTime + 5f;
+            if (Now < _next) return;
+            _next = Now + 5f;
             var bridge = XingShuBridgeClient.Instance;
             if (!bridge.IsHandshakeComplete || !SimpleSingletonProvider<GameLogicManager>.hasInstance) return;
             try
@@ -98,13 +144,28 @@ namespace XingShu.Runtime
                     }
                 }
                 // Use the game's own authenticated, read-only profile RPC; no UI-opening wrapper.
-                if (_careerPending && Time.unscaledTime - _lastCareerRequest >= 30f && MonoSingletonProvider<NetManager>.hasInstance)
+                if (CareerRefresh.Due(Now) && MonoSingletonProvider<NetManager>.hasInstance && MonoSingletonProvider<NetManager>.inst.IsConnected &&
+                    (_profileRpc == null || !_profileRpc.keepWaiting))
                 {
-                    _lastCareerRequest = Time.unscaledTime;
-                    MonoSingletonProvider<NetManager>.inst.RPC.GetShowPlayerC2S.GetShowPlayerC2SCall(new party.protocol.GetShowPlayerC2S { PlayerId = pid });
-                    _careerPending = false;
+                    CareerRefresh.Sent(Now);
+                    var rpc = MonoSingletonProvider<NetManager>.inst.RPC.GetShowPlayerC2S.GetShowPlayerC2SCall(new party.protocol.GetShowPlayerC2S { PlayerId = pid });
+                    _profileRpc = rpc;
+                    XingShuRuntimeHost.LogLifecycle("[GameLibrary] Own career refresh sent");
+                    if (rpc == null) CareerRefresh.Retry(Now);
+                    else
+                    {
+                        int captured = 0;
+                        Action<RPCAsyncResult> completed = result => {
+                            if (Interlocked.Exchange(ref captured, 1) != 0) return;
+                            _force = true; _next = 0f;
+                            XingShuRuntimeHost.LogLifecycle("[GameLibrary] Own career refresh completed; error=" + result.errId);
+                            if (result.errId != 0 || OwnCareer(account, pid) == null) CareerRefresh.Retry(Now);
+                        };
+                        rpc.OnFinished.AddOnce(completed);
+                        if (!rpc.keepWaiting) { rpc.OnFinished.RemoveListener(completed); completed(rpc); }
+                    }
                 }
-                var career = CareerField == null ? null : CareerField.GetValue(account) as PlayerCareer;
+                var career = OwnCareer(account, pid);
                 object records = null;
                 // A viewed remote player's career must never become this account's history.
                 if (career != null && career.playerId == pid && career.Records != null)
@@ -121,14 +182,82 @@ namespace XingShu.Runtime
                 };
                 string json = BridgeJson.Serialize(payload);
                 if (Encoding.UTF8.GetByteCount(json) > 60000) return;
-                if (!_force && json == _last) return;
-                if (bridge.SendEnvelope("GAME_LIBRARY_SNAPSHOT", payload)) { _last = json; _force = false; }
+                if (_force || json != _last)
+                    if (bridge.SendEnvelope("GAME_LIBRARY_SNAPSHOT", payload)) { _last = json; _force = false; }
+                // The summary must first have appeared in the authenticated own-account career.
+                // This binds live settlement metrics to the same immutable history identity.
+                if (_settlement != null)
+                {
+                    if (_settlement.PlayerId != pid || Now > _settlement.Deadline)
+                    {
+                        XingShuRuntimeHost.LogLifecycle("[GameLibrary] Live settlement not archived: account changed or matching official history did not arrive before expiry");
+                        _settlement = null;
+                    }
+                    else if (career != null && career.playerId == pid && career.Records != null && career.Records.Any(r =>
+                        r.Time == _settlement.Time && r.HeroId == _settlement.HeroId && r.MapType == _settlement.MapId &&
+                        r.ReplayId == _settlement.ReplayId && r.Version == _settlement.Version))
+                    {
+                        if (SendMatch(_settlement, "ready", "", "", "GAME_LIBRARY_LIVE_SETTLEMENT"))
+                        {
+                            XingShuRuntimeHost.LogLifecycle("[GameLibrary] Live settlement published with matching official history");
+                            _settlement = null;
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
                 // Retry next tick, without affecting game input, scenes or network requests.
                 XingShuRuntimeHost.LogLifecycle("[GameLibrary] Snapshot deferred: " + ex.GetType().Name);
             }
+        }
+
+        public static void ObserveSettlement(party.protocol.GameFinishS2C finish)
+        {
+            if (finish == null || !SimpleSingletonProvider<GameLogicManager>.hasInstance) return;
+            var logic = SimpleSingletonProvider<GameLogicManager>.inst;
+            var room = logic.room?.curRoomInfo;
+            var account = logic.account;
+            if (account == null || !account.online || room?.info == null || room.Id != finish.RoomId ||
+                logic.replay?.Session?.IsReplay == true || logic.watch?.PlayerIsWatcher() == true)
+            {
+                XingShuRuntimeHost.LogLifecycle("[GameLibrary] Settlement skipped: invalid account/room context, replay or spectator");
+                return;
+            }
+            long pid = account.GetPlayerID();
+            var own = room.Players.FirstOrDefault(p => p != null && p.Id == pid && p.Slot >= 0 && p.Slot <= 3 && p.Hero != null);
+            if (own == null || finish.FinishTime <= 0 || string.IsNullOrEmpty(finish.ReplayId))
+            {
+                XingShuRuntimeHost.LogLifecycle("[GameLibrary] Settlement skipped: own participant, finish time or replay identity missing");
+                return;
+            }
+            Request(2f);
+            var participants = new List<Dictionary<string, object>>();
+            foreach (var p in room.Players)
+            {
+                party.protocol.PlayerFinishAchieve a;
+                if (p?.Hero == null || p.Slot < 0 || p.Slot > 3 || !finish.NewAchieve.TryGetValue(p.Id, out a)) continue;
+                int rank; if (!finish.Rank.TryGetValue(p.Id, out rank)) rank = p.TeamId == finish.Winer ? 1 : 2;
+                participants.Add(new Dictionary<string, object> {
+                    { "playerId", p.Id }, { "name", Limit(p.GetNick(), 100) }, { "heroId", p.Hero.HeroId },
+                    { "rank", rank }, { "level", p.Hero.Lv }, { "gold", p.Hero.Gold }, { "slot", p.Slot },
+                    { "giveUp", false }, { "playerLevel", p.Level },
+                    { "kills", a.KillCount }, { "deaths", a.TotalDie }, { "damage", a.TotalDamage },
+                    { "taken", a.TotalInjured }, { "healing", a.TreatmentScore }, { "coins", a.TotalGold },
+                    { "transfer", a.PveTransferGold }, { "movement", a.MovePoint }, { "turns", room.Round }
+                });
+            }
+            if (!participants.Any(p => (long)p["playerId"] == pid))
+            {
+                XingShuRuntimeHost.LogLifecycle("[GameLibrary] Settlement skipped: official achievements do not include own participant");
+                return;
+            }
+            _settlement = new PendingMatch { RequestId = "", PlayerId = pid, Time = finish.FinishTime,
+                HeroId = own.Hero.HeroId, MapId = finish.MapType, ReplayId = finish.ReplayId, Version = finish.Version,
+                Deadline = Now + 150f, Participants = participants, StatsSource = "game_settlement",
+                ArenaId = room.MapId, Rounds = room.Round,
+                DurationSeconds = (int)Math.Max(0, Math.Min(604800, finish.FinishTime - room.info.StartTime)) };
+            XingShuRuntimeHost.LogLifecycle("[GameLibrary] Live settlement captured; participants=" + participants.Count + "; waiting for matching official history");
         }
 
         /// <summary>Exactly one user-selected, own-account history request; invoked on Unity Update.</summary>
@@ -145,7 +274,7 @@ namespace XingShu.Runtime
                     RequestId = requestId,
                     PlayerId = Number(data, "playerId"), Time = Number(data, "time"),
                     Index = checked((int)Number(data, "index")), HeroId = checked((int)Number(data, "heroId")),
-                    MapId = checked((int)Number(data, "mapId")), Deadline = Time.unscaledTime + 35f
+                    MapId = checked((int)Number(data, "mapId")), Deadline = Now + 35f
                 };
                 if (request.PlayerId <= 0 || request.Time <= 0 || request.Index < 0 || request.HeroId <= 0 || request.MapId <= 0)
                 { SendMatchError(request, "INVALID_REQUEST", "对局请求字段不完整"); return; }
@@ -156,9 +285,9 @@ namespace XingShu.Runtime
                 { SendMatchError(request, "ACCOUNT_MISMATCH", "当前登录账号与该历史对局不一致"); return; }
                 if (_detail != null)
                 { SendMatchError(request, "BUSY", "上一场对局详情仍在读取"); return; }
-                if (Time.unscaledTime - _lastDetailRequest < 2f)
+                if (Now - _lastDetailRequest < 2f)
                 { SendMatchError(request, "RATE_LIMITED", "请稍后再读取对局详情"); return; }
-                var career = CareerField == null ? null : CareerField.GetValue(account) as PlayerCareer;
+                var career = OwnCareer(account, request.PlayerId);
                 if (career == null || career.playerId != request.PlayerId || career.Records == null)
                 { SendMatchError(request, "HISTORY_NOT_LOADED", "请先同步该账号的游戏数据"); return; }
                 // Server indices can shift when new games are inserted. Re-locate by immutable summary.
@@ -172,7 +301,7 @@ namespace XingShu.Runtime
                 request.Account = account;
                 request.PreviousDetail = career.recordDetail;
                 _detail = request;
-                _lastDetailRequest = Time.unscaledTime;
+                _lastDetailRequest = Now;
                 // No AccountLogic UI-opening wrapper, no replacement of the game's RPC delegate.
                 request.Rpc = MonoSingletonProvider<NetManager>.inst.RPC.GetPlayerFightRecordC2S.GetPlayerFightRecordC2SCall(
                     new party.protocol.GetPlayerFightRecordC2S { PlayerId = request.PlayerId, Index = request.Index, IsReplay = false });
@@ -206,7 +335,7 @@ namespace XingShu.Runtime
                 if (result.errId != 0) { request.Error = "SERVER_ERROR"; request.Message = "游戏服务器返回错误 " + result.errId; return; }
                 // RPCMsgManager invokes OnFinished synchronously *after this exact response* updates
                 // career.recordDetail. Capture now, rather than reading a mutable cache on a later frame.
-                var career = CareerField == null ? null : CareerField.GetValue(request.Account) as PlayerCareer;
+                var career = OwnCareer(request.Account, request.PlayerId);
                 if (!request.Account.online || request.Account.GetPlayerID() != request.PlayerId || career == null || career.playerId != request.PlayerId)
                 { request.Error = "ACCOUNT_CHANGED"; request.Message = "读取期间游戏资料账号发生变化"; return; }
                 var detail = career.recordDetail;
@@ -240,7 +369,7 @@ namespace XingShu.Runtime
                 if (!XingShuBridgeClient.Instance.IsHandshakeComplete || request.Account == null || !request.Account.online || request.Account.GetPlayerID() != request.PlayerId ||
                     !SimpleSingletonProvider<GameLogicManager>.hasInstance || !ReferenceEquals(SimpleSingletonProvider<GameLogicManager>.inst.account, request.Account))
                 { ClearDetail(request); SendMatchError(request, "ACCOUNT_CHANGED", "游戏账号或连接已变化，请重新读取"); return; }
-                if (Time.unscaledTime > request.Deadline)
+                if (Now > request.Deadline)
                 {
                     if (request.Participants == null) { ClearDetail(request); SendMatchError(request, "DETAIL_TIMEOUT", "读取游戏对局详情超时"); }
                     else { request.StatsError = "REPLAY_TIMEOUT"; SendReady(request); }
@@ -393,7 +522,7 @@ namespace XingShu.Runtime
                 participant["damage"] = achieve.TotalDamage; participant["taken"] = achieve.TotalInjured;
                 participant["healing"] = achieve.TreatmentScore; participant["coins"] = achieve.TotalGold;
                 participant["movement"] = achieve.MovePoint;
-                participant["transfer"] = achieve.PveTransferGold; participant["turns"] = player.Hero.Round;
+                participant["transfer"] = achieve.PveTransferGold; participant["turns"] = room.Round;
                 available++;
             }
             if (available == 0) return ReplayFailure("REPLAY_STATISTICS_MISSING");
@@ -414,7 +543,7 @@ namespace XingShu.Runtime
         private static void SendMatchError(PendingMatch request, string error, string message)
         { SendMatch(request, "error", error, message ?? ""); }
 
-        private static void SendMatch(PendingMatch request, string status, string error, string message)
+        private static bool SendMatch(PendingMatch request, string status, string error, string message, string type = "GAME_LIBRARY_MATCH_DETAIL")
         {
             var payload = new {
                 requestId = request.RequestId, playerId = request.PlayerId, index = request.Index,
@@ -425,8 +554,8 @@ namespace XingShu.Runtime
                 statsSource = request.StatsSource, statsError = request.StatsError ?? "",
                 arenaId = request.ArenaId, rounds = request.Rounds, durationSeconds = request.DurationSeconds
             };
-            if (Encoding.UTF8.GetByteCount(BridgeJson.Serialize(payload)) <= 60000)
-                XingShuBridgeClient.Instance.SendEnvelope(BridgeEnvelope.Create("GAME_LIBRARY_MATCH_DETAIL", payload, request.RequestId));
+            return Encoding.UTF8.GetByteCount(BridgeJson.Serialize(payload)) <= 60000 &&
+                XingShuBridgeClient.Instance.SendEnvelope(BridgeEnvelope.Create(type, payload, request.RequestId));
         }
 
         private static void ClearDetail(PendingMatch request)

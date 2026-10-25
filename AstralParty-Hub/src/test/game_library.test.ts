@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
-import { accountKey, defaultLibraryKey, gameCatalog, plainGameText, isPreviewCharacter, libraryCharacterName } from '../shared/gameLibrary.ts';
-import type { LibraryAccount, LibrarySession } from '../shared/gameLibrary.ts';
+import { accountKey, defaultLibraryKey, gameCatalog, plainGameText, isPreviewCharacter, libraryCharacterName, matchDetailRefreshComplete } from '../shared/gameLibrary.ts';
+import type { LibraryAccount, LibrarySession, MatchDetail } from '../shared/gameLibrary.ts';
+
+const saved: MatchDetail = {requestId:'old',playerId:1,index:0,time:1,heroId:101,mapId:81003,status:'ready',error:'',participants:[],observedAt:'2026-10-24',statsSource:'replay_settlement',statsError:''};
+assert.equal(matchDetailRefreshComplete(saved,'new'),false,'An older saved result must not end a refresh');
+assert.equal(matchDetailRefreshComplete({...saved,requestId:'new',status:'loading'},'new'),false);
+assert.equal(matchDetailRefreshComplete({...saved,requestId:'new'},'new'),true);
+assert.equal(matchDetailRefreshComplete({...saved,requestId:'new',refreshError:'读取未完成'},'new'),true,'A failed refresh can preserve saved metrics');
+assert.equal(matchDetailRefreshComplete({...saved,requestId:'new',status:'error'},'new'),true);
+assert.equal(matchDetailRefreshComplete(null,'new'),false);
 
 const spectator: LibraryAccount = {platform:'TAPTAP',role:'USER_SPECTATOR',observedAt:'2026-10-20',snapshot:{playerId:2,name:'观战',level:1,exp:0,heroes:[],skins:[],altArts:[],matches:null}};
 const main: LibraryAccount = {...spectator,platform:'STEAM_CN',role:'MAIN',snapshot:{...spectator.snapshot,playerId:1}};

@@ -34,9 +34,7 @@ namespace XingShuRuntime.Targeting
         private float _nextError;
         private int _selected;
         private string _status = "等待进入 PVE 对局";
-        private long _turnId;
-        private long _attackedMonsterId;
-        private int _attackedRound;
+        private readonly MonsterAttackWindow _attack = new MonsterAttackWindow();
 
         internal static bool IsEnabled => _instance != null ? _instance._enabled :
             XingShuConfigService.GetBool(XingShuConfigKeys.MonsterTargetEnabled, XingShuConfigKeys.MonsterTargetEnabledDefault);
@@ -75,6 +73,7 @@ namespace XingShuRuntime.Targeting
 
         private void Update()
         {
+            try { ObserveAttack(); } catch { /* A scene transition has no usable battle state. */ }
             if (Time.unscaledTime < _nextTick) return;
             _nextTick = Time.unscaledTime + 0.25f;
             try { Refresh(); }
@@ -96,6 +95,22 @@ namespace XingShuRuntime.Targeting
             foreach (var row in _rows.Values) Place(row);
         }
 
+        private void ObserveAttack()
+        {
+            if (!_enabled || !HandCardDisplayManager.IsPVEMode()) return;
+            var logic = SimpleSingletonProvider<GameLogicManager>.inst;
+            var room = logic?.room?.curRoomInfo;
+            if (!ReferenceEquals(_room, room)) { ClearSession(); _room = room; }
+            if (room == null || logic.battle?.PlayerDatas == null) return;
+            long turn = PveTurnContext.CurrentPlayerId();
+            _attack.ObserveTurn(room.Round, turn);
+            var fight = logic.fight?.battleFightData;
+            if (fight == null || fight.isEnd || fight.attackerInfo == null || fight.attackerInfo.PlayerId != turn) return;
+            foreach (var monster in logic.battle.PlayerDatas)
+                if (monster?.player != null && monster.player.Id == turn && monster.characterType == CharacterType.Monster)
+                { _attack.ObserveAttack(turn); break; }
+        }
+
         private void Refresh()
         {
             var logic = SimpleSingletonProvider<GameLogicManager>.inst;
@@ -110,24 +125,8 @@ namespace XingShuRuntime.Targeting
                 return;
             }
 
-            long turn = PveTurnContext.CurrentPlayerId();
-            if (turn != _turnId)
-            {
-                _turnId = turn;
-                _attackedMonsterId = 0;
-            }
             var fight = logic.fight?.battleFightData;
             var data = logic.battle.PlayerDatas;
-            if (fight != null && !fight.isEnd && fight.attackerInfo != null && fight.attackerInfo.PlayerId == turn)
-            {
-                foreach (var monster in data)
-                    if (monster?.player != null && monster.player.Id == turn && monster.characterType == CharacterType.Monster)
-                    {
-                        _attackedMonsterId = turn;
-                        _attackedRound = monster.player.Hero.Round;
-                        break;
-                    }
-            }
 
             // Build the shared graph/player snapshot once, not once per monster.
             var snapshot = MonsterTargetContext.ExtractInput();
@@ -142,9 +141,8 @@ namespace XingShuRuntime.Targeting
                 var input = snapshot;
                 input.MonsterId = monster.player.Id;
                 input.CurrentNode = monster.CharacterInst?.standLand != null ? monster.CharacterInst.standLand.Id : monster.player.NodeId;
-                input.MonsterNodeKnown = input.CurrentNode > 0;
-                input.HasAttackedKnown = _attackedMonsterId == input.MonsterId && turn == input.MonsterId &&
-                    _attackedRound == monster.player.Hero.Round;
+                input.MonsterNodeKnown = input.CurrentNode >= 0;
+                input.HasAttackedKnown = _attack.HasAttacked(input.MonsterId, room.Round);
                 input.HasAttackedThisTurn = input.HasAttackedKnown;
                 string directionSource;
                 var steps = MonsterTargetContext.ExtractForwardSteps(monster, input.GraphEdges, out directionSource);
@@ -168,16 +166,36 @@ namespace XingShuRuntime.Targeting
                 }
                 else
                 {
-                    bool uncertain = preview.AmbiguousFirstStep || preview.TiedTargets || preview.SomeRoutesHaveNoTarget;
+                    bool uncertain = preview.HasUncertainTarget;
                     var text = new StringBuilder(uncertain ? "10格候选 → " : "10格推演 → ");
+                    var groups = new Dictionary<int, List<MonsterTargetPrediction>>();
                     foreach (var candidate in preview.Candidates)
                     {
-                        if (text[text.Length - 1] != ' ') text.Append(" / ");
-                        text.Append(PlayerTag(data, candidate.TargetPlayerId, preview.Candidates.Count == 1));
+                        List<MonsterTargetPrediction> group;
+                        if (!groups.TryGetValue(candidate.TargetNodeId, out group)) groups[candidate.TargetNodeId] = group = new List<MonsterTargetPrediction>();
+                        group.Add(candidate);
                     }
-                    if (preview.Candidates.Count == 1) text.Append(" · ").Append(preview.Candidates[0].Distance).Append("格");
+                    bool first = true;
+                    foreach (var group in groups.Values)
+                    {
+                        group.Sort((a, b) => PlayerSlot(data, a.TargetPlayerId).CompareTo(PlayerSlot(data, b.TargetPlayerId)));
+                        if (!first) text.Append(" / "); first = false;
+                        for (int i = 0; i < group.Count; i++)
+                        {
+                            if (i > 0) text.Append(" + ");
+                            text.Append(PlayerTag(data, group[i].TargetPlayerId, preview.Candidates.Count == 1));
+                        }
+                        if (group.Count > 1) text.Append("（同格全体）");
+                    }
+                    // With multiple default exits the same target may be reached
+                    // at different distances; do not present the shortest sample
+                    // as an exact distance for all routes.
+                    if (preview.TargetTileCount == 1 && !preview.AmbiguousFirstStep)
+                        text.Append(" · ").Append(preview.Candidates[0].Distance).Append("格");
                     compact = text.ToString();
-                    reason = uncertain ? "仅沿箭头前进；多个箭头出口或同距离先后未确认，保留可能目标。" : "仅沿箭头前进，不掉头；按未攻击、最大骰10格推演，实际骰点可能不足。";
+                    reason = uncertain ? "仅沿箭头前进；多个箭头出口或同距离先后未确认，保留可能目标。" : "沿箭头前进，不掉头；先选最近目标格，同距按红＞蓝＞绿。该格存活玩家一起受击，本回合不再索敌。最大骰10格，实际骰点可能不足。";
+                    if (preview.AmbiguousFirstStep && preview.HasSingleTargetGroup)
+                        reason += " 多个箭头出口均指向同一目标格；目标组相同，具体路线及步数仍待确认。";
                     if (preview.SomeRoutesHaveNoTarget) reason += " 部分出口无可达目标。";
                 }
 
@@ -209,7 +227,7 @@ namespace XingShuRuntime.Targeting
                 {
                     var label = monster.CharacterInst?.window?.Com_AttrInfo?.txt_Name;
                     if (label != null && !label.isDisposed && label.parent != null)
-                        Show(label, compact, preview.Candidates.Count == 1 && !preview.AmbiguousFirstStep && !preview.TiedTargets && !preview.SomeRoutesHaveNoTarget);
+                        Show(label, compact, preview.HasSingleTargetGroup);
                 }
             }
             PruneRows();
@@ -228,6 +246,14 @@ namespace XingShuRuntime.Targeting
                     return slot + " " + (name.Length > 8 ? name.Substring(0, 8) + "…" : name);
                 }
             return "未知玩家";
+        }
+
+        private static int PlayerSlot(List<BattlePlayerData> players, long id)
+        {
+            foreach (var player in players)
+                if (player?.player != null && player.player.Id == id && player.player.Slot >= 0 && player.player.Slot < 4)
+                    return player.player.Slot;
+            return int.MaxValue;
         }
 
         private void Show(GTextField anchor, string text, bool single)
@@ -304,8 +330,7 @@ namespace XingShuRuntime.Targeting
             ClearRows();
             _details.Clear();
             _selected = 0;
-            _turnId = _attackedMonsterId = 0;
-            _attackedRound = 0;
+            _attack.Clear();
         }
 
         private void OnDisable() { ClearSession(); }

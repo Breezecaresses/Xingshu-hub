@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using XingShuRuntime.Targeting;
 
@@ -7,10 +7,11 @@ namespace XingShu.Tests
     internal static class Program
     {
         private static int _passedCount = 0;
-        private static int _totalCount = 41;
+        private static int _totalCount = 0;
 
         private static void AssertCheck(string name, bool condition, string details)
         {
+            _totalCount++;
             if (condition)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
@@ -29,7 +30,7 @@ namespace XingShu.Tests
         public static int Main(string[] args)
         {
             Console.WriteLine("==================================================");
-            Console.WriteLine("MonsterTargetMath + Directional Maximum Dice Preview: 41 Test Cases");
+            Console.WriteLine("MonsterTargetMath + Directional Maximum Dice Preview");
             Console.WriteLine("==================================================");
 
             // --- Case 1: 直线单目标（唯一最短距离） ---
@@ -782,11 +783,105 @@ namespace XingShu.Tests
             input.GraphEdges = fork;
             input.Players = new[] { new CandidatePlayer(1001L, 4, 0f, false, 0, true, true, true) };
             var partial = MonsterTargetPreview.Calculate(input, new[] { 2, 3, 2 });
-            AssertCheck("Case 32: 部分岔路无目标时保留不确定性", partial.AmbiguousFirstStep && partial.SomeRoutesHaveNoTarget && partial.Candidates.Count == 1, "partial fork uncertainty lost");
+            AssertCheck("Case 32: 部分岔路无目标时保留不确定性", partial.AmbiguousFirstStep && partial.SomeRoutesHaveNoTarget && partial.Candidates.Count == 1 && partial.HasUncertainTarget && !partial.HasSingleTargetGroup, "partial fork uncertainty lost");
 
             input.Players = new[] { new CandidatePlayer(1001L, 2, 0f, false, 0, true, true, true) };
             var firstStep = MonsterTargetPreview.Calculate(input, new[] { 2 }, 1);
             AssertCheck("Case 33: 首步即到目标且无剩余步数", firstStep.IsValid && firstStep.Candidates.Count == 1 && firstStep.Candidates[0].Distance == 1, "zero remaining budget failed");
+
+            // Occupants are one attack group; a farther tile never becomes a second attack.
+            input.GraphEdges = new Dictionary<int, List<int>> { { 0, new List<int> { 1 } }, { 1, new List<int> { 0, 2 } }, { 2, new List<int> { 1, 3 } }, { 3, new List<int> { 2 } } };
+            input.CurrentNode = 0;
+            for (int count = 2; count <= 4; count++)
+            {
+                var players = new List<CandidatePlayer>();
+                for (int i = 0; i < count; i++) players.Add(new CandidatePlayer(1001L + i, 1, 0f, false, i, true, true, true));
+                players.Add(new CandidatePlayer(9999L, 2, 0f, false, 3, true, true, true)); input.Players = players;
+                var group = MonsterTargetPreview.Calculate(input, new[] { 1 });
+                AssertCheck("同格全体 " + count + "人仅为一个目标格", group.Candidates.Count == count && group.TargetTileCount == 1 && !group.TiedTargets && group.Candidates.TrueForAll(p => p.TargetNodeId == 1), "occupants split or farther tile selected");
+            }
+            input.CurrentNode = 1;
+            input.Players = new[] { new CandidatePlayer(1001L, 0, 0, false, 0, true, true, true) };
+            var zero = MonsterTargetPreview.Calculate(input, new[] { 0 });
+            AssertCheck("编号0的地块可作为出口和目标格", zero.Candidates.Count == 1 && zero.Candidates[0].Distance == 1, "node zero rejected");
+            input.CurrentNode = 0;
+            input.GraphEdges = new Dictionary<int, List<int>> { {0,new List<int>{1}}, {1,new List<int>{0,2,3}}, {2,new List<int>{1,4}}, {3,new List<int>{1,5}}, {4,new List<int>{2}}, {5,new List<int>{3}} };
+            input.BranchPriorities = new Dictionary<int, BranchPriorityEntry> { {1,new BranchPriorityEntry(2,3,0)} };
+            input.Players = new[] { new CandidatePlayer(1001L,4,0,false,0,true,true,true), new CandidatePlayer(1002L,5,0,false,1,true,true,true) };
+            var red = MonsterTargetPreview.Calculate(input,new[]{1});
+            AssertCheck("同距岔路红优先于蓝", red.Candidates.Count == 1 && red.Candidates[0].TargetPlayerId == 1001 && !red.TiedTargets, "priority ignored");
+            input.Players = new[] { new CandidatePlayer(1001L,4,0,false,0,true,true,true), new CandidatePlayer(1002L,3,0,false,1,true,true,true) };
+            var near = MonsterTargetPreview.Calculate(input,new[]{1});
+            AssertCheck("最近格优先于更远红色路线", near.Candidates.Count == 1 && near.Candidates[0].TargetPlayerId == 1002, "colour overrode distance");
+            input.BranchPriorities = new Dictionary<int,BranchPriorityEntry> { {1,new BranchPriorityEntry(0,3,2)} };
+            input.Players = new[] { new CandidatePlayer(1001L,2,0,false,0,true,true,true),new CandidatePlayer(1002L,3,0,false,1,true,true,true) };
+            var blue = MonsterTargetPreview.Calculate(input,new[]{1});
+            AssertCheck("红色为来路时不掉头，蓝优先于绿", blue.Candidates.Count == 1 && blue.Candidates[0].TargetPlayerId == 1002, "incoming red used");
+            var priorities = new Dictionary<int,BranchPriorityEntry> { {1,new BranchPriorityEntry(2,3,4)}, {2,new BranchPriorityEntry(5,6,7)} };
+            AssertCheck("嵌套岔路比较真正分叉处", MonsterTargetMath.ComparePaths(new[]{0,1,2,5},new[]{0,1,2,6},priorities)<0 && MonsterTargetMath.ComparePaths(new[]{0,1,2,7},new[]{0,1,3,8},priorities)<0, "nested route priorities flattened");
+
+            input.CurrentNode = 0;
+            input.BranchPriorities = null;
+            input.GraphEdges = new Dictionary<int,List<int>> {
+                {0,new List<int>{1,2}}, {1,new List<int>{0,3}}, {2,new List<int>{0,3}},
+                {3,new List<int>{1,2,4}}, {4,new List<int>{3,5}}, {5,new List<int>{4}}
+            };
+            input.Players = new[] {
+                new CandidatePlayer(1001L,3,0,false,0,true,true,true),
+                new CandidatePlayer(1003L,3,0,false,2,true,true,true),
+                new CandidatePlayer(1002L,4,0,false,1,true,true,true)
+            };
+            var mergedGroup = MonsterTargetPreview.Calculate(input,new[]{1,2});
+            AssertCheck("多箭头汇合到同格全体，不显示互斥候选", mergedGroup.Candidates.Count == 2 && mergedGroup.AmbiguousFirstStep && mergedGroup.HasSingleTargetGroup && !mergedGroup.HasUncertainTarget && mergedGroup.Candidates.TrueForAll(p=>p.TargetNodeId==3), "route ambiguity was confused with target ambiguity");
+            AssertCheck("同格全体停止在最近格，不继续到更远玩家", !mergedGroup.Candidates.Exists(p=>p.TargetPlayerId==1002L), "farther tile joined the attack group");
+
+            input.GraphEdges = new Dictionary<int,List<int>> {
+                {0,new List<int>{1,2}}, {1,new List<int>{0,3}}, {2,new List<int>{0,4}},
+                {4,new List<int>{2,3}}, {3,new List<int>{1,4}}
+            };
+            input.Players = new[] {
+                new CandidatePlayer(1001L,3,0,false,0,true,true,true),
+                new CandidatePlayer(1003L,3,0,false,2,true,true,true)
+            };
+            var unequalRoutes = MonsterTargetPreview.Calculate(input,new[]{1,2});
+            AssertCheck("同目标组但路线长度不同，仍保留路线未决状态", unequalRoutes.HasSingleTargetGroup && unequalRoutes.AmbiguousFirstStep && !unequalRoutes.HasUncertainTarget, "route ambiguity was lost or occupants became mutually exclusive");
+
+            input.GraphEdges = new Dictionary<int,List<int>> {
+                {0,new List<int>{1,2}}, {1,new List<int>{0,3}}, {2,new List<int>{0,4}},
+                {3,new List<int>{1}}, {4,new List<int>{2}}
+            };
+            input.Players = new[] {
+                new CandidatePlayer(1001L,3,0,false,0,true,true,true),
+                new CandidatePlayer(1002L,4,0,false,1,true,true,true)
+            };
+            var separateRoutes = MonsterTargetPreview.Calculate(input,new[]{1,2});
+            AssertCheck("多箭头去往不同目标格，继续显示候选", separateRoutes.TargetTileCount == 2 && separateRoutes.HasUncertainTarget && !separateRoutes.HasSingleTargetGroup, "different target tiles incorrectly confirmed");
+            var attack = new MonsterAttackWindow(); attack.ObserveTurn(1,5000000000L);attack.ObserveAttack(5000000000L);attack.ObserveTurn(1,0);
+            AssertCheck("攻击后临时空行动者不会重新索敌", attack.HasAttacked(5000000000L,1), "attack lost on transient zero");
+            attack.ObserveTurn(2,5000000000L);
+            AssertCheck("新一轮同怪物允许重新索敌", !attack.HasAttacked(5000000000L,2), "attack leaked between rounds");
+            attack.ObserveAttack(5000000000L);attack.ObserveTurn(2,1001);
+            AssertCheck("下一行动者清除上次攻击窗口", !attack.HasAttacked(5000000000L,2), "attack leaked into next turn");
+            attack.Clear();
+            AssertCheck("退出房间清除攻击状态", !attack.HasAttacked(5000000000L,2), "attack leaked into next room");
+            int forkCount=0;
+            foreach (int scene in new[]{7,8,10,12,13,14,15,16,17})
+            {
+                var graphFixture = new Dictionary<int,List<int>>();
+                foreach (string line in System.IO.File.ReadAllLines(System.IO.Path.Combine("XingShu-Dev/tools/TargetingFixtures", "scene_"+scene+".txt")))
+                {
+                    var pair=line.Split(':');var exits=new List<int>();
+                    foreach(string n in pair[1].Split(',')) if(n.Length>0) exits.Add(int.Parse(n));
+                    graphFixture[int.Parse(pair[0])]=exits;
+                }
+                var profile=MonsterBranchProfiles.Match(graphFixture);forkCount+=profile.Count;
+                AssertCheck("官方场景"+scene+"完整拓扑匹配参考颜色",profile.Count>0,"profile missing");
+                graphFixture[0].Reverse();
+                AssertCheck("场景"+scene+"不依赖邻接数组顺序",MonsterBranchProfiles.Match(graphFixture).Count==profile.Count,"order mistaken for colour");
+                graphFixture[0].Add(9999);
+                AssertCheck("场景"+scene+"结构变动停用旧顺位",MonsterBranchProfiles.Match(graphFixture).Count==0,"changed map accepted");
+            }
+            AssertCheck("参考地图共46个岔路",forkCount==46,"fork coverage mismatch");
         }
     }
 }

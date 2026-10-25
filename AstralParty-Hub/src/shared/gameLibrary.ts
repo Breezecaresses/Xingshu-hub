@@ -30,11 +30,15 @@ export interface MatchDetail {
   statsSource: string; statsError: string; arenaId?: number | null; rounds?: number | null; durationSeconds?: number | null;
   refreshError?: string;
 }
+/** A saved result from an earlier read cannot complete the current refresh. */
+export function matchDetailRefreshComplete(detail: MatchDetail | null, requestId: string) {
+  return detail?.requestId === requestId && (detail.status === 'ready' || detail.status === 'error');
+}
 export interface LibraryAccount {
   platform: string; role: string; observedAt: string;
   snapshot: { playerId: number; name: string; level: number; exp: number; heroes: HeroProgress[]; skins: number[]; altArts: number[]; matches: PlayedMatch[] | null };
 }
-export interface LibrarySession { connectionId: string; platformId: string; livePlayerId: number | null; boundRole: string; connectionState: string; runtimeVersion: string }
+export interface LibrarySession { connectionId: string; platformId: string; livePlayerId: number | null; boundRole: string; connectionState: string; runtimeVersion: string; lastSeenAt?: string }
 export const gameCatalog = rawCatalog as unknown as {
   version: string; source: string; configSha256: string; characters: LibraryCharacter[];
   cards: LibraryCard[]; altArts: LibraryAltArt[]; mutators: LibraryMutator[];

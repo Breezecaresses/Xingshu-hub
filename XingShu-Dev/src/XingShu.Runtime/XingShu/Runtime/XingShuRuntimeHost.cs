@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -25,9 +25,9 @@ namespace XingShu.Runtime
         public const string LogFileName = "xingshu_runtime_lifecycle.log";
         public const string LegacyLogFileName = "xingshu_runtime_lifecycle.log";
 #if XINGSHU_ANDROID_PREVIEW
-        public const string RuntimeVersion = "1.0.0-android-preview7";
+        public const string RuntimeVersion = "1.0.0-android-preview8.7";
 #else
-        public const string RuntimeVersion = "1.0.0-game-ui-r7";
+        public const string RuntimeVersion = "1.0.0-game-ui-r8.7";
 #endif
 
         private static string _logPath;
@@ -112,6 +112,7 @@ namespace XingShu.Runtime
 
             try
             {
+                XingShuRuntime.Utilities.NativeArtworkSettings.Reset();
                 XingShuBridgeClient.Instance.OnHandshakeComplete -= OnBridgeHandshakeComplete;
             }
             catch { }
@@ -282,6 +283,8 @@ namespace XingShu.Runtime
             }
             // 1. 场景切换即时感知与事件驱动
             CheckSceneTransition();
+            XingShuRuntime.Utilities.OriginalArtworkService.Instance.Tick();
+            XingShuRuntime.Utilities.NativeArtworkSettings.Tick();
             GameLibraryExporter.Tick();
 
             // Retry at a bounded rate even when the desktop bridge is unavailable.

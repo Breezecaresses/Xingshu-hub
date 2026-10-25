@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using XingShuRuntime.Targeting;
 using Core.Unit;
@@ -75,7 +75,7 @@ internal static class ContextTests
         var selected = MonsterTargetContext.ExtractInput(5000000000L);
         Check(selected.MonsterId == 5000000000L && selected.CurrentNode == 2, "exact 64-bit monster ID");
         var missing = MonsterTargetContext.ExtractInput(12345L);
-        Check(missing.CurrentNode == 0 && !missing.MonsterNodeKnown, "missing monster never borrows another monster's position");
+        Check(missing.CurrentNode == -1 && !missing.MonsterNodeKnown, "missing monster never borrows another monster's position");
         var first = MonsterTargetContext.ExtractInput();
         Check(first.MonsterId == 7 && first.CurrentNode == 1, "implicit selection stays on first monster");
         Check(first.Players.Count == 1 && !first.Players[0].RouteProgressKnown && first.Players[0].SlotKnown, "rank progress is not route order");

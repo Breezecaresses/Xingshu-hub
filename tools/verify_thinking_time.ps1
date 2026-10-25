@@ -37,6 +37,9 @@ foreach($taskName in $taskOldMethods.Keys) {
             $taskName -notmatch 'UI.RoomHeroPanel::(Refresh|RefreshSelectSkin)\(' -and
             $taskName -notmatch 'Core.Unit.BattleProperty::OnGoldChanged\(' -and
             $taskName -notmatch 'GameLogic.BattleResultLogic::OnGameFinishS2CServerCallBack\(' -and
+            $taskName -notmatch 'GameLogic.BattleLogic::OnGetHeroInfoS2CServerCallBackAsync\(' -and
+            $taskName -notmatch 'GameLogic.ActionLogic::OnUpdateHeroAttrS2CServerCallBack\(' -and
+            $taskName -notmatch 'GameLogic.AccountLogic::OnGet(ShowPlayer|PlayerFightRecord)S2CServerCallBack\(' -and
             $taskName -notmatch 'GameLogic.OperationTimer/[^:]+::<ActionDownTime>b__[012]\(' -and
             $taskName -notmatch 'GameLogic.OperationTimer::Dispose\(' -and
             $taskName -notmatch 'UI.OperateTimeWindow::UpdateShowProgress\(') { throw "Unexpected method change: $taskName" }
@@ -53,7 +56,11 @@ foreach ($taskTarget in @(
     @('UI.RoomHeroPanel::Refresh(', 'XingShuDecisionTimer::Register'),
     @('UI.RoomHeroPanel::RefreshSelectSkin(', 'XingShuDecisionTimer::Register'),
     @('Core.Unit.BattleProperty::OnGoldChanged(', 'BattleStatsOverlay::ObserveGold'),
-    @('GameLogic.BattleResultLogic::OnGameFinishS2CServerCallBack(', 'BattleStatsOverlay::ObserveSettlement')
+    @('GameLogic.BattleResultLogic::OnGameFinishS2CServerCallBack(', 'BattleStatsOverlay::ObserveSettlement'),
+    @('GameLogic.BattleLogic::OnGetHeroInfoS2CServerCallBackAsync(', 'BattleStatsOverlay::ObserveHeroInfo'),
+    @('GameLogic.ActionLogic::OnUpdateHeroAttrS2CServerCallBack(', 'BattleStatsOverlay::ObserveHealingSources'),
+    @('GameLogic.AccountLogic::OnGetShowPlayerS2CServerCallBack(', 'GameLibraryReplies::ObserveCareer'),
+    @('GameLogic.AccountLogic::OnGetPlayerFightRecordS2CServerCallBack(', 'GameLibraryReplies::ObserveDetail')
 )) {
     $taskMethod = @($taskNewMethods.Values | Where-Object { $_.FullName.Contains($taskTarget[0]) })
     if ($taskMethod.Count -ne 1) { throw "Ambiguous method: $($taskTarget[0])" }
@@ -73,5 +80,48 @@ foreach ($taskMethod in $taskWrappers) {
     $taskCalls = @($taskMethod.Body.Instructions | Where-Object { $_.Operand -and $_.Operand.ToString().Contains('ThinkingClock::.ctor') })
     if ($taskCalls.Count -ne 1) { throw "Missing real clock: $taskMethod" }
 }
-Write-Output "PASS: 3 real-clock wrappers, 3 duration hooks, 2 statistics observers, operation progress ownership guards; $($taskOldMethods.Count - $taskChanged.Count) existing method bodies unchanged ($($taskChanged.Count) changed)"
+function Get-TaskInstructions($method, $skip) {
+    $taskInstructions = $method.Body.Instructions
+    $taskPositions = @{}
+    for ($taskIndex = $skip; $taskIndex -lt $taskInstructions.Count; $taskIndex++) {
+        $taskPositions[$taskInstructions[$taskIndex]] = $taskIndex - $skip
+    }
+    @($taskInstructions | Select-Object -Skip $skip | ForEach-Object {
+        $taskOperand = $_.Operand
+        if ($taskOperand -is [Mono.Cecil.Cil.Instruction]) {
+            $taskOperand = 'target:' + $taskPositions[$taskOperand]
+        } elseif ($taskOperand -is [Mono.Cecil.Cil.Instruction[]]) {
+            $taskOperand = 'targets:' + (($taskOperand | ForEach-Object { $taskPositions[$_] }) -join ',')
+        }
+        $_.OpCode.Code.ToString() + ':' + $taskOperand
+    }) -join "`n"
+}
+foreach ($taskReplyTarget in @(
+    @('GameLogic.BattleLogic::OnGetHeroInfoS2CServerCallBackAsync(', 'BattleStatsOverlay::ObserveHeroInfo'),
+    @('GameLogic.ActionLogic::OnUpdateHeroAttrS2CServerCallBack(', 'BattleStatsOverlay::ObserveHealingSources')
+)) {
+    $taskReplyNew = @($taskNewMethods.Values | Where-Object { $_.FullName.Contains($taskReplyTarget[0]) })[0]
+    $taskReplyOld = $taskOldMethods[$taskReplyNew.FullName]
+    if (!$taskReplyOld) { throw 'Missing original protocol handler' }
+    $taskReplyInstructions = $taskReplyNew.Body.Instructions
+    if ($taskReplyInstructions.Count -lt 5 -or
+        $taskReplyInstructions[0].OpCode.Code.ToString() -notin @('Ldarg', 'Ldarg_S') -or
+        $taskReplyInstructions[0].Operand.Index -ne 1 -or
+        $taskReplyInstructions[1].OpCode.Code.ToString() -notin @('Brtrue', 'Brtrue_S') -or
+        ![object]::ReferenceEquals($taskReplyInstructions[1].Operand, $taskReplyInstructions[4]) -or
+        $taskReplyInstructions[2].OpCode.Code.ToString() -notin @('Ldarg', 'Ldarg_S') -or
+        $taskReplyInstructions[2].Operand.Index -ne 0 -or
+        $taskReplyInstructions[3].OpCode.Code.ToString() -ne 'Call' -or
+        !$taskReplyInstructions[3].Operand.FullName.Contains($taskReplyTarget[1])) {
+        throw "Observer must skip errors and pass the decoded message: $($taskReplyTarget[0])"
+    }
+    $taskAlreadyObserved = @($taskReplyOld.Body.Instructions | Where-Object {
+        $_.Operand -and $_.Operand.ToString().Contains($taskReplyTarget[1])
+    }).Count -eq 1
+    $taskOldSkip = if ($taskAlreadyObserved) { 4 } else { 0 }
+    if ((Get-TaskInstructions $taskReplyOld $taskOldSkip) -ne (Get-TaskInstructions $taskReplyNew 4)) {
+        throw "Observer changed the original handler body: $($taskReplyTarget[0])"
+    }
+}
+Write-Output "PASS: 3 real-clock wrappers, 3 duration hooks, 4 statistics observers (typed reply/effect error guards and original handlers preserved), 2 account reply observers, operation progress ownership guards; $($taskOldMethods.Count - $taskChanged.Count) existing method bodies unchanged ($($taskChanged.Count) changed)"
 $taskOld.Dispose(); $taskNew.Dispose()

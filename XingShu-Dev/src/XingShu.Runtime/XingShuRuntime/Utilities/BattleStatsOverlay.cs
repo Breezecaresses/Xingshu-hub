@@ -1,7 +1,8 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using Core.Net;
 using XingShuRuntime.Core;
 using XingShuRuntime.MatchPort;
 using Core.Scene;
@@ -18,6 +19,8 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 	private const string EnabledKey = XingShuConfigKeys.MatchObserveEnabled;
 
 	private readonly MatchLedger _ledger = new MatchLedger();
+	private readonly LastSettlementCache _lastSettlement = new LastSettlementCache();
+	private readonly HealingSourceMap _healingSources = new HealingSourceMap();
 
 	internal readonly HashSet<long> _live = new HashSet<long>();
 
@@ -42,6 +45,19 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 	private bool _hpAttached;
 	private bool _settled;
 	private readonly Queue<object> _goldSeen = new Queue<object>();
+	private RPCAsyncResult _healingRpc;
+	private Action<RPCAsyncResult> _healingListener;
+	private double _nextHealingSync, _healingDeadline;
+	private double _lastHealingClock = ThinkingClock.RealSeconds(), _healingClock;
+	private int _healingSlot;
+	private readonly HashSet<long> _healingConfirmed = new HashSet<long>();
+	private readonly Queue<long> _healingRefresh = new Queue<long>();
+	private readonly HashSet<long> _healingQueued = new HashSet<long>();
+	private readonly Dictionary<long, int> _healingLastValues = new Dictionary<long, int>();
+	private GetHeroInfoS2C _healingReply;
+	private long _healingRequestPlayer, _healingRequestGeneration;
+	private string _healingRequestKey;
+	private bool _healingEffectRefresh;
 
 	private float _nextBind;
 
@@ -69,7 +85,20 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 		{
 			return null;
 		}
+		bool hasContext = Context(out _, out _, out var key, true);
+		var retained = Instance._lastSettlement.Read(CurrentAccountId(), hasContext ? key : null);
+		if (!HasActiveBattleContext && retained != null) return retained;
 		return StatsWidgetPresenter.Build(Instance._ledger, Instance._live, Instance._enabled, Instance._observedSince, Instance.WidgetDetails());
+	}
+
+	private static long CurrentAccountId()
+	{
+		try
+		{
+			var account = SimpleSingletonProvider<GameLogicManager>.hasInstance ? SimpleSingletonProvider<GameLogicManager>.inst.account : null;
+			return account != null && account.online ? account.GetPlayerID() : 0;
+		}
+		catch { return 0; }
 	}
 
 	internal static bool IsObserving
@@ -94,7 +123,8 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 			}
 			if (!Context(out RoomInfo room, out BattleLogic battle, out string key))
 			{
-				return Instance._settled && Instance._ledger.Key != null;
+				return Instance._settled && Context(out _, out var settledBattle, out var settledKey, true) &&
+					Instance._ledger.Key == settledKey && Instance._battle == settledBattle;
 			}
 			if (Instance._ledger == null || Instance._ledger.Key == null || Instance._ledger.Key != key || Instance._battle != battle)
 			{
@@ -175,6 +205,7 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 		StringBuilder stringBuilder = new StringBuilder();
 		stringBuilder.Append(_state).Append("\n对局键：").Append(_ledger.Key ?? "—");
 		stringBuilder.Append("\nHP：").Append(_hpAttached ? "已连接" : "未连接");
+		stringBuilder.Append("\n治疗：合作模式累计已确认有效回血；来源不全显示 ≥、评分显示 ≈；结算按服务器校准");
 		stringBuilder.Append("\n步数：").Append(MovementBridge.Status).Append("；未确认 ")
 			.Append(MovementBridge.Unconfirmed);
 		stringBuilder.Append("\n转账：").Append(TransferBridge.Status);
@@ -291,7 +322,7 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 		XingShuOverlayInput.Register(this, () => Instance != null && Instance._isWidgetShowing && HasActiveBattleContext && WidgetReady && _widget.SettingsVisible, () => (!WidgetReady) ? default(Rect) : _widget.SettingsBounds);
 	}
 
-	internal static bool Context(out RoomInfo room, out BattleLogic battle, out string key)
+	internal static bool Context(out RoomInfo room, out BattleLogic battle, out string key, bool includeSettlement = false)
 	{
 		room = null;
 		battle = null;
@@ -307,7 +338,7 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 		GameLogicManager inst = SimpleSingletonProvider<GameLogicManager>.inst;
 		room = ((inst.room == null) ? null : inst.room.curRoomInfo);
 		battle = inst.battle;
-		if (room == null || room.info == null || room.State != Room.Types.State.Running || room.info.Id <= 0 || room.info.StartTime <= 0 || battle == null)
+		if (room == null || room.info == null || (!includeSettlement && room.State != Room.Types.State.Running) || room.info.Id <= 0 || room.info.StartTime <= 0 || battle == null)
 		{
 			return false;
 		}
@@ -317,7 +348,7 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 
 	private bool SameContext(BattleLogic battle, string key, long generation)
 	{
-		if (_enabled && generation == _generation && Context(out var _, out var battle2, out var key2) && battle == battle2)
+		if (_enabled && !_settled && generation == _generation && Context(out var _, out var battle2, out var key2) && battle == battle2)
 		{
 			return key == key2;
 		}
@@ -326,6 +357,9 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 
 	private void Update()
 	{
+		// Invalidate on logout/account changes even while the statistics page is
+		// closed, so signing back in cannot resurrect another session's snapshot.
+		_lastSettlement.Read(CurrentAccountId(), null);
 		bool hasBattle = HasActiveBattleContext;
 		if (hasBattle != _lastHadBattleContext)
 		{
@@ -351,7 +385,7 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 		{
 			if (!Context(out var room, out var battle, out var key))
 			{
-				if (_settled) return;
+				if (_settled && HasActiveBattleContext) return;
 				if (_ledger.Key != null)
 				{
 					ResetObservation();
@@ -361,10 +395,12 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 			}
 			if (_ledger.Key != key || _battle != battle)
 			{
+				_lastSettlement.Read(CurrentAccountId(), key);
 				bool num = _ledger.Key == key;
 				ResetObservation();
 				_battle = battle;
 				_ledger.Clear(key);
+				_healingSources.Clear(key);
 				_observedSince = DateTime.Now;
 				_nextBind = 0f;
 				if (num)
@@ -396,6 +432,7 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 					value.MetricsReady = _hpAttached && flag;
 				}
 			}
+			SyncHealing(battle, key);
 			if (MovementBridge.Available)
 			{
 				foreach (KeyValuePair<long, long> total in MovementBridge.Totals)
@@ -430,6 +467,140 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 		}
 	}
 
+	private void SyncHealing(BattleLogic battle, string key)
+	{
+		// The game's hero-info reply supplies TreatmentScore directly. Stagger the
+		// four public participant reads: at most one request every three real seconds.
+		// Unity's unscaled clock and Stopwatch can both be accelerated on Windows.
+		double clock = ThinkingClock.RealSeconds();
+		_healingClock += Math.Max(0d, clock - _lastHealingClock);
+		_lastHealingClock = Math.Max(_lastHealingClock, clock);
+		double now = _healingClock;
+		if (_healingRpc != null)
+		{
+			if (_healingRpc.keepWaiting && now < _healingDeadline) return;
+			DetachHealing();
+		}
+		if (now < _nextHealingSync || !MonoSingletonProvider<NetManager>.hasInstance ||
+			!MonoSingletonProvider<NetManager>.inst.IsConnected) return;
+		MatchLedger.Row selected = null;
+		while (_healingRefresh.Count > 0 && selected == null)
+		{
+			long pending = _healingRefresh.Dequeue();
+			_healingQueued.Remove(pending);
+			MatchLedger.Row row;
+			if (_live.Contains(pending) && _ledger.Rows.TryGetValue(pending, out row)) selected = row;
+		}
+		bool effectRefresh = selected != null;
+		for (int offset = 0; offset < 4 && selected == null; offset++)
+		{
+			int slot = (_healingSlot + offset) % 4;
+			foreach (var row in _ledger.Rows.Values)
+				if (row.Slot == slot && _live.Contains(row.Id)) { selected = row; break; }
+		}
+		_nextHealingSync = now + 3d;
+		if (selected == null) return;
+		_healingSlot = (selected.Slot + 1) % 4;
+		long playerId = selected.Id, generation = _generation;
+		var playerData = battle.GetPlayerDataById(playerId);
+		if (playerData == null) return;
+		_healingReply = null;
+		_healingRequestPlayer = playerId;
+		_healingRequestGeneration = generation;
+		_healingRequestKey = key;
+		_healingEffectRefresh = effectRefresh;
+		var rpc = battle.RequestGetHeroInfoC2S(playerId);
+		if (rpc == null) { _ledger.Issue("服务器治疗统计请求暂不可用"); return; }
+		_healingRpc = rpc;
+		_healingDeadline = now + 12d;
+		_healingListener = result => {
+			try
+			{
+				if (!ReferenceEquals(_healingRpc, result) || !SameContext(battle, key, generation)) return;
+				// Read the typed reply observed at the official handler for this in-flight
+				// participant request. Completion alone does not prove the cached field
+				// was populated; a default zero must not masquerade as a fresh reply.
+				var reply = _healingReply;
+				if (result.errId == 0 && reply != null && reply.PlayerId == playerId &&
+					_healingRequestKey == key && _healingRequestGeneration == generation &&
+					ReferenceEquals(battle.GetPlayerDataById(playerId), playerData) &&
+					SimpleSingletonProvider<GameLogicManager>.inst.room.roomController != null &&
+					SimpleSingletonProvider<GameLogicManager>.inst.room.roomController.roomStateType == RoomStateType.RUNNING)
+				{
+					bool authoritative = !BattleConfig.IsPVE(SimpleSingletonProvider<GameLogicManager>.inst.room.curRoomInfo.MapType);
+					_ledger.ServerHealing(key, playerId, reply.TreatmentScore, authoritative);
+					int previous;
+					bool first = _healingConfirmed.Add(playerId);
+					if (first || effectRefresh || !_healingLastValues.TryGetValue(playerId, out previous) || previous != reply.TreatmentScore)
+						XingShu.Runtime.XingShuRuntimeHost.LogLifecycle(
+							"[Stats] Typed hero-info healing observed: slot=" + (selected.Slot + 1) + ", healing=" + reply.TreatmentScore + ", authoritative=" + authoritative +
+							", effectRefresh=" + effectRefresh + ", cached=" + playerData.TreatmentScore);
+					_healingLastValues[playerId] = reply.TreatmentScore;
+				}
+				else _ledger.Issue("服务器治疗统计暂未返回，保留已确认数据");
+			}
+			catch (Exception ex) { _ledger.Issue("治疗统计回包暂不可用: " + ex.GetType().Name); }
+		};
+		rpc.OnFinished.AddOnce(_healingListener);
+		if (!rpc.keepWaiting) { rpc.OnFinished.RemoveListener(_healingListener); _healingListener(rpc); }
+	}
+
+	private void QueueHealingRefresh(long id)
+	{
+		if (_live.Contains(id) && _healingQueued.Add(id)) _healingRefresh.Enqueue(id);
+	}
+
+	private void DetachHealing()
+	{
+		if (_healingRpc != null && _healingListener != null) _healingRpc.OnFinished.RemoveListener(_healingListener);
+		_healingRpc = null;
+		_healingListener = null;
+		_healingReply = null;
+		_healingRequestPlayer = 0;
+		_healingRequestKey = null;
+		_healingEffectRefresh = false;
+	}
+
+	// Observes the decoded protocol message before the official handler applies it.
+	// The patch checks errId == 0 and leaves the original handler unchanged.
+	public static void ObserveHeroInfo(GetHeroInfoS2C message)
+	{
+		try
+		{
+			var instance = Instance;
+			if (message == null || instance == null || instance._healingRequestPlayer != message.PlayerId ||
+				!instance.SameContext(instance._battle, instance._healingRequestKey, instance._healingRequestGeneration)) return;
+			instance._healingReply = message;
+			MatchLedger.Row row;
+			if (!instance._ledger.Rows.TryGetValue(message.PlayerId, out row)) return;
+			int previous;
+			if (instance._healingEffectRefresh || !instance._healingLastValues.TryGetValue(message.PlayerId, out previous) || previous != message.TreatmentScore)
+				XingShu.Runtime.XingShuRuntimeHost.LogLifecycle("[Stats] Typed hero-info reply: slot=" + (row.Slot + 1) +
+					", healing=" + message.TreatmentScore + ", damage=" + message.TotalDamage + ", kills=" + message.KillCount +
+					", deaths=" + message.TotalDie + ", taken=" + message.TotalInjured);
+		}
+		catch (Exception ex) { Debug.LogWarning("[XingShu Stats] Hero-info observation: " + ex.GetType().Name); }
+	}
+
+	public static void ObserveHealingSources(UpdateHeroAttrS2C message)
+	{
+		try
+		{
+			var instance = Instance;
+			if (instance == null || message == null || message.Cause == null || instance._settled ||
+				!Context(out _, out var battle, out var key) || instance._battle != battle || instance._ledger.Key != key ||
+				!instance._enabled || !instance._live.Contains(message.PlayerId)) return;
+			// Card/skill show actions identify PlayerId as the user. Buff, terrain
+			// and relic notifications do not establish a healing source.
+			if (message.Cause.S != CauseOrigin.Types.source.Card && message.Cause.S != CauseOrigin.Types.source.Skill) return;
+			foreach (var effect in message.EffectDatas)
+				if (effect != null && effect.Hp != null && effect.Hp.Killer == 0 && effect.Hp.PlayerId == effect.PlayerId &&
+					(effect.Hp.ChangeHp > 0 || effect.Hp.RealChangeHp > 0) && instance._live.Contains(effect.PlayerId))
+					instance._healingSources.Remember(key, effect.Hp, effect.PlayerId, message.PlayerId);
+		}
+		catch (Exception ex) { Debug.LogWarning("[XingShu Stats] Healing source: " + ex.GetType().Name); }
+	}
+
 	private void ReadRoster(RoomInfo room)
 	{
 		_live.Clear();
@@ -462,7 +633,8 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 			_ledger.Register(player.Id, player.Slot, player.GetNick());
 			var ledgerRow = _ledger.Rows[player.Id];
 			ledgerRow.Character = text;
-			ledgerRow.Turns = Math.Max(0, player.Hero?.Round ?? 0);
+			// Hero.Round is not maintained by the client round notification.
+			ledgerRow.Turns = Math.Max(0, room.Round);
 			ledgerRow.Gold = Math.Max(0, player.Hero?.Gold ?? 0);
 			try { ledgerRow.HeadUrl = _battle.GetPlayerDataById(player.Id)?.GetCharacterHeadUrl(); } catch { }
 			_live.Add(player.Id);
@@ -508,7 +680,25 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 								break;
 							}
 						}
-						_ledger.Hp(key, message, message.PlayerId, message.Killer, message.RealChangeHp, message.OriHp, currentHp);
+						long healingSource = _healingSources.Resolve(key, message, message.PlayerId, message.Killer);
+						_ledger.Hp(key, message, message.PlayerId, healingSource, message.RealChangeHp, message.OriHp, currentHp);
+						if (message.ChangeHp > 0 || message.RealChangeHp > 0)
+						{
+							// Refresh official totals after any healing effect, including cards,
+							// chips and full-HP uses. An absent Killer is not proof of self-healing.
+							QueueHealingRefresh(healingSource);
+							QueueHealingRefresh(message.PlayerId);
+							if (!_live.Contains(healingSource))
+								foreach (var id in _live) QueueHealingRefresh(id);
+							MatchLedger.Row target, source;
+							_ledger.Rows.TryGetValue(message.PlayerId, out target);
+							_ledger.Rows.TryGetValue(healingSource, out source);
+							XingShu.Runtime.XingShuRuntimeHost.LogLifecycle(
+								"[Stats] Healing effect observed: targetSlot=" + (target == null ? 0 : target.Slot + 1) +
+								", sourceSlot=" + (source == null ? 0 : source.Slot + 1) +
+								", effect=" + message.ChangeHp + ", reportedChange=" + message.RealChangeHp +
+								", before=" + message.OriHp + ", after=" + message.CurrHp + ", max=" + message.MaxHp);
+						}
 					}
 				}
 				catch (Exception ex)
@@ -517,9 +707,11 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 				}
 			};
 		}
-		_hpAttached = false;
-		_hp.AddListener(_hpListener);
-		_hpAttached = true;
+		if (!_hpAttached)
+		{
+			_hp.AddListener(_hpListener);
+			_hpAttached = true;
+		}
 	}
 
 	private void DetachHp()
@@ -546,6 +738,13 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 	private void ResetObservation()
 	{
 		_settled = false;
+		DetachHealing();
+		_nextHealingSync = 0;
+		_healingSlot = 0;
+		_healingConfirmed.Clear();
+		_healingRefresh.Clear();
+		_healingQueued.Clear();
+		_healingLastValues.Clear();
 		_goldSeen.Clear();
 		_generation++;
 		DetachHp();
@@ -553,6 +752,7 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 		TransferBridge.Reset();
 		_battle = null;
 		_ledger.Clear(null);
+		_healingSources.Clear(null);
 		_live.Clear();
 		_nextBind = 0f;
 	}
@@ -578,27 +778,38 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 	{
 		try
 		{
+			// Capture history even when the optional live statistics widget is disabled.
+			if (message != null) XingShu.Runtime.XingShuRuntimeHost.LogLifecycle(
+				"[Stats] Official settlement observed; achievements=" + message.NewAchieve.Count +
+				"; replayIdentity=" + !string.IsNullOrEmpty(message.ReplayId));
+			XingShu.Runtime.GameLibraryExporter.ObserveSettlement(message);
 			var instance = Instance;
-			if (message == null || instance == null || !instance._enabled || instance._settled || !HasActiveBattleContext ||
+			if (message == null || instance == null || !instance._enabled || instance._settled ||
+				!Context(out var room, out var battle, out var key, true) ||
 				SimpleSingletonProvider<GameLogicManager>.inst.replay?.Session?.IsReplay == true) return;
-			var room = SimpleSingletonProvider<GameLogicManager>.inst.room.curRoomInfo;
-			if (room == null || room.Id != message.RoomId) return;
+			if (room.Id != message.RoomId) return;
+			if (instance._ledger.Key != key || instance._battle != battle)
+			{
+				instance.ResetObservation(); instance._battle = battle; instance._ledger.Clear(key);
+			}
 			instance.ReadRoster(room);
 			foreach (var row in instance._ledger.Rows.Values)
 			{
 				PlayerFinishAchieve achieve;
 				if (!message.NewAchieve.TryGetValue(row.Id, out achieve)) { row.MetricsReady = false; continue; }
-				row.Kills = achieve.KillCount; row.Deaths = achieve.TotalDie;
-				row.Damage = achieve.TotalDamage; row.Taken = achieve.TotalInjured;
-				row.Healing = achieve.TreatmentScore; row.Coins = achieve.TotalGold;
-				row.Transferred = achieve.PveTransferGold;
-				row.Movement = achieve.MovePoint;
-				row.MovementReady = row.MovementKnown = achieve.MovePoint >= 0;
-				row.KillsKnown = row.DamageKnown = row.HealingKnown = row.TransferKnown = true;
-				row.MetricsReady = row.Settled = true;
+				instance._ledger.Settlement(row.Id, achieve.KillCount, achieve.TotalDie, achieve.TotalDamage,
+					achieve.TotalInjured, achieve.TreatmentScore, achieve.TotalGold, achieve.PveTransferGold, achieve.MovePoint);
+				XingShu.Runtime.XingShuRuntimeHost.LogLifecycle("[Stats] Settlement metrics: slot=" + (row.Slot + 1) +
+					", kills=" + achieve.KillCount + ", deaths=" + achieve.TotalDie + ", damage=" + achieve.TotalDamage +
+					", taken=" + achieve.TotalInjured + ", healing=" + achieve.TreatmentScore + ", coins=" + achieve.TotalGold +
+					", transfer=" + achieve.PveTransferGold + ", movement=" + achieve.MovePoint + ", turns=" + room.Round);
 			}
 			instance._settled = true;
 			instance._state = "服务器结算 · 星枢评分 v2";
+			instance.DetachHealing();
+			instance._lastSettlement.Capture(CurrentAccountId(), key,
+				StatsWidgetPresenter.Build(instance._ledger, instance._live, instance._enabled, instance._observedSince, instance.WidgetDetails()));
+			XingShu.Runtime.XingShuRuntimeHost.LogLifecycle("[Stats] Official settlement applied to widget");
 			instance._nextWidgetRefresh = 0;
 		}
 		catch (Exception ex) { Debug.LogWarning("[XingShu Stats] Settlement: " + ex.GetType().Name); }
@@ -609,6 +820,7 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 		if (_enabled != value)
 		{
 			_enabled = value;
+			if (!value) _lastSettlement.Clear();
 			ResetObservation();
 			_nextWidgetRefresh = 0f;
 			XingShuConfigService.SetBool(XingShuConfigKeys.MatchObserveEnabled, value);

@@ -152,6 +152,27 @@ namespace XingShu.Spectator
         }
 
         /// <summary>
+        /// Read a hand only while its room/session is still active. Check and copy
+        /// under the same lock so an exit or room switch cannot leak the old hand.
+        /// A confirmed empty hand is valid; a missing hand is not an empty hand.
+        /// </summary>
+        public static bool TryGetActivePlayerSnapshot(long expectedRoomId, long playerId, out SpectatorPlayerSnapshot snapshot)
+        {
+            lock (_syncRoot)
+            {
+                if (expectedRoomId > 0 && _isInSession && _spectatorSessionEpoch > 0 && _roomId == expectedRoomId &&
+                    _playerSnapshots.TryGetValue(playerId, out var stored) && stored != null && stored.CardIds != null &&
+                    stored.CardIds.All(id => id > 0))
+                {
+                    snapshot = new SpectatorPlayerSnapshot(stored.PlayerId, stored.CardIds, stored.LastUpdatedTime);
+                    return true;
+                }
+                snapshot = null;
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Query snapshot of all active player hands in the current session.
         /// </summary>
         public static IReadOnlyDictionary<long, IReadOnlyList<int>> GetAllPlayerHands()

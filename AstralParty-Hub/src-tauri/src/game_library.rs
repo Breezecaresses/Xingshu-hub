@@ -47,6 +47,17 @@ struct PendingMatch { session: RuntimeSession, started: Instant, detail: MatchDe
 
 fn record_key(time: i64, hero: i32, mode: i32) -> String { format!("{time}:{hero}:{mode}") }
 
+fn supports_match_detail(version: &str) -> bool {
+    // Release names changed after library-r2. Compare the numbered family,
+    // rather than rejecting all subsequent game-ui builds.
+    [("library-r", 2), ("game-ui-r", 7)].iter().any(|(family, minimum)| {
+        version.rsplit_once(family).is_some_and(|(_, tail)| {
+            let digits: String = tail.chars().take_while(|c| c.is_ascii_digit()).collect();
+            digits.parse::<u32>().is_ok_and(|revision| revision >= *minimum)
+        })
+    })
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all="camelCase", deny_unknown_fields)]
 pub struct HeroProgress {
@@ -185,6 +196,24 @@ impl GameLibraryStore {
         Ok((detail,true))
     }
 
+    pub fn save_live_settlement(&self, session: &RuntimeSession, mut detail: MatchDetail) -> HubResult<()> {
+        // An unsolicited settlement must match a summary already returned by
+        // this same authenticated account, never a spectator or arbitrary record.
+        if session.bound_role == "USER_SPECTATOR" || session.live_player_id != Some(detail.player_id) ||
+            detail.status != "ready" || detail.stats_source != "game_settlement" { return Err(invalid()); }
+        let record: PlayedMatch = self.0.with_conn(|c| {
+            let json: String = c.query_row("SELECT record FROM game_library_matches WHERE platform=?1 AND player_id=?2 AND record_key=?3",
+                params![session.platform_id,detail.player_id,record_key(detail.time,detail.hero_id,detail.map_id)], |r| r.get(0)).map_err(storage)?;
+            serde_json::from_str(&json).map_err(storage)
+        })?;
+        if record.replay_id.is_empty() || record.replay_id != detail.replay_id || record.version != detail.version ||
+            !detail.participants.iter().any(|p|p.player_id==detail.player_id && p.hero_id==detail.hero_id && p.rank==record.rank) { return Err(invalid()); }
+        let (pending, _) = self.begin_detail(session,detail.time,detail.hero_id,detail.map_id)?;
+        detail.request_id=pending.request_id;
+        detail.index=pending.index;
+        self.save_detail(session,detail)
+    }
+
     pub fn save_detail(&self, session: &RuntimeSession, mut detail: MatchDetail) -> HubResult<()> {
         let mut pending=self.1.lock().map_err(storage)?;
         let p=pending.get(&detail.request_id).ok_or_else(invalid)?;
@@ -193,7 +222,7 @@ impl GameLibraryStore {
             || p.session.platform_id!=session.platform_id || session.live_player_id!=Some(detail.player_id)
             || p.detail.player_id!=detail.player_id || p.detail.time!=detail.time
             || p.detail.hero_id!=detail.hero_id || p.detail.map_id!=detail.map_id
-            || !matches!(detail.status.as_str(),"ready"|"error") || detail.error.len()>500 || detail.message.len()>1000 || detail.replay_id.len()>128 || detail.version.len()>64 || detail.stats_error.len()>200 || !matches!(detail.stats_source.as_str(),""|"profile_record"|"replay_settlement")
+            || !matches!(detail.status.as_str(),"ready"|"error") || detail.error.len()>500 || detail.message.len()>1000 || detail.replay_id.len()>128 || detail.version.len()>64 || detail.stats_error.len()>200 || !matches!(detail.stats_source.as_str(),""|"profile_record"|"replay_settlement"|"game_settlement")
             || (detail.status=="ready" && (detail.replay_id!=p.detail.replay_id || detail.version!=p.detail.version))
             || detail.rounds.is_some_and(|v|v<0 || v>10000) || detail.duration_seconds.is_some_and(|v|v<0 || v>604800)
             || detail.participants.len()>16 || detail.participants.iter().any(|v| v.name.chars().count()>100 || v.hero_id<=0 || !(0..=64).contains(&v.rank) || v.level<0 || v.gold<0 || v.player_level<0 || [v.kills,v.deaths,v.damage,v.taken,v.healing,v.coins,v.transfer,v.turns,v.movement].iter().any(|n|n.is_some_and(|n| !(0..=1_000_000_000_000).contains(&n))))
@@ -204,12 +233,12 @@ impl GameLibraryStore {
         if detail.status=="ready" {
             // Replays may expire after their metrics have been saved. A later profile-only
             // response must not destroy an already verified settlement for this same match.
-            if detail.stats_source!="replay_settlement" {
+            if !matches!(detail.stats_source.as_str(),"replay_settlement"|"game_settlement") {
                 let old:Option<MatchDetail>=self.0.with_conn(|c| {
                     let json:Option<String>=c.query_row("SELECT detail FROM game_library_match_details WHERE platform=?1 AND player_id=?2 AND record_key=?3",params![session.platform_id,detail.player_id,record_key(detail.time,detail.hero_id,detail.map_id)],|r|r.get(0)).optional().map_err(storage)?;
                     json.map(|s|serde_json::from_str(&s).map_err(storage)).transpose()
                 })?;
-                if let Some(old)=old.filter(|old|old.stats_source=="replay_settlement" && old.replay_id==detail.replay_id && old.version==detail.version) {
+                if let Some(old)=old.filter(|old|matches!(old.stats_source.as_str(),"replay_settlement"|"game_settlement") && old.replay_id==detail.replay_id && old.version==detail.version) {
                     for participant in &mut detail.participants {
                         if let Some(p)=old.participants.iter().find(|p|p.player_id==participant.player_id && p.hero_id==participant.hero_id && p.slot==participant.slot) {
                             participant.kills=p.kills;participant.deaths=p.deaths;participant.damage=p.damage;participant.taken=p.taken;
@@ -243,7 +272,12 @@ impl GameLibraryStore {
             json.map(|s|serde_json::from_str(&s).map_err(storage)).transpose()
         })?;
         match (current,cached) {
-            (Some(p),Some(mut cached)) if p.status=="error" => {cached.refresh_error=if p.message.is_empty(){p.error}else{p.message};Ok(Some(cached))},
+            (Some(p),Some(mut cached)) if p.status=="error" => {
+                // Keep the saved metrics and timestamp, but correlate this failed refresh
+                // with the request the UI is waiting for. Do not persist the view overlay.
+                cached.request_id=p.request_id;
+                cached.refresh_error=if p.message.is_empty(){p.error}else{p.message};Ok(Some(cached))
+            },
             (Some(mut p),Some(cached)) => {
                 p.participants=cached.participants;p.stats_source=cached.stats_source;p.stats_error=cached.stats_error;
                 p.arena_id=cached.arena_id;p.rounds=cached.rounds;p.duration_seconds=cached.duration_seconds;p.observed_at=cached.observed_at;
@@ -275,7 +309,7 @@ pub fn get_game_match_detail(store: crate::desktop_host::State<GameLibraryStore>
 pub fn request_game_match_detail(store: crate::desktop_host::State<GameLibraryStore>, bridge: crate::desktop_host::State<Arc<BridgeServer>>, connection_id: String, player_id: i64, time: i64, hero_id: i32, map_id: i32) -> HubResult<String> {
     let session=bridge.get_runtime_session(&connection_id).ok_or_else(invalid)?;
     if session.live_player_id!=Some(player_id) {return Err(invalid());}
-    if !session.runtime_version.contains("library-r") || session.runtime_version.ends_with("library-r1") {
+    if !supports_match_detail(&session.runtime_version) {
         return Err(HubError::new("GAME_RUNTIME_UPDATE","请安装支持历史对局详情的新版星枢运行时，再启动游戏。","GAME_DATA"));
     }
     let (detail,created)=store.begin_detail(&session,time,hero_id,map_id)?;
@@ -292,6 +326,10 @@ pub fn request_game_match_detail(store: crate::desktop_host::State<GameLibrarySt
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test] fn historical_details_accept_current_and_legacy_supported_releases() {
+        for v in ["1.0.0-library-r2", "1.0.0-library-r10", "1.0.0-game-ui-r7", "1.0.0-game-ui-r8-fix"] { assert!(supports_match_detail(v), "{v}"); }
+        for v in ["", "1.0.0-library-r1", "1.0.0-game-ui-r6", "1.0.0-game-ui-r", "unknown"] { assert!(!supports_match_detail(v), "{v}"); }
+    }
     fn snapshot()->AccountSnapshot { serde_json::from_value(serde_json::json!({"playerId":42,"name":"测试","level":5,"exp":20,"heroes":[],"skins":[],"altArts":[],"matches":[{"time":1800000000,"rank":1,"heroId":101,"mapId":81003,"index":0,"replayId":"","version":"3.3.0"}]})).unwrap() }
     fn session(platform:&str)->RuntimeSession {RuntimeSession::new("c",platform,1,"game",Some(42),"1",1,"MAIN")}
     #[test] fn account_isolation_dedup_and_partial_updates() {
@@ -389,11 +427,15 @@ mod tests {
         store.save_detail(&reconnect,ready(retry)).unwrap();
         assert_eq!(store.match_detail("STEAM_CN",42,1800000000,101,81003).unwrap().unwrap().status,"ready");
         let (refresh,_)=store.begin_detail(&reconnect,1800000000,101,81003).unwrap();
+        let refresh_id=refresh.request_id.clone();
+        let saved_time=store.match_detail("STEAM_CN",42,1800000000,101,81003).unwrap().unwrap().observed_at;
         let mut failed=refresh;failed.status="error".into();failed.message="服务器记录已过期".into();
         store.save_detail(&reconnect,failed).unwrap();
         let cached=store.match_detail("STEAM_CN",42,1800000000,101,81003).unwrap().unwrap();
         assert_eq!(cached.status,"ready");assert_eq!(cached.participants[0].damage,Some(35));
         assert_eq!(cached.refresh_error,"服务器记录已过期");
+        assert_eq!(cached.request_id,refresh_id);
+        assert_eq!(cached.observed_at,saved_time);
         let (request,_)=store.begin_detail(&reconnect,1800000000,101,81003).unwrap();
         let mut partial=ready(request);partial.stats_source="profile_record".into();partial.stats_error="REPLAY_UNAVAILABLE".into();
         partial.participants[0].damage=None;partial.participants[0].kills=None;
@@ -416,4 +458,32 @@ mod tests {
         store.save_detail(&s,detail).unwrap();
         assert_eq!(store.match_detail("STEAM_CN",42,1800000000,101,81003).unwrap().unwrap().participants[0].movement,Some(42));
     }
+    #[test] fn live_settlement_is_bound_to_own_career_and_survives_partial_refresh() {
+        let dir=tempfile::tempdir().unwrap();let path=dir.path().join("live.db");
+        let store=GameLibraryStore::new(Database::init(&path).unwrap()).unwrap();
+        let mut s=session("BILIBILI");s.bound_role="UNBOUND".into();
+        let mut data=snapshot();data.matches.as_mut().unwrap()[0].replay_id="replay-42".into();
+        store.save(&s,data.clone()).unwrap();
+        let mut detail=ready(store.begin_detail(&s,1800000000,101,81003).unwrap().0);
+        detail.stats_source="game_settlement".into();
+        let mut other=s.clone();other.platform_id="TAPTAP".into();assert!(store.save_live_settlement(&other,detail.clone()).is_err());
+        other=s.clone();other.live_player_id=Some(43);assert!(store.save_live_settlement(&other,detail.clone()).is_err());
+        other=s.clone();other.bound_role="USER_SPECTATOR".into();assert!(store.save_live_settlement(&other,detail.clone()).is_err());
+        for field in ["replay", "version", "rank", "time", "hero", "map"] {
+            let mut wrong=detail.clone();
+            match field { "replay"=>wrong.replay_id="other".into(),"version"=>wrong.version="other".into(),"rank"=>wrong.participants[0].rank=2,"time"=>wrong.time+=1,"hero"=>wrong.hero_id+=1,_=>wrong.map_id+=1 }
+            assert!(store.save_live_settlement(&s,wrong).is_err(),"{field}");
+        }
+        store.save_live_settlement(&s,detail.clone()).unwrap();
+        store.save_live_settlement(&s,detail).unwrap();
+        let mut partial=ready(store.begin_detail(&s,1800000000,101,81003).unwrap().0);
+        partial.stats_source="profile_record".into();partial.participants[0].damage=None;partial.participants[0].movement=None;
+        store.save_detail(&s,partial).unwrap();
+        data.matches=None;store.save(&s,data).unwrap();drop(store);
+        let store=GameLibraryStore::new(Database::init(&path).unwrap()).unwrap();
+        let saved=store.match_detail("BILIBILI",42,1800000000,101,81003).unwrap().unwrap();
+        assert_eq!(saved.stats_source,"game_settlement");assert_eq!(saved.participants[0].damage,Some(35));assert_eq!(saved.participants[0].movement,Some(42));
+        assert!(store.accounts().unwrap()[0].snapshot.matches.as_ref().unwrap()[0].detail_available);
+    }
+
 }

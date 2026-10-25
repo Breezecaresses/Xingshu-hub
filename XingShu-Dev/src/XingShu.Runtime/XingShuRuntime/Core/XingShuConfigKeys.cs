@@ -242,6 +242,10 @@ internal static class XingShuConfigKeys
 	internal const string MatchKillTargetColorDefault = "#F4F7FF";
 
 	// Wave 4: 立绘替换 (StaticPortraitGUI)
+	internal const string OriginalArtworkEnabled = "XINGSHU_ORIGINAL_ARTWORK_ENABLED";
+
+	internal const bool OriginalArtworkEnabledDefault = true;
+
 	internal const string StaticPortraitEnableLoad = "XINGSHU_STATIC_ENABLE_LOAD";
 
 	internal const bool StaticPortraitEnableLoadDefault = true;

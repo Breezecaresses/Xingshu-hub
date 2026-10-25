@@ -88,14 +88,16 @@ def write_inventory(manifest):
 
 
 def main():
-    global OUT
+    global OUT, DLL
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, default=OUT, help='Candidate directory; does not install files')
     parser.add_argument('--previous-manifest', type=Path, help='Previously verified installed candidates')
     parser.add_argument('--skip-inventory', action='store_true', help='Keep Hub deployment inventory unchanged')
+    parser.add_argument('--hooks-dll', type=Path, default=DLL, help='Use an isolated runtime build without replacing the default build output')
     parser.add_argument('--platform', choices=['STEAM_CN', 'TAPTAP', 'BILIBILI', 'WEGAME'], action='append', help='Prepare only selected Windows channels')
     args = parser.parse_args()
     OUT = args.out.resolve()
+    DLL = args.hooks_dll.resolve()
     OUT.mkdir(parents=True, exist_ok=True)
     manifest = []
     dll = DLL.read_bytes()
@@ -134,12 +136,13 @@ def main():
         patched_runtime = folder / 'AstralParty.Runtime.dll'
         original_runtime.write_bytes(runtime.m_Script.encode('utf8', errors='surrogateescape'))
         subprocess.run(['pwsh', '-NoProfile', '-File', str(ROOT / 'tools/check_runtime_compatibility.ps1'),
-                        '-RuntimeDll', str(original_runtime)], check=True)
+                        '-RuntimeDll', str(original_runtime), '-HooksDll', str(DLL)], check=True)
         boot_runtime = folder / 'AstralParty.Runtime.bootstrap.dll'
         subprocess.run([str(patcher), str(original_runtime), str(bootstrap), str(boot_runtime),
                         sha(original_runtime.read_bytes()), LEGACY['bootstrapType']], check=True)
         subprocess.run(['pwsh', '-NoProfile', '-File', str(ROOT / 'tools/patch_thinking_time.ps1'),
-                        '-InputDll', str(boot_runtime), '-OutputDll', str(patched_runtime)], check=True)
+                        '-InputDll', str(boot_runtime), '-OutputDll', str(patched_runtime),
+                        '-HooksDll', str(DLL)], check=True)
         runtime.m_Script = patched_runtime.read_bytes().decode('utf8', errors='surrogateescape')
         runtime.save()
         put_hooks(env, dll)

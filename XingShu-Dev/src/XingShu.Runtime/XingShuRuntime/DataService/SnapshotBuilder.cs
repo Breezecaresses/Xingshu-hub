@@ -7,6 +7,7 @@ using GameLogic;
 using party.model;
 using Tools;
 using UI;
+using XingShu.Spectator;
 
 namespace XingShuRuntime.DataService;
 
@@ -15,7 +16,7 @@ namespace XingShuRuntime.DataService;
 /// 负责从游戏运行时实体提取只读数据，严格单向构造不可变 DTO。
 /// 严格执行：
 /// 1. Self 手牌来自 cardContainer (runtime-live)。
-/// 2. Remote/Bot 严禁读取本地 _HandCards，仅读取 HandCardDisplayManager 权威缓存；未同步时严格降级为 Unknown。
+/// 2. Remote/Bot 严禁读取本地 _HandCards，优先读取当前观战会话，再读取 UI 权威缓存；未同步时降级为 Unknown。
 /// 3. 所有返回对象完全与 Unity 引擎解耦。
 /// </summary>
 internal static class SnapshotBuilder
@@ -24,7 +25,8 @@ internal static class SnapshotBuilder
 	{
 		try
 		{
-			if (!BattleStatsOverlay.Context(out RoomInfo room, out BattleLogic battle, out string matchKey))
+			if (!BattleStatsOverlay.Context(out RoomInfo room, out BattleLogic battle, out string matchKey,
+				BattleStatsOverlay.HasActiveBattleContext))
 			{
 				return MatchDataSnapshot.CreateNoMatch();
 			}
@@ -242,6 +244,18 @@ internal static class SnapshotBuilder
 		}
 		else
 		{
+			// 官方观战数据独立于 UI 是否打开。按当前房间原子读取，退出后即失效。
+			// 同时核对公开手牌数量，避免尚未同步或被掩码过滤的部分数据冒充完整手牌。
+			if (SpectatorStateStore.TryGetActivePlayerSnapshot(currentRoomId, playerId, out SpectatorPlayerSnapshot watched) &&
+				bpd?.cardContainer != null && watched.HandSize == bpd.cardContainer.CardCount)
+			{
+				var cards = new List<CardSnapshot>(watched.HandSize);
+				foreach (int id in watched.CardIds)
+					cards.Add(new CardSnapshot(id, ResolveCardName(id), ResolveCardCost(id)));
+				return HandSnapshot.CreateServerAuthoritative(playerId, cards.ToArray(),
+					watched.LastUpdatedTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture));
+			}
+
 			// 远端/Bot 玩家：严禁读本地 _HandCards！仅读权威服务同步缓存
 			if (HandCardDisplayManager.TryGetAuthoritativeRemoteHand(currentRoomId, playerId, out List<TrackedCard> remoteCards, out HandSyncState syncState))
 			{

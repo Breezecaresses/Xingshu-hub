@@ -44,7 +44,7 @@ namespace XingShuRuntime.UI
 
     internal sealed class XingShuMatchPlayerCard
     {
-        internal static readonly string[] Labels = { "击杀", "死亡", "输出", "承伤", "治疗", "累计金币", "转账", "行动回合", "移动步数" };
+        internal static readonly string[] Labels = { "击杀", "死亡", "输出", "承伤", "治疗", "累计金币", "转账", "对局轮数", "移动步数" };
         private readonly Text _name, _character, _score, _state;
         private readonly Text[] _values = new Text[Labels.Length];
         private readonly GameObject _root;

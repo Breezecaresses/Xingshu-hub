@@ -83,9 +83,9 @@ namespace XingShuRuntime.Targeting
 
         public int GetPriority(int nextNodeId)
         {
-            if (RedNextNode > 0 && nextNodeId == RedNextNode) return 0;
-            if (BlueNextNode > 0 && nextNodeId == BlueNextNode) return 1;
-            if (GreenNextNode > 0 && nextNodeId == GreenNextNode) return 2;
+            if (RedNextNode >= 0 && nextNodeId == RedNextNode) return 0;
+            if (BlueNextNode >= 0 && nextNodeId == BlueNextNode) return 1;
+            if (GreenNextNode >= 0 && nextNodeId == GreenNextNode) return 2;
             return 999;
         }
     }

@@ -39,7 +39,7 @@ namespace XingShuRuntime.Utilities
 
         public void AttachStop(Action stop) { _stop = stop; }
 
-        private static double RealSeconds()
+        internal static double RealSeconds()
         {
 #if !XINGSHU_ANDROID_PREVIEW
             if (!_nativeClockUnavailable)

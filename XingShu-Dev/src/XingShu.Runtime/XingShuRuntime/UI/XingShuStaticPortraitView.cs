@@ -152,7 +152,7 @@ namespace XingShuRuntime.UI
             headerBg.color = XingShuUIAssetService.IsFallbackSprite(cfhSprite) ? XingShuUITheme.CardFeatureBase : Color.white;
 
             // 标题: 立绘替换 (StaticPortrait)
-            Text titleTxt = XingShuUIFactory.CreateText(headerGo, "Title", "立绘替换 (StaticPortrait)", 20, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
+            Text titleTxt = XingShuUIFactory.CreateText(headerGo, "Title", "模组加载", 20, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
             RectTransform titleRt = titleTxt.rectTransform;
             titleRt.anchorMin = new Vector2(0f, 0.5f);
             titleRt.anchorMax = new Vector2(0f, 0.5f);
@@ -161,7 +161,7 @@ namespace XingShuRuntime.UI
             titleRt.sizeDelta = new Vector2(360f, 26f);
 
             // 说明文案
-            Text subTxt = XingShuUIFactory.CreateText(headerGo, "Subtitle", "自定义立绘加载与原图转储路径，支持即时预览与文件管理", 13, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
+            Text subTxt = XingShuUIFactory.CreateText(headerGo, "Subtitle", "立绘、卡牌画面与自定义贴图管理", 13, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
             RectTransform subRt = subTxt.rectTransform;
             subRt.anchorMin = new Vector2(0f, 0.5f);
             subRt.anchorMax = new Vector2(0f, 0.5f);

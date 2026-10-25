@@ -705,7 +705,7 @@ namespace XingShu.Bridge
                 case "GAME_LIBRARY_REQUEST":
                 case "GAME_LIBRARY_MATCH_REQUEST":
                 case BridgeProtocol.TypeWatchTarget:
-                    Log(string.Format("[XingShuBridgeClient] 收到 Hub 指令 WATCH_TARGET: reqId='{0}'", env.requestId));
+                    Log(string.Format("[XingShuBridgeClient] 收到 Hub 指令 {0}: reqId='{1}'", env.messageType, env.requestId));
                     // Receiving a command is not evidence of joining. Unity executes it on Update.
                     lock (_mainThreadMessages)
                     {

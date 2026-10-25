@@ -91,7 +91,7 @@ namespace XingShuRuntime.Targeting
             }
 
             // 4. 主动索敌 Evidence Gate: 怪物当前位置已知性 (MonsterNodeKnown)
-            if (!input.MonsterNodeKnown || input.CurrentNode <= 0)
+            if (!input.MonsterNodeKnown || input.CurrentNode < 0)
             {
                 return new MonsterTargetPrediction
                 {
@@ -109,7 +109,7 @@ namespace XingShuRuntime.Targeting
             }
 
             // 5. 主动索敌 Evidence Gate: 预先移动节点已知性 (PostMoveNodeKnown)
-            if (!input.PostMoveNodeKnown || input.PostMoveNode <= 0)
+            if (!input.PostMoveNodeKnown || input.PostMoveNode < 0)
             {
                 return new MonsterTargetPrediction
                 {
@@ -169,7 +169,7 @@ namespace XingShuRuntime.Targeting
             for (int i = 0; i < input.Players.Count; i++)
             {
                 var p = input.Players[i];
-                if (p.IsValid && p.IsAlive && p.NodeId > 0)
+                if (p.IsValid && p.IsAlive && p.NodeId >= 0)
                 {
                     alivePlayers.Add(p);
                 }
@@ -214,7 +214,7 @@ namespace XingShuRuntime.Targeting
 
             // 9. 执行 Priority-Aware BFS 搜索
             var searchResult = PerformPriorityAwareBFS(startNode, input.SearchRange, input.GraphEdges, input.BranchPriorities,
-                input.CurrentNode != startNode ? input.CurrentNode : 0);
+                input.CurrentNode != startNode ? input.CurrentNode : -1);
 
             // 10. 筛选位于搜索范围内的可达候选玩家
             List<EvaluatedCandidate> reachableCandidates = new List<EvaluatedCandidate>();
@@ -462,12 +462,12 @@ namespace XingShuRuntime.Targeting
 
             // A one-step budget can still reach a player on the post-move node itself.
             var reached = PerformPriorityAwareBFS(input.PostMoveNode, input.SearchRange, input.GraphEdges, input.BranchPriorities,
-                input.CurrentNode != input.PostMoveNode ? input.CurrentNode : 0);
+                input.CurrentNode != input.PostMoveNode ? input.CurrentNode : -1);
             int nearest = int.MaxValue;
             foreach (var player in input.Players)
             {
                 NodeSearchState node;
-                if (!player.IsValid || !player.IsAlive || player.PlayerId == 0 || player.NodeId <= 0 ||
+                if (!player.IsValid || !player.IsAlive || player.PlayerId == 0 || player.NodeId < 0 ||
                     !reached.TryGetValue(player.NodeId, out node) || node.Distance > input.SearchRange) continue;
                 if (node.Distance < nearest)
                 {
@@ -484,7 +484,44 @@ namespace XingShuRuntime.Targeting
                     Confidence = PredictionConfidence.Unresolved
                 });
             }
-            return candidates;
+            // Distance selects a tile. Every living player on that tile is hit;
+            // slots never break a tie between occupants of the same tile.
+            var preferred = new List<MonsterTargetPrediction>();
+            foreach (var candidate in candidates)
+            {
+                bool beaten = false;
+                foreach (var other in candidates)
+                    if (other.TargetNodeId != candidate.TargetNodeId && ComparePaths(other.Path, candidate.Path, input.BranchPriorities) < 0)
+                    { beaten = true; break; }
+                if (!beaten) preferred.Add(candidate);
+            }
+            var tiles = new HashSet<int>();
+            foreach (var p in preferred) tiles.Add(p.TargetNodeId);
+            for (int i = 0; i < preferred.Count; i++)
+            {
+                var p = preferred[i];
+                p.Reason = tiles.Count == 1 ? (preferred.Count == candidates.Count ? PredictionReason.NearestTarget : PredictionReason.BranchPriorityTieBreak) : PredictionReason.Unresolved;
+                p.Confidence = tiles.Count == 1 ? PredictionConfidence.High : PredictionConfidence.Unresolved;
+                preferred[i] = p;
+            }
+            return preferred;
+        }
+
+        // Compare at the first actual divergent fork, not the lowest colour
+        // encountered anywhere in a route. Missing mappings preserve uncertainty.
+        internal static int ComparePaths(IReadOnlyList<int> a, IReadOnlyList<int> b,
+            IReadOnlyDictionary<int, BranchPriorityEntry> priorities)
+        {
+            if (a == null || b == null || priorities == null) return 0;
+            for (int i = 1; i < Math.Min(a.Count, b.Count); i++)
+            {
+                if (a[i] == b[i]) continue;
+                BranchPriorityEntry fork;
+                if (a[i - 1] != b[i - 1] || !priorities.TryGetValue(a[i - 1], out fork)) return 0;
+                int pa = fork.GetPriority(a[i]), pb = fork.GetPriority(b[i]);
+                return pa < 999 && pb < 999 ? pa.CompareTo(pb) : 0;
+            }
+            return 0;
         }
 
         private static bool HasDivergingUnmappedBranch(
@@ -544,7 +581,7 @@ namespace XingShuRuntime.Targeting
             int maxRange,
             IReadOnlyDictionary<int, List<int>> graphEdges,
             IReadOnlyDictionary<int, BranchPriorityEntry> branchPriorities,
-            int previousNode = 0)
+            int previousNode = -1)
         {
             var result = new Dictionary<int, NodeSearchState>();
             if (graphEdges == null || maxRange < 0)
@@ -604,7 +641,7 @@ namespace XingShuRuntime.Targeting
                 for (int i = 0; i < sortedNeighbors.Count; i++)
                 {
                     int v = sortedNeighbors[i];
-                    if (v <= 0 || v == u || v == current.PreviousNode) continue;
+                    if (v < 0 || v == u || v == current.PreviousNode) continue;
 
                     int edgeScore = hasBranchPriorities ? branchEntry.GetPriority(v) : 999;
                     int newBranchScore = current.BranchScore != 999 ? current.BranchScore : edgeScore;
@@ -619,11 +656,14 @@ namespace XingShuRuntime.Targeting
                         }
                         else if (nextDepth == existingState.Distance)
                         {
-                            if (newBranchScore < existingState.BranchScore)
+                            if (ComparePaths(new List<int>(current.Path) { v }, existingState.Path, branchPriorities) < 0)
                             {
                                 existingState.Path = new List<int>(current.Path) { v };
                                 existingState.BranchScore = newBranchScore;
-                                KeepBestPath(result, v, existingState);
+                                KeepBestPath(result, v, existingState, branchPriorities);
+                                // A preferred route discovered after a merge must also
+                                // update descendants already reached through that state.
+                                queue.Add(existingState);
                             }
                             continue;
                         }
@@ -638,7 +678,7 @@ namespace XingShuRuntime.Targeting
                         BranchScore = newBranchScore
                     };
                     visited[stateKey] = newState;
-                    KeepBestPath(result, v, newState);
+                    KeepBestPath(result, v, newState, branchPriorities);
                     queue.Add(newState);
                 }
             }
@@ -651,11 +691,11 @@ namespace XingShuRuntime.Targeting
             return ((long)(uint)previousNode << 32) | (uint)node;
         }
 
-        private static void KeepBestPath(Dictionary<int, NodeSearchState> paths, int node, NodeSearchState candidate)
+        private static void KeepBestPath(Dictionary<int, NodeSearchState> paths, int node, NodeSearchState candidate, IReadOnlyDictionary<int, BranchPriorityEntry> priorities)
         {
             NodeSearchState existing;
             if (!paths.TryGetValue(node, out existing) || candidate.Distance < existing.Distance ||
-                (candidate.Distance == existing.Distance && candidate.BranchScore < existing.BranchScore))
+                (candidate.Distance == existing.Distance && ComparePaths(candidate.Path, existing.Path, priorities) < 0))
                 paths[node] = candidate;
         }
     }

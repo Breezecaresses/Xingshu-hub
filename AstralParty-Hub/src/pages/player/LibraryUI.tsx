@@ -12,6 +12,7 @@ export function useGameLibrary() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const syncGeneration = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refresh = useCallback(async () => {
     if (!isTauri()) return;
@@ -23,27 +24,39 @@ export function useGameLibrary() {
   useEffect(() => {
     void refresh();
     const poll = setInterval(() => void refresh(), 5000);
-    return () => { clearInterval(poll); if (timer.current) clearTimeout(timer.current); };
+    return () => { clearInterval(poll); syncGeneration.current++; if (timer.current) clearTimeout(timer.current); };
   }, [refresh]);
   const key = defaultLibraryKey(accounts, sessions, selected);
   const account = accounts.find(a => accountKey(a) === key);
-  const session = sessions.find(s => sessionKey(s) === key && s.connectionState === 'CONNECTED');
-  const select = (value: string) => { setSelected(value); localStorage.setItem('library.account', value); setNotice(''); };
+  const session = sessions.filter(s => sessionKey(s) === key && s.connectionState === 'CONNECTED')
+    .sort((a, b) => (b.lastSeenAt || '').localeCompare(a.lastSeenAt || ''))[0];
+  const select = (value: string) => { syncGeneration.current++; if (timer.current) clearTimeout(timer.current); setBusy(false); setSelected(value); localStorage.setItem('library.account', value); setNotice(''); };
   const sync = async () => {
     if (!session) { setNotice('请启动所选平台的新版星枢插件并登录游戏，再同步账号数据。'); return; }
     setBusy(true); setNotice('已请求同步，正在等待游戏返回数据…');
     const previous = account?.observedAt;
+    const generation = ++syncGeneration.current;
+    const deadline = Date.now() + 45000;
+    const waitForData = async () => {
+      if (generation !== syncGeneration.current) return;
+      try {
+        const next = await invoke<LibraryAccount[]>('get_game_library');
+        if (generation !== syncGeneration.current) return;
+        setAccounts(next);
+        const updated = next.find(a => accountKey(a) === key);
+        if (updated && updated.observedAt !== previous) {
+          setNotice('账号数据已更新。结算后的新战绩会继续自动同步。'); setBusy(false); return;
+        }
+        if (Date.now() >= deadline) {
+          setNotice('暂未收到新数据。请确认所选账号已进入大厅；服务器延迟返回的新战绩会继续自动同步。'); setBusy(false); return;
+        }
+        timer.current = setTimeout(() => void waitForData(), 1000);
+      } catch { if (generation === syncGeneration.current) { setNotice('读取同步结果失败，请刷新重试。'); setBusy(false); } }
+    };
     try {
       await invoke('sync_game_library', { connectionId: session.connectionId });
-      timer.current = setTimeout(async () => {
-        try {
-          const next = await invoke<LibraryAccount[]>('get_game_library'); setAccounts(next);
-          const updated = next.find(a => accountKey(a) === key);
-          setNotice(updated && updated.observedAt !== previous ? '账号数据已更新。' : '暂未收到新数据。请确认已安装新版运行时并进入大厅；战绩须由游戏服务器返回。');
-        } catch { setNotice('读取同步结果失败，请刷新重试。'); }
-        setBusy(false);
-      }, 11000);
-    } catch (e) { setNotice(`同步未完成：${typeof e === 'object' && e && 'message' in e ? e.message : String(e)}`); setBusy(false); }
+      if (generation === syncGeneration.current) timer.current = setTimeout(() => void waitForData(), 1000);
+    } catch (e) { if (generation === syncGeneration.current) { setNotice(`同步未完成：${typeof e === 'object' && e && 'message' in e ? e.message : String(e)}`); setBusy(false); } }
   };
   return { accounts, sessions, account, session, key, select, refresh, sync, error, notice, busy };
 }

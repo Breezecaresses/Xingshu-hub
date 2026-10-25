@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { invoke, isTauri } from '@tauri-apps/api/core';
-import { characterName, gameCatalog, matchDate } from '../../shared/gameLibrary';
+import { characterName, gameCatalog, matchDate, matchDetailRefreshComplete } from '../../shared/gameLibrary';
 import type { MatchDetail, PlayedMatch } from '../../shared/gameLibrary';
 import { matchModeName, rateMatch, ratingMethod } from '../../shared/matchRating';
 import { matchHistorySummary, matchResult } from '../../shared/matchResults';
@@ -45,7 +45,7 @@ function MatchInspector({ record, state, close }: { record: PlayedMatch; state: 
         if (cancelled) return;
         if (next?.status==='ready' && !request) {setDetail(next);setLoading(false);return;}
         if (!session) {setDetail(next);setLoading(false);return;}
-        await invoke('request_game_match_detail',{connectionId:session.connectionId,...args});
+        const requestId=await invoke<string>('request_game_match_detail',{connectionId:session.connectionId,...args});
         const started=Date.now();
         async function poll() {
           if (cancelled) return;
@@ -53,7 +53,7 @@ function MatchInspector({ record, state, close }: { record: PlayedMatch; state: 
             next=await invoke<MatchDetail | null>('get_game_match_detail',args);
             if (cancelled) return;
             setDetail(next);
-            if (next?.status==='ready' || next?.status==='error') {setLoading(false);void state.refresh();return;}
+            if (matchDetailRefreshComplete(next,requestId)) {setLoading(false);void state.refresh();return;}
             if (Date.now()-started>45000) {setError('游戏读取超时，请确认已进入大厅后重试。');setLoading(false);return;}
             timer=setTimeout(()=>void poll(),800);
           } catch(e) {if (!cancelled) {setError(errorMessage(e));setLoading(false);}}
@@ -65,7 +65,7 @@ function MatchInspector({ record, state, close }: { record: PlayedMatch; state: 
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);};
   },[platform,pid,record.time,record.heroId,record.mapId,session?.connectionId,request]);
   const players=detail?.participants || [];
-  const ratings=detail?.statsSource==='replay_settlement' ? rateMatch(players) : players.map(()=>null);
+  const ratings=['replay_settlement','game_settlement'].includes(detail?.statsSource || '') ? rateMatch(players) : players.map(()=>null);
   const best=Math.max(...ratings.filter((v):v is number=>v!=null));
   const hero=gameCatalog.characters.find(c=>c.id===record.heroId);
   const map=gameCatalog.maps.find(m=>m.id===detail?.arenaId);
@@ -84,10 +84,10 @@ function MatchInspector({ record, state, close }: { record: PlayedMatch; state: 
         const playerResult=matchResult(p.rank,record.mapId,gameCatalog.modes);
         return <article className={`match-player${own ? ' own-player' : ''}`} key={`${p.playerId}:${p.slot}`}>
           <div className="match-player-heading"><GameImage asset={c?.image || ''} name={characterName(p.heroId)} /><div><h3>{p.name || `玩家 ${p.playerId}`}{own&&<small>本人</small>}</h3><p>{characterName(p.heroId)} · 对局星级 {p.level}{p.giveUp ? ' · 已退出' : ''}</p></div><div className="match-player-score"><strong>{ratings[i]==null ? '—' : ratings[i]!.toFixed(2)}</strong><small>星枢评分 / 10</small>{ratings[i]!=null && ratings[i]===best && <em>MVP</em>}</div><b className={`match-place match-result-${playerResult.outcome}`}>{playerResult.label}</b></div>
-          <dl className="match-metrics">{[['击杀',p.kills],['死亡',p.deaths],['输出',p.damage],['承伤',p.taken],['治疗',p.healing],['累计金币',p.coins],['转账',p.transfer],['行动回合',p.turns],['移动步数',p.movement]].map(([name,value])=><div key={String(name)}><dt>{name}</dt><dd>{metric(value as number | undefined)}</dd></div>)}</dl>
+          <dl className="match-metrics">{[['击杀',p.kills],['死亡',p.deaths],['输出',p.damage],['承伤',p.taken],['治疗',p.healing],['累计金币',p.coins],['转账',p.transfer],['对局轮数',p.turns],['移动步数',p.movement]].map(([name,value])=><div key={String(name)}><dt>{name}</dt><dd>{metric(value as number | undefined)}</dd></div>)}</dl>
         </article>;
       })}</div>
-      <details className="match-rating-method"><summary>评分规则与数据来源</summary><p>{ratingMethod}</p><p>胜负、PVP 名次和对局星级来自游戏战绩接口；击杀、伤害、治疗等来自本场回放结算。缺少统计的对局不评分。评分只适合参考本局表现，不用于跨模式排名。</p></details>
+      <details className="match-rating-method"><summary>评分规则与数据来源</summary><p>{ratingMethod}</p><p>胜负、PVP 名次和对局星级来自游戏战绩接口；击杀、伤害、治疗等来自本场官方结算消息或回放结算。缺少统计的对局不评分。评分只适合参考本局表现，不用于跨模式排名。</p></details>
     </> : !loading && <div className="library-empty">{session ? '本场尚未保存详情。可重新读取；服务器已过期的历史回放可能无法补全。' : '本场尚未保存详情。启动所选账号的游戏并进入大厅后，可读取并保存。'}</div>}
   </LibraryModal>;
 }

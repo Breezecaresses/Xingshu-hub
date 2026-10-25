@@ -63,7 +63,7 @@ namespace XingShuRuntime.Utilities
             _status.text = frame.Players[_selected]?.State == "已结算" ? "对局统计 · 已结算" : "对局统计 · 实时参考";
             for (int i = 0; i < _tabs.Length; i++) _tabs[i].image.sprite = XingShuUIAssetService.GetSprite(i == _selected ? "button_selected.png" : "button_secondary.png");
             _card.Refresh(frame.Players[_selected], _selected);
-            _footer.text = frame.Players[_selected]?.State == "已结算" ? "服务器结算 · 与 Hub 同一评分规则" : "实时参考 · 累计金币参与评分";
+            _footer.text = frame.Footer;
         }
         private void Layout()
         {

@@ -40,4 +40,10 @@ foreach ($taskRequirement in @(
         throw "Missing reflected field: $($taskRequirement -join '::')"
     }
 }
-Write-Output "PASS: $taskCount game member references resolve; 9 reflected quick-reply, career, replay and movement fields exist"
+$taskSettingType = $taskRuntime.MainModule.Types | Where-Object FullName -eq 'UI.SettingWindow'
+$taskSettingChanged = @($taskSettingType.Methods | Where-Object {
+    $_.Name -eq 'OnAdultSwitch' -and !$_.IsStatic -and $_.ReturnType.FullName -eq 'System.Void' -and
+    $_.Parameters.Count -eq 1 -and $_.Parameters[0].ParameterType.FullName -eq 'FairyGUI.EventContext'
+})
+if ($taskSettingChanged.Count -ne 1) { throw 'Missing or ambiguous native artwork setting callback' }
+Write-Output "PASS: $taskCount game member references resolve; 9 reflected fields and native artwork callback exist"
