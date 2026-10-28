@@ -26,6 +26,7 @@ namespace XingShuRuntime.UI
         private Text _enableHintText;
         private Toggle _spectatorAutoOpenToggle;
         private Text _spectatorAutoOpenHintText;
+        private Text _dockButtonText;
 
         // Card Scale Card
         private Slider _scaleSlider;
@@ -162,7 +163,7 @@ namespace XingShuRuntime.UI
             descRt.anchoredPosition = new Vector2(24f, -14f);
             descRt.sizeDelta = new Vector2(500f, 22f);
 
-            GameObject badgeGo = XingShuUIFactory.CreateUIObject("HotkeyBadge", headerGo);
+            GameObject badgeGo = XingShuUIFactory.CreateUIObject("OpenHandDockButton", headerGo);
             RectTransform badgeRt = badgeGo.GetComponent<RectTransform>();
             badgeRt.anchorMin = new Vector2(1f, 0.5f);
             badgeRt.anchorMax = new Vector2(1f, 0.5f);
@@ -179,7 +180,8 @@ namespace XingShuRuntime.UI
             var openDock = badgeGo.AddComponent<Button>();
             openDock.targetGraphic = badgeImg;
             openDock.onClick.AddListener(() => HandCardDock.Toggle());
-            Text badgeText = XingShuUIFactory.CreateText(badgeGo, "Text", "开启 / 收起挂件", 13, XingShuUITheme.PrimaryText, TextAnchor.MiddleCenter, FontStyle.Bold);
+            Text badgeText = XingShuUIFactory.CreateText(badgeGo, "Text", "打开手牌悬浮窗", 13, XingShuUITheme.PrimaryText, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _dockButtonText = badgeText;
             RectTransform btRt = badgeText.rectTransform;
             btRt.anchorMin = Vector2.zero;
             btRt.anchorMax = Vector2.one;
@@ -200,7 +202,7 @@ namespace XingShuRuntime.UI
             ctRt.anchoredPosition = new Vector2(24f, -16f);
             ctRt.sizeDelta = new Vector2(240f, 24f);
 
-            _enableHintText = XingShuUIFactory.CreateText(cardGo, "HintText", "通过悬浮球打开手牌详情挂件；可收起、拖动和切换玩家，关闭仅隐藏显示", 12, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
+            _enableHintText = XingShuUIFactory.CreateText(cardGo, "HintText", "点击上方按钮或悬浮球打开手牌悬浮窗；可收起、拖动和切换玩家", 12, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
             RectTransform htRt = _enableHintText.rectTransform;
             htRt.anchorMin = new Vector2(0f, 1f);
             htRt.anchorMax = new Vector2(0f, 1f);
@@ -500,6 +502,11 @@ namespace XingShuRuntime.UI
             float curBtnSize = HandCardDisplayManager.PlayBtnSize;
             bool curNeedFetch = HandCardDisplayManager.NeedFetchFromServer;
             bool curActiveDisplay = HandCardDock.IsOpen;
+            if (_dockButtonText != null)
+            {
+                string dockLabel = curActiveDisplay ? "收起手牌悬浮窗" : "打开手牌悬浮窗";
+                if (_dockButtonText.text != dockLabel) _dockButtonText.text = dockLabel;
+            }
             bool curPveMode = HandCardDisplayManager.IsPVEMode();
             bool curSpectatorMode = XingShu.Spectator.SpectatorStateStore.IsInSpectatorSession();
             HandTruthSourceMode curTruthMode = HandTruthSource.CurrentMode;

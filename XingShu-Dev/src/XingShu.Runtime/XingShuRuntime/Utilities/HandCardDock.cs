@@ -71,6 +71,7 @@ namespace XingShuRuntime.Utilities
         {
             if (_instance == null) return;
             _instance._open = open; _instance._collapsed = false; _instance._next = 0;
+            XingShu.Runtime.XingShuRuntimeHost.LogLifecycle("[HandDock] Display requested: open=" + open + ", mobile=" + XingShuMobileUIHelper.IsMobile);
             if (_instance._open)
             {
                 HandCardDisplayManager.IsEnabled = true;

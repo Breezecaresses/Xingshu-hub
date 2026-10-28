@@ -116,7 +116,10 @@ namespace XingShuRuntime.UI
             foreach (Transform child in children)
             {
                 GameObject item = child.gameObject;
-                if (item.name.Contains("Hotkey") || item.name == "Btn_NativeEngine" || item.name == "EngineSelectorCard")
+                // Hide keyboard hints, but never discard an actionable control
+                // just because a desktop header named it a hotkey badge.
+                bool keyboardHint = item.name.Contains("Hotkey") && item.GetComponentInChildren<Selectable>(true) == null;
+                if (keyboardHint || item.name == "Btn_NativeEngine" || item.name == "EngineSelectorCard")
                 {
                     item.SetActive(false);
                     continue;
