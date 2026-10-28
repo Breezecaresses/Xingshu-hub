@@ -13,6 +13,8 @@ internal sealed class MonsterCooldownLedger
         public double ConfirmedAt = double.NegativeInfinity;
         public double RetryAt;
         public bool Estimated;
+        public int Character;
+        public double LastSeen;
     }
 
     internal struct Request
@@ -23,12 +25,21 @@ internal sealed class MonsterCooldownLedger
 
     private readonly Dictionary<long, Entry> _entries = new Dictionary<long, Entry>();
     private long _revision, _epoch;
+    private long _roomId, _started;
     internal int Round { get; private set; } = -1;
     internal long CurrentActor { get; private set; }
 
     internal void Reset()
     {
-        _entries.Clear(); Round = -1; CurrentActor = 0; _epoch++;
+        _entries.Clear(); Round = -1; CurrentActor = 0; _roomId = _started = 0; _epoch++;
+    }
+
+    internal bool BeginSession(long roomId, long started)
+    {
+        if (roomId <= 0 || started <= 0) return false;
+        if (_roomId == roomId && _started == started) return false;
+        Reset(); _roomId = roomId; _started = started;
+        return true;
     }
 
     internal void ObserveRound(int round)
@@ -44,6 +55,15 @@ internal sealed class MonsterCooldownLedger
         Entry entry;
         if (!_entries.TryGetValue(monster, out entry) || entry.Skill != skill)
         {
+            // Numeric history survives client snapshot replacement. Bound it
+            // per match, evicting the least recently observed actor first.
+            if (!_entries.ContainsKey(monster) && _entries.Count >= 2048)
+            {
+                long oldest = 0; double seen = double.PositiveInfinity;
+                foreach (var pair in _entries)
+                    if (pair.Value.LastSeen < seen) { oldest = pair.Key; seen = pair.Value.LastSeen; }
+                _entries.Remove(oldest);
+            }
             entry = new Entry { Skill = skill, Revision = ++_revision };
             _entries[monster] = entry;
         }
@@ -68,6 +88,23 @@ internal sealed class MonsterCooldownLedger
 
     internal bool Contains(long monster, int skill)
     { Entry entry; return _entries.TryGetValue(monster, out entry) && entry.Skill == skill; }
+
+    internal bool ObserveSnapshot(long monster, int character, int skill, bool hasCooldown, int cd, double now)
+    {
+        if (monster == 0 || character <= 0 || skill <= 0) return false;
+        Entry entry;
+        if (_entries.TryGetValue(monster, out entry) && entry.Skill == skill &&
+            (entry.Character == 0 || entry.Character == character))
+        {
+            entry.Character = character; entry.LastSeen = now;
+            return false; // Rebuilt client objects are not new server actors.
+        }
+        Remove(monster);
+        if (hasCooldown && cd >= 0) ObserveServer(monster, skill, cd, now);
+        else ObserveEstimated(monster, skill, 0, now);
+        if (_entries.TryGetValue(monster, out entry)) entry.Character = character;
+        return true;
+    }
 
     internal static string Format(int cd, bool estimated)
     {
@@ -98,6 +135,7 @@ internal sealed class MonsterCooldownLedger
         var entry = Ensure(monster, skill);
         entry.Cooldown = cd; entry.Round = Round; entry.ConfirmedAt = now;
         entry.Revision = ++_revision; entry.RetryAt = 0d; entry.Estimated = false;
+        entry.LastSeen = now;
     }
 
     internal void ObserveEstimated(long monster, int skill, int cd, double now)

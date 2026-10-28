@@ -56,6 +56,7 @@ FILES = [
     'docs/records/PREVIEW_CHARACTERS_307_308_20261028.md', 'docs/records/MONSTER_COOLDOWN_20261028.md',
     'docs/records/ALL_MONSTER_COOLDOWN_20261029.md',
     'docs/records/MONSTER_COOLDOWN_EVENTS_20261029.md',
+    'docs/records/MONSTER_COOLDOWN_SNAPSHOTS_20261029.md',
     'XingShu-Dev/tools/TestMonsterCooldownRunner.cs', 'XingShu-Dev/tools/test_monster_cooldown.ps1',
     'tools/prepare_android_runtime.py', 'tools/android_runtime_device.py',
     'tools/check_android_runtime.ps1', 'ANDROID_COMPATIBILITY.md',

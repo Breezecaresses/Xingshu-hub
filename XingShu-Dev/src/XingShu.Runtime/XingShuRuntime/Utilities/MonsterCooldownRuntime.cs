@@ -19,8 +19,6 @@ public sealed class MonsterCooldownRuntime : MonoBehaviour
     private readonly Dictionary<long, BattlePlayerData> _players = new Dictionary<long, BattlePlayerData>();
     private readonly List<long> _remove = new List<long>();
     private readonly HashSet<long> _seen = new HashSet<long>();
-    private object _room;
-    private long _roomId, _matchStarted;
     private BattleLogic _battle;
     private double _nextTick, _nextError;
     private double _lastClock = ThinkingClock.RealSeconds(), _clock;
@@ -33,7 +31,7 @@ public sealed class MonsterCooldownRuntime : MonoBehaviour
     internal static int Read(long monster, int skill, out bool estimated)
     {
         estimated = false;
-        return _instance == null ? -1 : _instance._ledger.Read(monster, skill, out estimated);
+        return _instance == null || !_instance.Context() ? -1 : _instance._ledger.Read(monster, skill, out estimated);
     }
 
     private void Awake()
@@ -46,23 +44,22 @@ public sealed class MonsterCooldownRuntime : MonoBehaviour
     private void Reset()
     {
         _ledger.Reset(); _players.Clear(); _seen.Clear();
-        _room = null; _roomId = _matchStarted = 0; _battle = null;
+        _battle = null;
     }
 
     private static void Log(string message) { XingShu.Runtime.XingShuRuntimeHost.LogLifecycle("[MonsterCD] " + message); }
 
-    private bool Context()
+    private bool Context(bool requireBattleView = true)
     {
         var logic = SimpleSingletonProvider<GameLogicManager>.inst;
         var room = logic?.room?.curRoomInfo;
         var battle = logic?.battle;
         if (room?.info == null || room.info.Id <= 0 || room.info.StartTime <= 0 || battle?.PlayerDatas == null ||
-            logic.room.roomController == null || logic.room.roomController.roomStateType != RoomStateType.RUNNING ||
-            SimpleSingletonProvider<SceneManager>.inst.currentType.Value != SceneType.Battle)
-        { Reset(); return false; }
-        if (!ReferenceEquals(_room, room) || !ReferenceEquals(_battle, battle) ||
-            _roomId != room.info.Id || _matchStarted != room.info.StartTime)
-        { Reset(); _room = room; _battle = battle; _roomId = room.info.Id; _matchStarted = room.info.StartTime; }
+            (requireBattleView && SimpleSingletonProvider<SceneManager>.inst.currentType.Value != SceneType.Battle))
+        { return false; } // A transient unavailable frame is not a new match.
+        if (_ledger.BeginSession(room.info.Id, room.info.StartTime))
+        { _players.Clear(); _seen.Clear(); }
+        _battle = battle;
         _ledger.ObserveRound(room.Round);
         return true;
     }
@@ -70,8 +67,8 @@ public sealed class MonsterCooldownRuntime : MonoBehaviour
     private BattlePlayerData Monster(long id)
     {
         var data = _battle?.GetPlayerDataById(id);
-        return data?.player?.Hero != null && data.characterType == CharacterType.Monster && data.Property?.HP != null &&
-            data.Property.HP.Value > 0 && data.player.GetBattleActiveSkillId() > 0 ? data : null;
+        return data?.player?.Hero != null && data.characterType == CharacterType.Monster &&
+            data.player.GetBattleActiveSkillId() > 0 ? data : null;
     }
 
     private void Update()
@@ -86,17 +83,25 @@ public sealed class MonsterCooldownRuntime : MonoBehaviour
             _seen.Clear();
             foreach (var player in _battle.PlayerDatas)
             {
-                if (player?.player == null || Monster(player.player.Id) == null) continue;
+                if (player?.player?.Hero == null || player.characterType != CharacterType.Monster) continue;
                 long id = player.player.Id;
                 BattlePlayerData previous;
-                if (_players.TryGetValue(id, out previous) && !ReferenceEquals(previous, player)) _ledger.Remove(id);
+                bool refreshed = _players.TryGetValue(id, out previous) && !ReferenceEquals(previous, player);
                 _players[id] = player; _seen.Add(id);
+                // Temporary HP/data gaps and a rebuilt BattlePlayerData must
+                // not erase a server cast. Invisible/dead actors are not drawn.
+                if (player.Property?.HP == null || player.Property.HP.Value <= 0) continue;
                 int skill = player.player.GetBattleActiveSkillId();
-                if (_ledger.Contains(id, skill)) continue; // Never overwrite a preceding cast notification.
+                if (skill <= 0) continue;
                 int cd;
                 bool explicitValue = player.player.Hero.SkillCds.TryGetValue(skill, out cd) && cd >= 0;
-                if (explicitValue) _ledger.ObserveServer(id, skill, cd, _clock);
-                else _ledger.ObserveEstimated(id, skill, 0, _clock);
+                bool seeded = _ledger.ObserveSnapshot(id, player.player.Hero.HeroId, skill, explicitValue, cd, _clock);
+                if (!seeded)
+                {
+                    if (refreshed) Log("Actor snapshot refreshed; CD retained: monster=" + id + ", skill=" + skill +
+                        ", round=" + _ledger.Round + ", cd=" + _ledger.Read(id, skill));
+                    continue;
+                }
                 // Official InitSkill uses this actor's Hero.SkillCds with a 0
                 // default. Only use that default at first observation, marked
                 // estimated; a missing entry in a shared round map is ignored.
@@ -105,11 +110,12 @@ public sealed class MonsterCooldownRuntime : MonoBehaviour
             }
             _remove.Clear();
             foreach (long id in _players.Keys) if (!_seen.Contains(id)) _remove.Add(id);
-            foreach (long id in _remove) { _players.Remove(id); _ledger.Remove(id); }
+            // Release client object references, retain bounded numeric history
+            // until an actual match/actor identity change, not one missing frame.
+            foreach (long id in _remove) _players.Remove(id);
         }
         catch (Exception ex)
         {
-            Reset();
             if (_clock >= _nextError)
             { _nextError = _clock + 10d; Log("Read unavailable: " + ex.GetType().Name); }
         }
@@ -121,7 +127,7 @@ public sealed class MonsterCooldownRuntime : MonoBehaviour
         try
         {
             var self = _instance;
-            if (model == null || self == null || !self.Context() || model.Cd < 0) return;
+            if (model == null || self == null || !self.Context(false) || model.Cd < 0) return;
             var monster = self.Monster(model.PlayerId);
             if (monster == null) return; // A zero/mismatched ID is not an NPC CD.
             int skill = monster.player.GetBattleActiveSkillId();
@@ -136,7 +142,7 @@ public sealed class MonsterCooldownRuntime : MonoBehaviour
         try
         {
             var self = _instance;
-            if (model == null || self == null || !self.Context()) return;
+            if (model == null || self == null || !self.Context(false)) return;
             foreach (var effect in model.EffectDatas)
             {
                 var cd = effect?.Cd;
@@ -158,7 +164,7 @@ public sealed class MonsterCooldownRuntime : MonoBehaviour
         try
         {
             var self = _instance;
-            if (model == null || !model.UseSkill || self == null || !self.Context()) return;
+            if (model == null || !model.UseSkill || self == null || !self.Context(false)) return;
             var monster = self.Monster(model.PlayerId);
             if (monster == null) return;
             int skill = monster.player.GetBattleActiveSkillId(), cd;
@@ -179,7 +185,7 @@ public sealed class MonsterCooldownRuntime : MonoBehaviour
         try
         {
             var self = _instance;
-            if (model == null || self == null || !self.Context()) return;
+            if (model == null || self == null || !self.Context(false)) return;
             int before = self._ledger.Round;
             self._ledger.ObserveRound(model.Round);
             // The packet's PlayerId scopes the map. Never apply a player's map
@@ -201,7 +207,7 @@ public sealed class MonsterCooldownRuntime : MonoBehaviour
         try
         {
             var self = _instance;
-            if (model == null || self == null || !self.Context() || self._ledger.CurrentActor == model.PlayerId) return;
+            if (model == null || self == null || !self.Context(false) || self._ledger.CurrentActor == model.PlayerId) return;
             long previous = self._ledger.ObserveAction(model.PlayerId);
             var monster = self.Monster(previous);
             if (monster == null) return;

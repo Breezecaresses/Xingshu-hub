@@ -106,6 +106,33 @@ class TestMonsterCooldownRunner
         Check(MonsterCooldownLedger.Format(2, true) == "预计冷却 2 回合", "Projected positive cooldown wording is explicit");
         Check(MonsterCooldownLedger.Format(2, false) == "冷却 2 回合", "Confirmed positive cooldown wording remains direct");
         Check(MonsterCooldownLedger.Format(-1, false) == "冷却未记录", "Unknown data no longer promises a nonexistent pending request");
+        var snapshots = new MonsterCooldownLedger();
+        Check(snapshots.BeginSession(279827, 1793218797), "A real match key starts one session");
+        snapshots.ObserveRound(3);
+        Check(snapshots.ObserveSnapshot(88302, 1073, 107301, false, 0, 0), "First actor snapshot is recorded once");
+        snapshots.ObserveSkillUse(88302, 107301, 107301, true, 2, 1);
+        snapshots.ObserveSkillUse(88241, 107101, 107101, true, 3, 1);
+        snapshots.ObserveRound(4);
+        Check(!snapshots.BeginSession(279827, 1793218797), "Replacing client RoomInfo/BattleLogic objects within one server match does not reset it");
+        Check(!snapshots.ObserveSnapshot(88302, 1073, 107301, false, 0, 2), "r8.10 live replay: rebuilt bear object is not a new monster");
+        Check(snapshots.Read(88302, 107301, out estimated) == 1 && estimated, "r8.10 live replay: snapshot default zero cannot replace bear CD one");
+        Check(!snapshots.ObserveSnapshot(88241, 1071, 107101, false, 0, 2), "A cast observed before the first display snapshot remains recorded");
+        Check(snapshots.Read(88241, 107101) == 2, "r8.10 live replay: child boss keeps three-round cast history after rebuilding");
+        snapshots.ObserveRound(5);
+        Check(snapshots.Read(88241, 107101) == 1, "The following round still projects from the original boss cast");
+        snapshots.ObserveSnapshot(88302, 1073, 107301, true, 2, 3);
+        Check(snapshots.Read(88302, 107301, out estimated) == 0 && estimated, "Rebuilding from a cached RoomPlayer does not make its stale map a fresh server CD");
+        snapshots.ObserveServer(88302, 107301, 2, 3);
+        Check(snapshots.Read(88302, 107301, out estimated) == 2 && !estimated, "A decoded authoritative CD calibrates the retained value");
+        snapshots.ObserveSnapshot(88302, 1073, 107301, true, 0, 4);
+        Check(snapshots.Read(88302, 107301) == 2, "Rereading the same cached snapshot must not replay its old zero");
+        Check(!snapshots.BeginSession(0, 0) && snapshots.Read(88302, 107301) == 2, "A temporary absent match key cannot erase history");
+        Check(snapshots.ObserveSnapshot(88302, 1072, 107201, false, 0, 5), "A changed monster/active-skill identity starts its own state");
+        Check(snapshots.Read(88302, 107301) == -1, "A transformed actor cannot expose the previous skill CD");
+        Check(snapshots.BeginSession(279827, 1793219999), "A new start time in the same room is a new match");
+        Check(snapshots.Read(88241, 107101) == -1 && snapshots.Round == -1, "A real new match clears former monster cooldowns");
+        for (int i = 1; i <= 2049; i++) snapshots.ObserveSnapshot(70000000000L + i, 1073, 107301, false, 0, i);
+        Check(!snapshots.Contains(70000000001L, 107301) && snapshots.Contains(70000002049L, 107301), "Retained numeric snapshot history is bounded per match");
         int variants = 0;
         if (args.Length > 0)
         {
