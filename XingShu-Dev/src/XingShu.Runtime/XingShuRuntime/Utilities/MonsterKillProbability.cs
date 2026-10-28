@@ -461,6 +461,7 @@ public sealed class MonsterKillProbability : MonoBehaviour
 	private void OnEnable()
 	{
 		Instance = this;
+		MonsterCooldownRuntime.Install(gameObject);
 		_enabled = XingShuConfigService.GetBool(XingShuConfigKeys.MatchKillEnabled, XingShuConfigKeys.MatchKillEnabledDefault);
 		_fightFontSize = Mathf.Clamp(XingShuConfigService.GetInt(XingShuConfigKeys.MatchKillFightSize, XingShuConfigKeys.MatchKillFightSizeDefault), XingShuConfigKeys.MatchKillFightSizeMin, XingShuConfigKeys.MatchKillFightSizeMax);
 		_fightX = XingShuConfigService.GetFloat(XingShuConfigKeys.MatchKillFightX, XingShuConfigKeys.MatchKillFightXDefault, XingShuConfigKeys.MatchKillFightXMin, XingShuConfigKeys.MatchKillFightXMax);
@@ -992,12 +993,9 @@ public sealed class MonsterKillProbability : MonoBehaviour
 			string name = config.NameID.GetLocal(UIStringType.Skill);
 			if (!string.IsNullOrEmpty(name)) prediction.SkillName = name;
 		}
-		// Use the same reactive property as the game's skill panel. The runtime
-		// initializes it from Hero.SkillCds and refreshes it on server messages.
-		if (target.CharacterInst?.skill?.skillConfig?.Id == id && target.Property?.activeSkillCD != null)
-			prediction.SkillCooldown = target.Property.activeSkillCD.Value;
-		else if (target.player.Hero != null && target.player.Hero.SkillCds.TryGetValue(id, out int cd))
-			prediction.SkillCooldown = cd;
+		// RoundStart applies a shared skill map to every actor and defaults a
+		// missing monster skill to zero. That UI cache is not authoritative.
+		prediction.SkillCooldown = MonsterCooldownRuntime.Read(target.player.Id, id);
 	}
 
 	private static string SkillCooldownText(Prediction p)

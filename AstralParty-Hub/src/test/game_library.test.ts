@@ -26,7 +26,34 @@ assert.equal(gameCatalog.characters.filter(c=>!isPreviewCharacter(c)).length,35)
 for(const character of gameCatalog.characters.filter(isPreviewCharacter)){
   assert.equal(libraryCharacterName(character),`预更新角色 #${character.id}`);
   assert.ok(character.hp>0,'Preserve official provisional values');
+  assert.equal(character.image,'','Borrowed released-character avatars must not identify preview characters');
+  assert.equal(character.hasBond,false);
+  assert.deepEqual(character.bondRewards,[],'Inactive shared bond rewards must not be displayed as preview rewards');
+  assert.deepEqual(character.breakthrough,{});
+  assert.ok(character.skins.every(s=>s.name==='初始装扮（名称待更新）'));
+  assert.equal(character.preview?.skinSlots,1);
+  assert.equal(character.preview?.emoteSlots,8);
+  assert.equal(character.preview?.unavailableAssets.length,9);
+  assert.ok(character.preview?.placeholderReferences.some(r=>r.field==='战斗资源'));
+  assert.equal(gameCatalog.itemNames?.[String(character.id)],`预更新角色 #${character.id}`);
+  for(const skin of character.skins) assert.equal(gameCatalog.itemNames?.[String(skin.id)],skin.name);
 }
+const preview307=gameCatalog.characters.find(c=>c.id===307)!;
+const preview308=gameCatalog.characters.find(c=>c.id===308)!;
+assert.deepEqual([preview307.hp,preview307.attack,preview307.defense],[7,1,0]);
+assert.deepEqual([preview308.hp,preview308.attack,preview308.defense],[9,1,1]);
+assert.deepEqual(preview307.skills.map(s=>s.id),[30701,30711,30712]);
+assert.deepEqual(preview307.pveSkills.map(s=>s.id),[30702,30713,30714,30715]);
+assert.deepEqual(preview308.skills.map(s=>s.id),[30801,30811]);
+assert.deepEqual(preview308.pveSkills.map(s=>s.id),[30802,30812,30813]);
+assert.deepEqual(preview307.skills[0].params,[6,-2,1]);
+assert.deepEqual(preview307.pveSkills[0].params,[6,-3,1,3071202]);
+assert.deepEqual([preview307.skills[0].cooldown,preview307.pveSkills[0].cooldown],[4,3]);
+assert.deepEqual([preview308.skills[0].cooldown,preview308.pveSkills[0].cooldown],[3,3]);
+assert.ok(preview307.skills.concat(preview307.pveSkills,preview308.skills,preview308.pveSkills).every(s=>!s.name&&!s.description),'Unreleased skill prose must not be fabricated from params');
+const availableBuff=preview308.pveSkills.flatMap(s=>s.buffs||[]).find(b=>b.id===3081104)!;
+assert.equal(availableBuff.description,'费用上限+3，移动速度+2，出牌数+1');
+assert.deepEqual(preview308.pveSkills.find(s=>s.id===30813)?.relatedCharacterIds,[305,306,307,308]);
 assert.equal(new Set(gameCatalog.characters.map(c=>c.id)).size,gameCatalog.characters.length);
 assert.equal(gameCatalog.cards.length,73);
 for(const card of gameCatalog.cards){

@@ -1,0 +1,71 @@
+using System;
+using XingShuRuntime.Utilities;
+
+class TestMonsterCooldownRunner
+{
+    private static int _checks;
+    private static void Check(bool condition, string message)
+    {
+        _checks++; if (!condition) throw new Exception(message);
+    }
+    static void Main()
+    {
+        var ledger = new MonsterCooldownLedger();
+        ledger.ObserveRound(6);
+        const long bear = 50000000001L, thief = 50000000002L, airship = 50000000003L;
+        Check(ledger.Read(bear, 107301) == -1, "An absent monster CD must not become ready");
+        var initial = ledger.Begin(bear, 107301, 0);
+        Check(ledger.Reply(initial, 0, 1), "A matched server zero is valid");
+        Check(ledger.Read(bear, 107301) == 0, "Explicit zero means ready");
+        ledger.Invalidate(bear, 107301); // A use notification may have no targets/map.
+        Check(ledger.Read(bear, 107301) == -1, "Empty cast invalidates the old ready value");
+        Check(!ledger.Reply(initial, 0, 2), "Pre-cast query cannot undo a cast");
+        ledger.ObserveServer(bear, 107301, 2, 3);
+        Check(ledger.Read(bear, 107301) == 2, "Empty cast can enter two-round CD without an animation");
+        ledger.ObserveServer(thief, 107001, 3, 3);
+        ledger.ObserveServer(airship, 106601, 2, 3);
+        Check(ledger.Read(thief, 107001) == 3 && ledger.Read(airship, 106601) == 2, "All three reported monsters preserve their own CDs");
+        // The official UI may now receive a RoundStart map with no monster keys.
+        // It is intentionally never fed to the display ledger.
+        Check(ledger.Read(bear, 107301) == 2, "Missing shared-map entries cannot clear a positive cooldown");
+        var previousRound = ledger.Begin(bear, 107301, 4);
+        ledger.ObserveRound(7);
+        Check(ledger.Read(bear, 107301) == -1, "A new round awaits per-monster server confirmation");
+        Check(!ledger.Reply(previousRound, 0, 5), "Old-round zero cannot establish readiness");
+        var nextRound = ledger.Begin(bear, 107301, 5);
+        Check(ledger.Reply(nextRound, 1, 6) && ledger.Read(bear, 107301) == 1, "Two-round cooldown becomes one only on a fresh server value");
+        ledger.ObserveRound(8);
+        Check(ledger.Read(bear, 107301) == -1, "No local timer invents readiness");
+        var ready = ledger.Begin(bear, 107301, 7);
+        Check(ledger.Reply(ready, 0, 8) && ledger.Read(bear, 107301) == 0, "A current server zero completes cooldown");
+        var olderQuery = ledger.Begin(thief, 107001, 9);
+        ledger.ObserveServer(thief, 107001, 3, 10); // Attribute push, including empty-target casts.
+        Check(!ledger.Reply(olderQuery, 0, 11), "A delayed query cannot overwrite a newer CD push");
+        Check(ledger.Read(thief, 107001) == 3, "New authoritative push remains visible");
+        Check(ledger.Read(bear, 106601) == -1, "A different active skill cannot reuse a CD");
+        var dead = ledger.Begin(airship, 106601, 12);
+        ledger.Remove(airship);
+        Check(!ledger.Reply(dead, 0, 13), "Dead/despawned monster reply is ignored");
+        var reincarnated = ledger.Begin(airship, 106601, 14);
+        Check(!ledger.Reply(dead, 0, 15), "Reused actor ID does not accept the previous incarnation reply");
+        Check(ledger.Reply(reincarnated, 2, 15), "Current incarnation can sync");
+        var changedSkill = ledger.Begin(bear, 107301, 16);
+        ledger.ObserveServer(bear, 107001, 3, 17);
+        Check(!ledger.Reply(changedSkill, 0, 18), "Old skill query cannot override an active-skill change");
+        var oldSession = ledger.Begin(thief, 107001, 19);
+        ledger.Reset(); ledger.ObserveRound(1);
+        ledger.Begin(thief, 107001, 20);
+        Check(!ledger.Reply(oldSession, 0, 21), "Previous match/account response is rejected");
+        Check(ledger.Read(thief, 107001) == -1, "New match remains unknown until confirmed");
+        var negative = ledger.Begin(thief, 107001, 22);
+        Check(!ledger.Reply(negative, -1, 23), "Invalid negative server CD is rejected");
+        Check(!ledger.NeedsRefresh(thief, 107001, 23), "Unanswered actor is rate limited");
+        Check(ledger.NeedsRefresh(thief, 107001, 25), "Missing data is retried");
+        ledger.ObserveServer(thief, 107001, 1, 26);
+        Check(!ledger.NeedsRefresh(thief, 107001, 27), "Fresh data does not trigger repetitive queries");
+        Check(ledger.NeedsRefresh(thief, 107001, 46), "Long unchanged rounds are refreshed on a real-time interval");
+        ledger.ObserveRound(1);
+        Check(ledger.Read(thief, 107001) == 1, "Duplicate round notifications do not invalidate a fresh result");
+        Console.WriteLine("PASS: " + _checks + " monster cooldown checks");
+    }
+}

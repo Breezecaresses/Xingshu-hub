@@ -80,6 +80,12 @@ class ThinkingClockPatcher
             PatchObserver(module, stats, "GameLogic.BattleResultLogic", "OnGameFinishS2CServerCallBack", "ObserveSettlement", true);
             PatchObserver(module, stats, "GameLogic.BattleLogic", "OnGetHeroInfoS2CServerCallBackAsync", "ObserveHeroInfo", true);
             PatchObserver(module, stats, "GameLogic.ActionLogic", "OnUpdateHeroAttrS2CServerCallBack", "ObserveHealingSources", true);
+            var cooldown = hooks.MainModule.Types.Single(t => t.FullName == "XingShuRuntime.Utilities.MonsterCooldownRuntime");
+            PatchObserver(module, cooldown, "GameLogic.BattleLogic", "OnGetHeroInfoS2CServerCallBackAsync", "ObserveHeroInfo", true);
+            PatchObserver(module, cooldown, "GameLogic.ActionLogic", "OnUpdateHeroAttrS2CServerCallBack", "ObserveAttributes", true);
+            PatchObserver(module, cooldown, "GameLogic.CardLogic", "OnUseEffectCardS2CServerCallBack", "ObserveUse", true);
+            PatchObserver(module, cooldown, "GameLogic.BattleLogic", "OnRoundStartS2CServerCallBack", "ObserveRound", true);
+            PatchObserver(module, cooldown, "GameLogic.BattleLogic", "OnActionStartNotifyS2CServerCallBack", "ObserveAction", true);
             var library = hooks.MainModule.Types.Single(t => t.FullName == "XingShu.Runtime.GameLibraryReplies");
             PatchObserver(module, library, "GameLogic.AccountLogic", "OnGetShowPlayerS2CServerCallBack", "ObserveCareer", true);
             PatchObserver(module, library, "GameLogic.AccountLogic", "OnGetPlayerFightRecordS2CServerCallBack", "ObserveDetail", true);
@@ -144,6 +150,10 @@ class ThinkingClockPatcher
         var method = module.Types.Single(t => t.FullName == owner).Methods.Single(m => m.Name == methodName);
         if (method.Body.Instructions.Any(i => i.Operand is MethodReference && ((MethodReference)i.Operand).FullName.Contains(hooks.FullName + "::" + callback))) return;
         var hook = module.ImportReference(hooks.Methods.Single(m => m.Name == callback));
+        if (hook.ReturnType.FullName != "System.Void" || hook.Parameters.Count != 1 || method.Parameters.Count == 0 ||
+            hook.Parameters[0].ParameterType.FullName != method.Parameters[0].ParameterType.FullName ||
+            (checkError && (method.Parameters.Count < 2 || method.Parameters[1].ParameterType.FullName != "System.Int32")))
+            throw new Exception("Unexpected observer signature: " + owner + "::" + methodName);
         var il = method.Body.GetILProcessor(); var first = method.Body.Instructions[0];
         if (checkError) { il.InsertBefore(first, il.Create(OpCodes.Ldarg, method.Parameters[1])); il.InsertBefore(first, il.Create(OpCodes.Brtrue, first)); }
         il.InsertBefore(first, il.Create(OpCodes.Ldarg, method.Parameters[0]));

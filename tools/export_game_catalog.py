@@ -3,6 +3,7 @@
 Run export_catalog_schema.ps1 first. Schemas come from Cecil metadata, not guessed field offsets.
 """
 import hashlib
+import argparse
 import base64
 import json
 import re
@@ -21,7 +22,7 @@ TABLES = {
     'Favor', 'Player', 'Item', 'STRItem', 'Skill', 'STRSkill', 'Mutator',
     'STRMutator', 'Map', 'STRMap', 'GameMode', 'STRGameMode',
     'Relic', 'STRRelic', 'PVENurturance', 'STRPVENurturance',
-    'MapEvent', 'STRMapEvent', 'Monster', 'STRMonster',
+    'MapEvent', 'STRMapEvent', 'Monster', 'STRMonster', 'Buff', 'STRBuff',
 }
 
 
@@ -117,8 +118,9 @@ def decode(data, typ):
     return result
 
 
-def extract():
-    for path in sorted((ROOT / 'XingShu/CN_STEAM/3.3.0/restore').rglob('__data')):
+def extract(config_bundle=None):
+    candidates = [Path(config_bundle)] if config_bundle else sorted((ROOT / 'XingShu/CN_STEAM/3.3.0/restore').rglob('__data'))
+    for path in candidates:
         if path.stat().st_size > 3_000_000:
             continue
         tables = {}
@@ -135,7 +137,15 @@ def extract():
 
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
-    tables, source = extract()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--config-bundle', type=Path, help='Unmodified official configuration bundle')
+    args = parser.parse_args()
+    tables, source = extract(args.config_bundle)
+    # Preview audits also retain referenced Buff text, rather than inventing a
+    # complete skill description from an unlabelled parameter vector.
+    if args.config_bundle:
+        from audit_preview_characters import read_tables
+        tables.update(read_tables(source))
     # Retain decoded source only in build cache, not a runtime dependency.
     cache = ROOT / 'XingShu-Dev/build/catalog'
     cache.mkdir(parents=True, exist_ok=True)
@@ -245,6 +255,8 @@ def main():
         alt['animationAvailable'] = alt['video'] in video_assets
     out=dict(version='3.3.0',source='官方游戏原版配置',configSha256=hashlib.sha256(source.read_bytes()).hexdigest(),characters=chars,cards=cards,altArts=altarts,mutators=mutators,chips=chips,favorLevels=tables['Favor']['Levels'],playerLevels=tables['Player']['Levels'],pveLevels=[dict(level=r.get('Id', 0),exp=r.get('Exp', 0)) for r in tables['PVENurturance']['Levelups']],maps=maps,modes=modes,assets=assets,spineAssets=spine_assets)
     out['itemNames']={str(i):text('Item',r.get('NameID')) for i,r in items.items() if text('Item',r.get('NameID'))}
+    from audit_preview_characters import apply_previews
+    out = apply_previews(out, tables, assets)
     output=ROOT/'AstralParty-Hub/src/shared/gameCatalog.generated.json'
     output.write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n','utf-8')
     print(f'Catalog: {len(chars)} characters, {sum(len(c["skins"]) for c in chars)} skins, {sum(len(c["emotes"]) for c in chars)} emotes, {len(cards)} cards, {len(altarts)} alternate arts, {len(chips)} chips, {len(maps)} maps; {len(assets)-len(video_assets)}/{len(wanted)} images, {len(video_assets)} videos, {len(spine_assets)} Spine sources')

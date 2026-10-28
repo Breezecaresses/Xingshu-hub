@@ -1,6 +1,17 @@
 import rawCatalog from './gameCatalog.generated.json' with { type: 'json' };
 
-export interface LibrarySkill { id: number; name: string; description: string; cooldown: number }
+export interface LibrarySkill {
+  id: number; name: string; description: string; cooldown: number;
+  kind?: 'active' | 'passive'; params?: number[]; relatedCharacterIds?: number[];
+  buffs?: { id: number; name: string; description: string; visible: boolean; clearedOnDeath: boolean; duration: number; durationType: number; cardIds: number[] }[];
+}
+export interface PreviewCharacterData {
+  status: 'incomplete_official_configuration'; missing: string[];
+  missingTextIds: { table: string; id: number }[];
+  placeholderReferences: { field: string; value: string | number; reason: string }[];
+  unavailableAssets: string[]; skinSlots: number; emoteSlots: number;
+  growthDescriptionIds: number[]; notes: string[];
+}
 export interface LibrarySkin { id: number; index: number; default: boolean; name: string; description: string; image: string }
 export interface LibraryCharacter {
   id: number; name: string; title: string; biography: string; comment: string; gallery: boolean;
@@ -8,6 +19,7 @@ export interface LibraryCharacter {
   skills: LibrarySkill[]; pveSkills: LibrarySkill[]; skins: LibrarySkin[];
   bondRewards: { FavorLevel: number; Rewards?: Record<string, number> }[];
   breakthrough: { NeedMaterials?: Record<string, number>; Rewards?: Record<string, number> };
+  isLinkage?: boolean; category?: string; preview?: PreviewCharacterData;
 }
 export interface LibraryCard {
   id: number; name: string; number: string; description: string; comment: string; image: string;
@@ -52,7 +64,7 @@ export const accountKey = (a: LibraryAccount) => `${a.platform}:${a.snapshot.pla
 export const sessionKey = (s: LibrarySession) => `${s.platformId}:${s.livePlayerId}`;
 export const plainGameText = (text: string) => text.replace(/\{[A-Za-z][A-Za-z0-9_]*=([^{}]+)\}/g, '$1').replace(/<sprite[^>]*>/gi, ' ◆ ').replace(/<[^>]*>/g, '').replace(/\[(?:\/?color(?:=[^\]]+)?|\/?b|\/?i|\/?size(?:=[^\]]+)?)\]/gi, '').replace(/\\n/g, '\n');
 export const characterName = (id: number) => gameCatalog.characters.find(c => c.id === id)?.name || `角色 #${id}`;
-export const isPreviewCharacter = (c: LibraryCharacter) => !c.name.trim();
+export const isPreviewCharacter = (c: LibraryCharacter) => !!c.preview || !c.name.trim();
 export const libraryCharacterName = (c: LibraryCharacter) => c.name.trim() || `预更新角色 #${c.id}`;
 export const platformName = (platform: string) => ({ STEAM: 'Steam', STEAM_CN: 'Steam 国服', STEAM_GLOBAL: 'Steam 国际服', TAPTAP: 'TapTap', BILIBILI: '哔哩哔哩' }[platform] || platform);
 

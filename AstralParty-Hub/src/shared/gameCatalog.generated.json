@@ -9337,25 +9337,85 @@
       "hp": 7,
       "attack": 1,
       "defense": 0,
-      "image": "UT_AccountHeadShot_709305",
+      "image": "",
       "skills": [
         {
           "id": 30701,
           "name": "",
           "description": "",
-          "cooldown": 4
+          "cooldown": 4,
+          "kind": "active",
+          "params": [
+            6,
+            -2,
+            1
+          ],
+          "buffs": [
+            {
+              "id": 3071101,
+              "name": "",
+              "description": "",
+              "visible": true,
+              "clearedOnDeath": false,
+              "duration": 0,
+              "durationType": 0,
+              "cardIds": []
+            }
+          ],
+          "relatedCharacterIds": []
         },
         {
           "id": 30711,
           "name": "",
           "description": "",
-          "cooldown": 0
+          "cooldown": 0,
+          "kind": "passive",
+          "params": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "buffs": [
+            {
+              "id": 3071101,
+              "name": "",
+              "description": "",
+              "visible": true,
+              "clearedOnDeath": false,
+              "duration": 0,
+              "durationType": 0,
+              "cardIds": []
+            }
+          ],
+          "relatedCharacterIds": []
         },
         {
           "id": 30712,
           "name": "",
           "description": "",
-          "cooldown": 0
+          "cooldown": 0,
+          "kind": "passive",
+          "params": [
+            307,
+            3071202,
+            3
+          ],
+          "buffs": [
+            {
+              "id": 3071201,
+              "name": "",
+              "description": "",
+              "visible": false,
+              "clearedOnDeath": false,
+              "duration": 0,
+              "durationType": 0,
+              "cardIds": []
+            }
+          ],
+          "relatedCharacterIds": [
+            307
+          ]
         }
       ],
       "pveSkills": [
@@ -9363,25 +9423,108 @@
           "id": 30702,
           "name": "",
           "description": "",
-          "cooldown": 3
+          "cooldown": 3,
+          "kind": "active",
+          "params": [
+            6,
+            -3,
+            1,
+            3071202
+          ],
+          "buffs": [
+            {
+              "id": 3071301,
+              "name": "",
+              "description": "",
+              "visible": true,
+              "clearedOnDeath": false,
+              "duration": 0,
+              "durationType": 0,
+              "cardIds": []
+            }
+          ],
+          "relatedCharacterIds": []
         },
         {
           "id": 30713,
           "name": "",
           "description": "",
-          "cooldown": 0
+          "cooldown": 0,
+          "kind": "passive",
+          "params": [
+            1,
+            3071202,
+            1,
+            1,
+            -1
+          ],
+          "buffs": [
+            {
+              "id": 3071301,
+              "name": "",
+              "description": "",
+              "visible": true,
+              "clearedOnDeath": false,
+              "duration": 0,
+              "durationType": 0,
+              "cardIds": []
+            }
+          ],
+          "relatedCharacterIds": []
         },
         {
           "id": 30714,
           "name": "",
           "description": "",
-          "cooldown": 0
+          "cooldown": 0,
+          "kind": "passive",
+          "params": [
+            307,
+            3071202,
+            3
+          ],
+          "buffs": [
+            {
+              "id": 3071401,
+              "name": "",
+              "description": "",
+              "visible": false,
+              "clearedOnDeath": false,
+              "duration": 0,
+              "durationType": 0,
+              "cardIds": []
+            }
+          ],
+          "relatedCharacterIds": [
+            307
+          ]
         },
         {
           "id": 30715,
           "name": "",
           "description": "",
-          "cooldown": 0
+          "cooldown": 0,
+          "kind": "passive",
+          "params": [
+            308,
+            3071301,
+            1
+          ],
+          "buffs": [
+            {
+              "id": 3071501,
+              "name": "",
+              "description": "",
+              "visible": false,
+              "clearedOnDeath": false,
+              "duration": 0,
+              "durationType": 0,
+              "cardIds": []
+            }
+          ],
+          "relatedCharacterIds": [
+            308
+          ]
         }
       ],
       "skins": [
@@ -9389,87 +9532,43 @@
           "id": 100307001,
           "index": 0,
           "default": true,
-          "name": "初始皮肤-远野汉娜",
+          "name": "初始装扮（名称待更新）",
           "description": "初始皮肤",
           "image": "UT_Hero_Card_307"
         }
       ],
-      "bondRewards": [
-        {
-          "FavorLevel": 1,
-          "Rewards": {
-            "120120005": 1
-          }
-        },
-        {
-          "FavorLevel": 2,
-          "Rewards": {
-            "120120006": 1
-          }
-        },
-        {
-          "FavorLevel": 3,
-          "Rewards": {
-            "120120007": 1,
-            "120120008": 1
-          }
-        },
-        {
-          "FavorLevel": 4,
-          "Rewards": {
-            "70120": 1
-          }
-        },
-        {
-          "FavorLevel": 5,
-          "Rewards": {
-            "71120": 1
-          }
-        },
-        {
-          "FavorLevel": 6,
-          "Rewards": {
-            "76120": 1
-          }
-        }
-      ],
-      "breakthrough": {
-        "Id": 120,
-        "NeedMaterials": {
-          "78009": 3,
-          "78008": 6,
-          "78007": 9
-        },
-        "Rewards": {
-          "100120002": 1,
-          "72120": 1,
-          "71220": 1
-        }
-      },
+      "bondRewards": [],
+      "breakthrough": {},
       "pveProgression": [
         {
           "level": 1,
-          "description": "达到1星时攻击力+1"
+          "description": "达到1星时攻击力+1",
+          "descriptionId": 12001
         },
         {
           "level": 2,
-          "description": "达到1星时防御力+1、移动速度+1"
+          "description": "达到1星时防御力+1、移动速度+1",
+          "descriptionId": 30702
         },
         {
           "level": 3,
-          "description": "达到2星时攻击力+2"
+          "description": "达到2星时攻击力+2",
+          "descriptionId": 12003
         },
         {
           "level": 4,
-          "description": "达到3星时攻击力+2、移动速度+1"
+          "description": "达到3星时攻击力+2、移动速度+1",
+          "descriptionId": 12004
         },
         {
           "level": 5,
-          "description": "获得2次强化筹码重选次数"
+          "description": "获得2次强化筹码重选次数",
+          "descriptionId": 12005
         },
         {
           "level": 6,
-          "description": "获得星星时，额外获得1次强化筹码重选次数"
+          "description": "获得星星时，额外获得1次强化筹码重选次数",
+          "descriptionId": 10006
         }
       ],
       "pvePotential": null,
@@ -9477,61 +9576,248 @@
       "emotes": [
         {
           "id": 120307001,
-          "name": "汉娜表情1",
+          "name": "表情 1（名称待更新）",
           "image": "UT_Item_Emoji_307_01",
           "default": true,
           "animated": false
         },
         {
           "id": 120307002,
-          "name": "汉娜表情2",
+          "name": "表情 2（名称待更新）",
           "image": "UT_Item_Emoji_307_02",
           "default": true,
           "animated": false
         },
         {
           "id": 120307003,
-          "name": "汉娜表情3",
+          "name": "表情 3（名称待更新）",
           "image": "UT_Item_Emoji_307_03",
           "default": true,
           "animated": false
         },
         {
           "id": 120307004,
-          "name": "汉娜表情4",
+          "name": "表情 4（名称待更新）",
           "image": "UT_Item_Emoji_307_04",
           "default": true,
           "animated": false
         },
         {
           "id": 120307005,
-          "name": "汉娜表情5",
+          "name": "表情 5（名称待更新）",
           "image": "UT_Item_Emoji_307_05",
           "default": true,
           "animated": false
         },
         {
           "id": 120307006,
-          "name": "汉娜表情6",
+          "name": "表情 6（名称待更新）",
           "image": "UT_Item_Emoji_307_06",
           "default": true,
           "animated": false
         },
         {
           "id": 120307007,
-          "name": "汉娜表情7",
+          "name": "表情 7（名称待更新）",
           "image": "UT_Item_Emoji_307_07",
           "default": true,
           "animated": false
         },
         {
           "id": 120307008,
-          "name": "汉娜表情8",
+          "name": "表情 8（名称待更新）",
           "image": "UT_Item_Emoji_307_08",
           "default": true,
           "animated": false
         }
-      ]
+      ],
+      "isLinkage": true,
+      "category": "攻击",
+      "preview": {
+        "status": "incomplete_official_configuration",
+        "missing": [
+          "角色名",
+          "称号",
+          "档案",
+          "技能名称与说明",
+          "立绘与表情图片",
+          "潜能"
+        ],
+        "missingTextIds": [
+          {
+            "table": "STRCharacter",
+            "id": 3070
+          },
+          {
+            "table": "STRCharacter",
+            "id": 3071
+          },
+          {
+            "table": "STRCharacter",
+            "id": 3073
+          },
+          {
+            "table": "STRBuff",
+            "id": 30713011
+          },
+          {
+            "table": "STRBuff",
+            "id": 3071301
+          },
+          {
+            "table": "STRSkill",
+            "id": 30701
+          },
+          {
+            "table": "STRSkill",
+            "id": 307010
+          },
+          {
+            "table": "STRSkill",
+            "id": 30711
+          },
+          {
+            "table": "STRSkill",
+            "id": 307110
+          },
+          {
+            "table": "STRSkill",
+            "id": 30712
+          },
+          {
+            "table": "STRSkill",
+            "id": 307120
+          },
+          {
+            "table": "STRSkill",
+            "id": 307020
+          },
+          {
+            "table": "STRSkill",
+            "id": 307130
+          },
+          {
+            "table": "STRSkill",
+            "id": 307140
+          },
+          {
+            "table": "STRSkill",
+            "id": 30713
+          },
+          {
+            "table": "STRSkill",
+            "id": 307150
+          }
+        ],
+        "placeholderReferences": [
+          {
+            "field": "角色头像",
+            "value": "UT_AccountHeadShot_709305",
+            "reason": "与角色 #305 共用，不能作为该角色的正式形象。"
+          },
+          {
+            "field": "角色物品名称",
+            "value": "STRItem:305 · 远野汉娜",
+            "reason": "角色物品沿用了其他角色的名称；图鉴和奖励物品显示名均改为预更新角色编号。"
+          },
+          {
+            "field": "初始装扮名称",
+            "value": "STRItem:100305001 · 初始皮肤-远野汉娜",
+            "reason": "物品引用了其他装扮的名称；显示中改为中性占位名称。"
+          },
+          {
+            "field": "战斗资源",
+            "value": 100305001,
+            "reason": "引用了其他角色的资源，不能据此确认该角色的身份或正式表现。"
+          },
+          {
+            "field": "模型标签",
+            "value": "Hero305",
+            "reason": "引用了其他角色的资源，不能据此确认该角色的身份或正式表现。"
+          },
+          {
+            "field": "装扮预览视频",
+            "value": "VSkin_100305001",
+            "reason": "引用了其他角色的资源，不能据此确认该角色的身份或正式表现。"
+          },
+          {
+            "field": "语音组",
+            "value": 100303001,
+            "reason": "引用了其他角色的资源，不能据此确认该角色的身份或正式表现。"
+          },
+          {
+            "field": "表情 1 名称",
+            "value": "STRItem:120305001 · 汉娜表情1",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "表情 2 名称",
+            "value": "STRItem:120305002 · 汉娜表情2",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "表情 3 名称",
+            "value": "STRItem:120305003 · 汉娜表情3",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "表情 4 名称",
+            "value": "STRItem:120305004 · 汉娜表情4",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "表情 5 名称",
+            "value": "STRItem:120305005 · 汉娜表情5",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "表情 6 名称",
+            "value": "STRItem:120305006 · 汉娜表情6",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "表情 7 名称",
+            "value": "STRItem:120305007 · 汉娜表情7",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "表情 8 名称",
+            "value": "STRItem:120305008 · 汉娜表情8",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "羁绊奖励与突破",
+            "value": "Favor:120 / 120",
+            "reason": "HasKizuna 未启用；共享模板不作为该角色的可用羁绊或奖励展示。"
+          }
+        ],
+        "unavailableAssets": [
+          "UT_Hero_Card_307",
+          "UT_Item_Emoji_307_01",
+          "UT_Item_Emoji_307_02",
+          "UT_Item_Emoji_307_03",
+          "UT_Item_Emoji_307_04",
+          "UT_Item_Emoji_307_05",
+          "UT_Item_Emoji_307_06",
+          "UT_Item_Emoji_307_07",
+          "UT_Item_Emoji_307_08"
+        ],
+        "skinSlots": 1,
+        "emoteSlots": 8,
+        "growthDescriptionIds": [
+          12001,
+          30702,
+          12003,
+          12004,
+          12005,
+          10006
+        ],
+        "notes": [
+          "数值为当前预装配置，可能在上线前调整。",
+          "参数顺序不等于效果含义，空白文案不按猜测补写。",
+          "装扮和表情条目已声明，不代表相应图片已随本机资源提供。"
+        ]
+      }
     },
     {
       "id": 308,
@@ -9544,19 +9830,64 @@
       "hp": 9,
       "attack": 1,
       "defense": 1,
-      "image": "UT_AccountHeadShot_709306",
+      "image": "",
       "skills": [
         {
           "id": 30801,
           "name": "",
           "description": "",
-          "cooldown": 3
+          "cooldown": 3,
+          "kind": "active",
+          "params": [],
+          "buffs": [],
+          "relatedCharacterIds": []
         },
         {
           "id": 30811,
           "name": "",
           "description": "",
-          "cooldown": 0
+          "cooldown": 0,
+          "kind": "passive",
+          "params": [
+            1,
+            1,
+            2,
+            1,
+            1
+          ],
+          "buffs": [
+            {
+              "id": 3081101,
+              "name": "",
+              "description": "",
+              "visible": false,
+              "clearedOnDeath": false,
+              "duration": 0,
+              "durationType": 0,
+              "cardIds": []
+            },
+            {
+              "id": 3081102,
+              "name": "",
+              "description": "",
+              "visible": true,
+              "clearedOnDeath": false,
+              "duration": 0,
+              "durationType": 0,
+              "cardIds": []
+            },
+            {
+              "id": 3081103,
+              "name": "",
+              "description": "",
+              "visible": true,
+              "clearedOnDeath": false,
+              "duration": 0,
+              "durationType": 0,
+              "cardIds": []
+            }
+          ],
+          "relatedCharacterIds": []
         }
       ],
       "pveSkills": [
@@ -9564,19 +9895,105 @@
           "id": 30802,
           "name": "",
           "description": "",
-          "cooldown": 3
+          "cooldown": 3,
+          "kind": "active",
+          "params": [],
+          "buffs": [],
+          "relatedCharacterIds": []
         },
         {
           "id": 30812,
           "name": "",
           "description": "",
-          "cooldown": 0
+          "cooldown": 0,
+          "kind": "passive",
+          "params": [
+            1,
+            1,
+            2,
+            1,
+            1,
+            6,
+            3,
+            2,
+            1
+          ],
+          "buffs": [
+            {
+              "id": 3081201,
+              "name": "",
+              "description": "",
+              "visible": false,
+              "clearedOnDeath": false,
+              "duration": 0,
+              "durationType": 0,
+              "cardIds": []
+            },
+            {
+              "id": 3081102,
+              "name": "",
+              "description": "",
+              "visible": true,
+              "clearedOnDeath": false,
+              "duration": 0,
+              "durationType": 0,
+              "cardIds": []
+            },
+            {
+              "id": 3081103,
+              "name": "",
+              "description": "",
+              "visible": true,
+              "clearedOnDeath": false,
+              "duration": 0,
+              "durationType": 0,
+              "cardIds": []
+            },
+            {
+              "id": 3081104,
+              "name": "",
+              "description": "费用上限+3，移动速度+2，出牌数+1",
+              "visible": true,
+              "clearedOnDeath": false,
+              "duration": 0,
+              "durationType": 0,
+              "cardIds": []
+            }
+          ],
+          "relatedCharacterIds": []
         },
         {
           "id": 30813,
           "name": "",
           "description": "",
-          "cooldown": 0
+          "cooldown": 0,
+          "kind": "passive",
+          "params": [
+            305,
+            306,
+            307,
+            308,
+            1,
+            1
+          ],
+          "buffs": [
+            {
+              "id": 3081301,
+              "name": "",
+              "description": "",
+              "visible": false,
+              "clearedOnDeath": false,
+              "duration": 0,
+              "durationType": 0,
+              "cardIds": []
+            }
+          ],
+          "relatedCharacterIds": [
+            305,
+            306,
+            307,
+            308
+          ]
         }
       ],
       "skins": [
@@ -9584,87 +10001,43 @@
           "id": 100308001,
           "index": 0,
           "default": true,
-          "name": "初始皮肤-橘雪莉",
+          "name": "初始装扮（名称待更新）",
           "description": "初始皮肤",
           "image": "UT_Hero_Card_308"
         }
       ],
-      "bondRewards": [
-        {
-          "FavorLevel": 1,
-          "Rewards": {
-            "120120005": 1
-          }
-        },
-        {
-          "FavorLevel": 2,
-          "Rewards": {
-            "120120006": 1
-          }
-        },
-        {
-          "FavorLevel": 3,
-          "Rewards": {
-            "120120007": 1,
-            "120120008": 1
-          }
-        },
-        {
-          "FavorLevel": 4,
-          "Rewards": {
-            "70120": 1
-          }
-        },
-        {
-          "FavorLevel": 5,
-          "Rewards": {
-            "71120": 1
-          }
-        },
-        {
-          "FavorLevel": 6,
-          "Rewards": {
-            "76120": 1
-          }
-        }
-      ],
-      "breakthrough": {
-        "Id": 120,
-        "NeedMaterials": {
-          "78009": 3,
-          "78008": 6,
-          "78007": 9
-        },
-        "Rewards": {
-          "100120002": 1,
-          "72120": 1,
-          "71220": 1
-        }
-      },
+      "bondRewards": [],
+      "breakthrough": {},
       "pveProgression": [
         {
           "level": 1,
-          "description": "达到1星时攻击力+1"
+          "description": "达到1星时攻击力+1",
+          "descriptionId": 11601
         },
         {
           "level": 2,
-          "description": "达到1星时生命值上限+2"
+          "description": "达到1星时生命值上限+2",
+          "descriptionId": 11602
         },
         {
           "level": 3,
-          "description": "初始星币+6"
+          "description": "初始星币+6",
+          "descriptionId": 11603
         },
         {
           "level": 4,
-          "description": "达到3星时攻击力+1、防御力+1、移动速度+1"
+          "description": "达到3星时攻击力+1、防御力+1、移动速度+1",
+          "descriptionId": 11604
         },
         {
           "level": 5,
-          "description": "获得2次强化筹码重选次数"
+          "description": "获得2次强化筹码重选次数",
+          "descriptionId": 11605
         },
         {
           "level": 6,
-          "description": "获得星星时，额外获得1次强化筹码重选次数"
+          "description": "获得星星时，额外获得1次强化筹码重选次数",
+          "descriptionId": 10006
         }
       ],
       "pvePotential": null,
@@ -9672,61 +10045,248 @@
       "emotes": [
         {
           "id": 120308001,
-          "name": "雪莉表情1",
+          "name": "表情 1（名称待更新）",
           "image": "UT_Item_Emoji_308_01",
           "default": true,
           "animated": false
         },
         {
           "id": 120308002,
-          "name": "雪莉表情2",
+          "name": "表情 2（名称待更新）",
           "image": "UT_Item_Emoji_308_02",
           "default": true,
           "animated": false
         },
         {
           "id": 120308003,
-          "name": "雪莉表情3",
+          "name": "表情 3（名称待更新）",
           "image": "UT_Item_Emoji_308_03",
           "default": true,
           "animated": false
         },
         {
           "id": 120308004,
-          "name": "雪莉表情4",
+          "name": "表情 4（名称待更新）",
           "image": "UT_Item_Emoji_308_04",
           "default": true,
           "animated": false
         },
         {
           "id": 120308005,
-          "name": "雪莉表情5",
+          "name": "表情 5（名称待更新）",
           "image": "UT_Item_Emoji_308_05",
           "default": true,
           "animated": false
         },
         {
           "id": 120308006,
-          "name": "雪莉表情6",
+          "name": "表情 6（名称待更新）",
           "image": "UT_Item_Emoji_308_06",
           "default": true,
           "animated": false
         },
         {
           "id": 120308007,
-          "name": "雪莉表情7",
+          "name": "表情 7（名称待更新）",
           "image": "UT_Item_Emoji_308_07",
           "default": true,
           "animated": false
         },
         {
           "id": 120308008,
-          "name": "雪莉表情8",
+          "name": "表情 8（名称待更新）",
           "image": "UT_Item_Emoji_308_08",
           "default": true,
           "animated": false
         }
-      ]
+      ],
+      "isLinkage": true,
+      "category": "卡牌",
+      "preview": {
+        "status": "incomplete_official_configuration",
+        "missing": [
+          "角色名",
+          "称号",
+          "档案",
+          "技能名称与说明",
+          "立绘与表情图片",
+          "潜能"
+        ],
+        "missingTextIds": [
+          {
+            "table": "STRCharacter",
+            "id": 3080
+          },
+          {
+            "table": "STRCharacter",
+            "id": 3081
+          },
+          {
+            "table": "STRCharacter",
+            "id": 3083
+          },
+          {
+            "table": "STRSkill",
+            "id": 30801
+          },
+          {
+            "table": "STRSkill",
+            "id": 308010
+          },
+          {
+            "table": "STRBuff",
+            "id": 30811021
+          },
+          {
+            "table": "STRBuff",
+            "id": 3081102
+          },
+          {
+            "table": "STRBuff",
+            "id": 30811031
+          },
+          {
+            "table": "STRBuff",
+            "id": 3081103
+          },
+          {
+            "table": "STRSkill",
+            "id": 30811
+          },
+          {
+            "table": "STRSkill",
+            "id": 308110
+          },
+          {
+            "table": "STRSkill",
+            "id": 308020
+          },
+          {
+            "table": "STRBuff",
+            "id": 30811061
+          },
+          {
+            "table": "STRSkill",
+            "id": 308120
+          },
+          {
+            "table": "STRSkill",
+            "id": 30813
+          },
+          {
+            "table": "STRSkill",
+            "id": 308130
+          }
+        ],
+        "placeholderReferences": [
+          {
+            "field": "角色头像",
+            "value": "UT_AccountHeadShot_709306",
+            "reason": "与角色 #306 共用，不能作为该角色的正式形象。"
+          },
+          {
+            "field": "角色物品名称",
+            "value": "STRItem:306 · 橘雪莉",
+            "reason": "角色物品沿用了其他角色的名称；图鉴和奖励物品显示名均改为预更新角色编号。"
+          },
+          {
+            "field": "初始装扮名称",
+            "value": "STRItem:100306001 · 初始皮肤-橘雪莉",
+            "reason": "物品引用了其他装扮的名称；显示中改为中性占位名称。"
+          },
+          {
+            "field": "战斗资源",
+            "value": 100306001,
+            "reason": "引用了其他角色的资源，不能据此确认该角色的身份或正式表现。"
+          },
+          {
+            "field": "模型标签",
+            "value": "Hero306",
+            "reason": "引用了其他角色的资源，不能据此确认该角色的身份或正式表现。"
+          },
+          {
+            "field": "装扮预览视频",
+            "value": "VSkin_100306001",
+            "reason": "引用了其他角色的资源，不能据此确认该角色的身份或正式表现。"
+          },
+          {
+            "field": "语音组",
+            "value": 100304001,
+            "reason": "引用了其他角色的资源，不能据此确认该角色的身份或正式表现。"
+          },
+          {
+            "field": "表情 1 名称",
+            "value": "STRItem:120306001 · 雪莉表情1",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "表情 2 名称",
+            "value": "STRItem:120306002 · 雪莉表情2",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "表情 3 名称",
+            "value": "STRItem:120306003 · 雪莉表情3",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "表情 4 名称",
+            "value": "STRItem:120306004 · 雪莉表情4",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "表情 5 名称",
+            "value": "STRItem:120306005 · 雪莉表情5",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "表情 6 名称",
+            "value": "STRItem:120306006 · 雪莉表情6",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "表情 7 名称",
+            "value": "STRItem:120306007 · 雪莉表情7",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "表情 8 名称",
+            "value": "STRItem:120306008 · 雪莉表情8",
+            "reason": "沿用了其他表情的名称；不视为新角色姓名证据。"
+          },
+          {
+            "field": "羁绊奖励与突破",
+            "value": "Favor:120 / 120",
+            "reason": "HasKizuna 未启用；共享模板不作为该角色的可用羁绊或奖励展示。"
+          }
+        ],
+        "unavailableAssets": [
+          "UT_Hero_Card_308",
+          "UT_Item_Emoji_308_01",
+          "UT_Item_Emoji_308_02",
+          "UT_Item_Emoji_308_03",
+          "UT_Item_Emoji_308_04",
+          "UT_Item_Emoji_308_05",
+          "UT_Item_Emoji_308_06",
+          "UT_Item_Emoji_308_07",
+          "UT_Item_Emoji_308_08"
+        ],
+        "skinSlots": 1,
+        "emoteSlots": 8,
+        "growthDescriptionIds": [
+          11601,
+          11602,
+          11603,
+          11604,
+          11605,
+          10006
+        ],
+        "notes": [
+          "数值为当前预装配置，可能在上线前调整。",
+          "参数顺序不等于效果含义，空白文案不按猜测补写。",
+          "装扮和表情条目已声明，不代表相应图片已随本机资源提供。"
+        ]
+      }
     }
   ],
   "cards": [
@@ -16722,8 +17282,8 @@
     "304": "多萝西·海兹",
     "305": "远野汉娜",
     "306": "橘雪莉",
-    "307": "远野汉娜",
-    "308": "橘雪莉",
+    "307": "预更新角色 #307",
+    "308": "预更新角色 #308",
     "1001": "皮肤组合包",
     "1002": "皮肤组合包",
     "1003": "皮肤组合包",
@@ -17670,8 +18230,8 @@
     "100304001": "初始皮肤-多萝西",
     "100305001": "初始皮肤-远野汉娜",
     "100306001": "初始皮肤-橘雪莉",
-    "100307001": "初始皮肤-远野汉娜",
-    "100308001": "初始皮肤-橘雪莉",
+    "100307001": "初始装扮（名称待更新）",
+    "100308001": "初始装扮（名称待更新）",
     "120101001": "商业之主表情1",
     "120101002": "商业之主表情2",
     "120101003": "商业之主表情3",
@@ -18096,22 +18656,22 @@
     "120306006": "雪莉表情6",
     "120306007": "雪莉表情7",
     "120306008": "雪莉表情8",
-    "120307001": "汉娜表情1",
-    "120307002": "汉娜表情2",
-    "120307003": "汉娜表情3",
-    "120307004": "汉娜表情4",
-    "120307005": "汉娜表情5",
-    "120307006": "汉娜表情6",
-    "120307007": "汉娜表情7",
-    "120307008": "汉娜表情8",
-    "120308001": "雪莉表情1",
-    "120308002": "雪莉表情2",
-    "120308003": "雪莉表情3",
-    "120308004": "雪莉表情4",
-    "120308005": "雪莉表情5",
-    "120308006": "雪莉表情6",
-    "120308007": "雪莉表情7",
-    "120308008": "雪莉表情8",
+    "120307001": "表情 1（名称待更新）",
+    "120307002": "表情 2（名称待更新）",
+    "120307003": "表情 3（名称待更新）",
+    "120307004": "表情 4（名称待更新）",
+    "120307005": "表情 5（名称待更新）",
+    "120307006": "表情 6（名称待更新）",
+    "120307007": "表情 7（名称待更新）",
+    "120307008": "表情 8（名称待更新）",
+    "120308001": "表情 1（名称待更新）",
+    "120308002": "表情 2（名称待更新）",
+    "120308003": "表情 3（名称待更新）",
+    "120308004": "表情 4（名称待更新）",
+    "120308005": "表情 5（名称待更新）",
+    "120308006": "表情 6（名称待更新）",
+    "120308007": "表情 7（名称待更新）",
+    "120308008": "表情 8（名称待更新）",
     "13020001": "激光（异画）",
     "13020002": "巧克力蛋糕（异画）",
     "13020030": "活体书页（异画）",

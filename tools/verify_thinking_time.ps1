@@ -38,6 +38,8 @@ foreach($taskName in $taskOldMethods.Keys) {
             $taskName -notmatch 'Core.Unit.BattleProperty::OnGoldChanged\(' -and
             $taskName -notmatch 'GameLogic.BattleResultLogic::OnGameFinishS2CServerCallBack\(' -and
             $taskName -notmatch 'GameLogic.BattleLogic::OnGetHeroInfoS2CServerCallBackAsync\(' -and
+            $taskName -notmatch 'GameLogic.BattleLogic::On(RoundStart|ActionStartNotify)S2CServerCallBack\(' -and
+            $taskName -notmatch 'GameLogic.CardLogic::OnUseEffectCardS2CServerCallBack\(' -and
             $taskName -notmatch 'GameLogic.ActionLogic::OnUpdateHeroAttrS2CServerCallBack\(' -and
             $taskName -notmatch 'GameLogic.AccountLogic::OnGet(ShowPlayer|PlayerFightRecord)S2CServerCallBack\(' -and
             $taskName -notmatch 'GameLogic.OperationTimer/[^:]+::<ActionDownTime>b__[012]\(' -and
@@ -59,6 +61,11 @@ foreach ($taskTarget in @(
     @('GameLogic.BattleResultLogic::OnGameFinishS2CServerCallBack(', 'BattleStatsOverlay::ObserveSettlement'),
     @('GameLogic.BattleLogic::OnGetHeroInfoS2CServerCallBackAsync(', 'BattleStatsOverlay::ObserveHeroInfo'),
     @('GameLogic.ActionLogic::OnUpdateHeroAttrS2CServerCallBack(', 'BattleStatsOverlay::ObserveHealingSources'),
+    @('GameLogic.BattleLogic::OnGetHeroInfoS2CServerCallBackAsync(', 'MonsterCooldownRuntime::ObserveHeroInfo'),
+    @('GameLogic.ActionLogic::OnUpdateHeroAttrS2CServerCallBack(', 'MonsterCooldownRuntime::ObserveAttributes'),
+    @('GameLogic.CardLogic::OnUseEffectCardS2CServerCallBack(', 'MonsterCooldownRuntime::ObserveUse'),
+    @('GameLogic.BattleLogic::OnRoundStartS2CServerCallBack(', 'MonsterCooldownRuntime::ObserveRound'),
+    @('GameLogic.BattleLogic::OnActionStartNotifyS2CServerCallBack(', 'MonsterCooldownRuntime::ObserveAction'),
     @('GameLogic.AccountLogic::OnGetShowPlayerS2CServerCallBack(', 'GameLibraryReplies::ObserveCareer'),
     @('GameLogic.AccountLogic::OnGetPlayerFightRecordS2CServerCallBack(', 'GameLibraryReplies::ObserveDetail')
 )) {
@@ -96,32 +103,40 @@ function Get-TaskInstructions($method, $skip) {
         $_.OpCode.Code.ToString() + ':' + $taskOperand
     }) -join "`n"
 }
+function Get-TaskObserverPrefix($method, $allowed) {
+    $taskInstructions = $method.Body.Instructions
+    $taskSkip = 0
+    while ($taskInstructions.Count -gt $taskSkip + 4 -and
+        $taskInstructions[$taskSkip + 3].OpCode.Code.ToString() -eq 'Call' -and
+        @($allowed | Where-Object { $taskInstructions[$taskSkip + 3].Operand.FullName.Contains($_) }).Count -gt 0) {
+        if ($taskInstructions[$taskSkip].OpCode.Code.ToString() -notin @('Ldarg', 'Ldarg_S') -or
+            $taskInstructions[$taskSkip].Operand.Index -ne 1 -or
+            $taskInstructions[$taskSkip + 1].OpCode.Code.ToString() -notin @('Brtrue', 'Brtrue_S') -or
+            ![object]::ReferenceEquals($taskInstructions[$taskSkip + 1].Operand, $taskInstructions[$taskSkip + 4]) -or
+            $taskInstructions[$taskSkip + 2].OpCode.Code.ToString() -notin @('Ldarg', 'Ldarg_S') -or
+            $taskInstructions[$taskSkip + 2].Operand.Index -ne 0) {
+            throw "Observer must skip errors and pass only the decoded message: $($method.FullName)"
+        }
+        $taskSkip += 4
+    }
+    return $taskSkip
+}
 foreach ($taskReplyTarget in @(
-    @('GameLogic.BattleLogic::OnGetHeroInfoS2CServerCallBackAsync(', 'BattleStatsOverlay::ObserveHeroInfo'),
-    @('GameLogic.ActionLogic::OnUpdateHeroAttrS2CServerCallBack(', 'BattleStatsOverlay::ObserveHealingSources')
+    @('GameLogic.BattleLogic::OnGetHeroInfoS2CServerCallBackAsync(', @('BattleStatsOverlay::ObserveHeroInfo', 'MonsterCooldownRuntime::ObserveHeroInfo')),
+    @('GameLogic.ActionLogic::OnUpdateHeroAttrS2CServerCallBack(', @('BattleStatsOverlay::ObserveHealingSources', 'MonsterCooldownRuntime::ObserveAttributes')),
+    @('GameLogic.CardLogic::OnUseEffectCardS2CServerCallBack(', @('MonsterCooldownRuntime::ObserveUse')),
+    @('GameLogic.BattleLogic::OnRoundStartS2CServerCallBack(', @('MonsterCooldownRuntime::ObserveRound')),
+    @('GameLogic.BattleLogic::OnActionStartNotifyS2CServerCallBack(', @('MonsterCooldownRuntime::ObserveAction'))
 )) {
     $taskReplyNew = @($taskNewMethods.Values | Where-Object { $_.FullName.Contains($taskReplyTarget[0]) })[0]
     $taskReplyOld = $taskOldMethods[$taskReplyNew.FullName]
     if (!$taskReplyOld) { throw 'Missing original protocol handler' }
-    $taskReplyInstructions = $taskReplyNew.Body.Instructions
-    if ($taskReplyInstructions.Count -lt 5 -or
-        $taskReplyInstructions[0].OpCode.Code.ToString() -notin @('Ldarg', 'Ldarg_S') -or
-        $taskReplyInstructions[0].Operand.Index -ne 1 -or
-        $taskReplyInstructions[1].OpCode.Code.ToString() -notin @('Brtrue', 'Brtrue_S') -or
-        ![object]::ReferenceEquals($taskReplyInstructions[1].Operand, $taskReplyInstructions[4]) -or
-        $taskReplyInstructions[2].OpCode.Code.ToString() -notin @('Ldarg', 'Ldarg_S') -or
-        $taskReplyInstructions[2].Operand.Index -ne 0 -or
-        $taskReplyInstructions[3].OpCode.Code.ToString() -ne 'Call' -or
-        !$taskReplyInstructions[3].Operand.FullName.Contains($taskReplyTarget[1])) {
-        throw "Observer must skip errors and pass the decoded message: $($taskReplyTarget[0])"
-    }
-    $taskAlreadyObserved = @($taskReplyOld.Body.Instructions | Where-Object {
-        $_.Operand -and $_.Operand.ToString().Contains($taskReplyTarget[1])
-    }).Count -eq 1
-    $taskOldSkip = if ($taskAlreadyObserved) { 4 } else { 0 }
-    if ((Get-TaskInstructions $taskReplyOld $taskOldSkip) -ne (Get-TaskInstructions $taskReplyNew 4)) {
+    $taskNewSkip = Get-TaskObserverPrefix $taskReplyNew $taskReplyTarget[1]
+    if ($taskNewSkip -ne 4 * $taskReplyTarget[1].Count) { throw "Missing or duplicated observer prefix: $($taskReplyTarget[0])" }
+    $taskOldSkip = Get-TaskObserverPrefix $taskReplyOld $taskReplyTarget[1]
+    if ((Get-TaskInstructions $taskReplyOld $taskOldSkip) -ne (Get-TaskInstructions $taskReplyNew $taskNewSkip)) {
         throw "Observer changed the original handler body: $($taskReplyTarget[0])"
     }
 }
-Write-Output "PASS: 3 real-clock wrappers, 3 duration hooks, 4 statistics observers (typed reply/effect error guards and original handlers preserved), 2 account reply observers, operation progress ownership guards; $($taskOldMethods.Count - $taskChanged.Count) existing method bodies unchanged ($($taskChanged.Count) changed)"
+Write-Output "PASS: 3 real-clock wrappers, 3 duration hooks, 4 statistics and 5 cooldown observers (error guards and original handlers preserved), 2 account reply observers, operation progress ownership guards; $($taskOldMethods.Count - $taskChanged.Count) existing method bodies unchanged ($($taskChanged.Count) changed)"
 $taskOld.Dispose(); $taskNew.Dispose()
