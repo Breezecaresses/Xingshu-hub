@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using XingShuRuntime.Utilities;
 
 class TestMonsterCooldownRunner
@@ -8,7 +9,7 @@ class TestMonsterCooldownRunner
     {
         _checks++; if (!condition) throw new Exception(message);
     }
-    static void Main()
+    static void Main(string[] args)
     {
         var ledger = new MonsterCooldownLedger();
         ledger.ObserveRound(6);
@@ -66,6 +67,50 @@ class TestMonsterCooldownRunner
         Check(ledger.NeedsRefresh(thief, 107001, 46), "Long unchanged rounds are refreshed on a real-time interval");
         ledger.ObserveRound(1);
         Check(ledger.Read(thief, 107001) == 1, "Duplicate round notifications do not invalidate a fresh result");
+        ledger.ObserveServer(bear, 107301, 0, 50);
+        Check(ledger.ObserveSkillUse(bear, 107301, 107301, false, 0, 51), "Active empty cast without a CD map is observed");
+        Check(ledger.Read(bear, 107301) == -1, "Missing cast cooldown does not preserve old ready state");
+        Check(ledger.ObserveSkillUse(bear, 107301, 107302, true, 2, 52), "A sub-skill can report the active skill's exact CD");
+        Check(ledger.Read(bear, 107301) == 2, "Sub-skill report is stored under the actual active skill");
+        Check(!ledger.ObserveSkillUse(bear, 107301, 107311, false, 0, 53), "A passive without an active CD does not count as an active cast");
+        Check(ledger.Read(bear, 107301) == 2, "Unrelated passive does not clear active CD");
+        Check(ledger.ObserveSkillUse(bear, 107301, 107301, true, -1, 54) && ledger.Read(bear, 107301) == -1, "Invalid cast CD leaves state unknown");
+        int variants = 0;
+        if (args.Length > 0)
+        {
+            foreach (string line in File.ReadAllLines(args[0]))
+            {
+                if (line.StartsWith("monsterId,") || string.IsNullOrWhiteSpace(line)) continue;
+                string[] values = line.Split(',');
+                int monsterId = int.Parse(values[0]), skillId = int.Parse(values[1]), cd = int.Parse(values[2]);
+                int difficulty = int.Parse(values[3]);
+                long actor = 60000000000L + ++variants;
+                string label = "Monster " + monsterId + ", difficulty=" + difficulty + ", skill=" + skillId;
+                var state = new MonsterCooldownLedger();
+                state.ObserveRound(1);
+                Check(state.Read(actor, skillId) == -1, label + ": spawn is unknown");
+                state.ObserveServer(actor, skillId, 0, 0);
+                Check(state.Read(actor, skillId) == 0, label + ": explicit zero is ready");
+                var beforeCast = state.Begin(actor, skillId, 0);
+                state.ObserveSkillUse(actor, skillId, skillId, false, 0, 1);
+                Check(!state.Reply(beforeCast, 0, 1), label + ": empty cast rejects old readiness");
+                state.ObserveServer(actor, skillId, cd, 1);
+                Check(state.Read(actor, skillId) == cd, label + ": exact server CD, including 1 and 99");
+                long otherActor = actor + 1000000L;
+                state.ObserveServer(otherActor, skillId, cd + 1, 1);
+                Check(state.Read(actor, skillId) == cd, label + ": same skill on another actor is independent");
+                var oldRound = state.Begin(actor, skillId, 1);
+                state.ObserveRound(2);
+                Check(state.Read(actor, skillId) == -1, label + ": shared round map cannot invent zero");
+                Check(!state.Reply(oldRound, 0, 2), label + ": previous round reply rejected");
+                var fresh = state.Begin(actor, skillId, 2);
+                Check(state.Reply(fresh, Math.Max(0, cd - 1), 3), label + ": server-confirmed cross-round value");
+                Check(state.Read(otherActor, skillId) == -1, label + ": other actor still awaits own confirmation");
+                state.Remove(actor);
+                Check(state.Read(actor, skillId) == -1, label + ": removed actor cannot retain CD");
+            }
+        }
         Console.WriteLine("PASS: " + _checks + " monster cooldown checks");
+        if (args.Length > 0) Console.WriteLine("Official active-skill variants checked: " + variants);
     }
 }

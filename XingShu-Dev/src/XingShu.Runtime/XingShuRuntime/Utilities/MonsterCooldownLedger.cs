@@ -71,6 +71,18 @@ internal sealed class MonsterCooldownLedger
         entry.Revision = ++_revision; entry.RetryAt = 0d;
     }
 
+    internal bool ObserveSkillUse(long monster, int activeSkill, int usedSkill, bool hasCooldown, int cd, double now)
+    {
+        if (monster == 0 || activeSkill <= 0) return false;
+        // Multi-stage skills can report another SkillId while explicitly
+        // updating the configured active skill in this actor's cooldown map.
+        if (hasCooldown && cd >= 0)
+        { ObserveServer(monster, activeSkill, cd, now); return true; }
+        if (usedSkill != activeSkill) return false; // A passive is not an active cast.
+        Invalidate(monster, activeSkill);
+        return true;
+    }
+
     internal bool NeedsRefresh(long monster, int skill, double now)
     {
         var entry = Ensure(monster, skill);
