@@ -12,6 +12,7 @@ internal sealed class MonsterCooldownLedger
         public long Revision;
         public double ConfirmedAt = double.NegativeInfinity;
         public double RetryAt;
+        public bool Estimated;
     }
 
     internal struct Request
@@ -23,10 +24,11 @@ internal sealed class MonsterCooldownLedger
     private readonly Dictionary<long, Entry> _entries = new Dictionary<long, Entry>();
     private long _revision, _epoch;
     internal int Round { get; private set; } = -1;
+    internal long CurrentActor { get; private set; }
 
     internal void Reset()
     {
-        _entries.Clear(); Round = -1; _epoch++;
+        _entries.Clear(); Round = -1; CurrentActor = 0; _epoch++;
     }
 
     internal void ObserveRound(int round)
@@ -50,9 +52,36 @@ internal sealed class MonsterCooldownLedger
 
     internal int Read(long monster, int skill)
     {
+        bool estimated;
+        return Read(monster, skill, out estimated);
+    }
+
+    internal int Read(long monster, int skill, out bool estimated)
+    {
+        estimated = false;
         Entry entry;
-        return _entries.TryGetValue(monster, out entry) && entry.Skill == skill && entry.Round == Round
-            ? entry.Cooldown : -1;
+        if (!_entries.TryGetValue(monster, out entry) || entry.Skill != skill || entry.Cooldown < 0) return -1;
+        int rounds = Math.Max(0, Round - entry.Round);
+        estimated = entry.Estimated || rounds > 0;
+        return Math.Max(0, entry.Cooldown - rounds);
+    }
+
+    internal bool Contains(long monster, int skill)
+    { Entry entry; return _entries.TryGetValue(monster, out entry) && entry.Skill == skill; }
+
+    internal static string Format(int cd, bool estimated)
+    {
+        if (cd < 0) return "冷却未记录";
+        if (cd == 0) return estimated ? "预计就绪" : "冷却就绪";
+        return (estimated ? "预计冷却 " : "冷却 ") + cd + " 回合";
+    }
+
+    internal long ObserveAction(long actor)
+    {
+        long previous = CurrentActor;
+        CurrentActor = actor;
+        // Action changes are not round changes and do not invalidate a cast.
+        return previous;
     }
 
     internal void Remove(long monster) { _entries.Remove(monster); }
@@ -68,7 +97,14 @@ internal sealed class MonsterCooldownLedger
         if (monster == 0 || skill <= 0 || cd < 0) return;
         var entry = Ensure(monster, skill);
         entry.Cooldown = cd; entry.Round = Round; entry.ConfirmedAt = now;
-        entry.Revision = ++_revision; entry.RetryAt = 0d;
+        entry.Revision = ++_revision; entry.RetryAt = 0d; entry.Estimated = false;
+    }
+
+    internal void ObserveEstimated(long monster, int skill, int cd, double now)
+    {
+        if (monster == 0 || skill <= 0 || cd < 0) return;
+        ObserveServer(monster, skill, cd, now);
+        _entries[monster].Estimated = true;
     }
 
     internal bool ObserveSkillUse(long monster, int activeSkill, int usedSkill, bool hasCooldown, int cd, double now)

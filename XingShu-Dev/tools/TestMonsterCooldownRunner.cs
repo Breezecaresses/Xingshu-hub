@@ -31,12 +31,13 @@ class TestMonsterCooldownRunner
         Check(ledger.Read(bear, 107301) == 2, "Missing shared-map entries cannot clear a positive cooldown");
         var previousRound = ledger.Begin(bear, 107301, 4);
         ledger.ObserveRound(7);
-        Check(ledger.Read(bear, 107301) == -1, "A new round awaits per-monster server confirmation");
+        bool estimated;
+        Check(ledger.Read(bear, 107301, out estimated) == 1 && estimated, "Two-round CD projects to one at the next round, disclosed as estimated");
         Check(!ledger.Reply(previousRound, 0, 5), "Old-round zero cannot establish readiness");
         var nextRound = ledger.Begin(bear, 107301, 5);
         Check(ledger.Reply(nextRound, 1, 6) && ledger.Read(bear, 107301) == 1, "Two-round cooldown becomes one only on a fresh server value");
         ledger.ObserveRound(8);
-        Check(ledger.Read(bear, 107301) == -1, "No local timer invents readiness");
+        Check(ledger.Read(bear, 107301, out estimated) == 0 && estimated, "Projected readiness is not marked as a confirmed server zero");
         var ready = ledger.Begin(bear, 107301, 7);
         Check(ledger.Reply(ready, 0, 8) && ledger.Read(bear, 107301) == 0, "A current server zero completes cooldown");
         var olderQuery = ledger.Begin(thief, 107001, 9);
@@ -75,6 +76,36 @@ class TestMonsterCooldownRunner
         Check(!ledger.ObserveSkillUse(bear, 107301, 107311, false, 0, 53), "A passive without an active CD does not count as an active cast");
         Check(ledger.Read(bear, 107301) == 2, "Unrelated passive does not clear active CD");
         Check(ledger.ObserveSkillUse(bear, 107301, 107301, true, -1, 54) && ledger.Read(bear, 107301) == -1, "Invalid cast CD leaves state unknown");
+        var tracking = new MonsterCooldownLedger();
+        tracking.ObserveRound(5);
+        tracking.ObserveEstimated(bear, 107301, 0, 0);
+        Check(tracking.Read(bear, 107301, out estimated) == 0 && estimated, "Missing initial map is disclosed as estimated ready instead of perpetual synchronization");
+        Check(tracking.Contains(bear, 107301), "A recorded actor is seeded only once");
+        tracking.ObserveAction(bear);
+        tracking.ObserveSkillUse(bear, 107301, 107301, true, 2, 1);
+        Check(tracking.ObserveAction(1234567) == bear, "Action transition identifies the previous monster");
+        Check(tracking.Read(bear, 107301, out estimated) == 2 && !estimated, "Switching to a hero preserves the just-confirmed cast cooldown");
+        tracking.ObserveAction(2345678); tracking.ObserveAction(3456789);
+        Check(tracking.Read(bear, 107301) == 2, "Other participants' actions do not consume rounds of CD");
+        tracking.ObserveRound(6);
+        Check(tracking.Read(bear, 107301, out estimated) == 1 && estimated, "Bear 2 becomes projected 1, not ready, in the next round");
+        tracking.ObserveRound(6); tracking.ObserveAction(bear);
+        Check(tracking.Read(bear, 107301) == 1, "Duplicate round/action messages cannot decrement twice");
+        tracking.ObserveRound(7);
+        Check(tracking.Read(bear, 107301, out estimated) == 0 && estimated, "Projected zero remains visibly estimated");
+        tracking.ObserveServer(bear, 107301, 2, 10);
+        Check(tracking.Read(bear, 107301, out estimated) == 2 && !estimated, "A fresh authoritative value immediately corrects a projection");
+        tracking.ObserveEstimated(thief, 107001, 3, 11);
+        Check(tracking.Read(thief, 107001, out estimated) == 3 && estimated, "Configuration fallback is never reported as an authoritative cast CD");
+        tracking.ObserveServer(thief, 107001, 0, 12);
+        Check(tracking.Read(thief, 107001, out estimated) == 0 && !estimated, "Explicit server zero replaces the fallback estimate");
+        tracking.ObserveRound(1000);
+        Check(tracking.Read(bear, 107301, out estimated) == 0 && estimated, "Skipped observed rounds cannot produce a negative cooldown");
+        Check(MonsterCooldownLedger.Format(0, true) == "预计就绪", "Projected readiness wording discloses uncertainty");
+        Check(MonsterCooldownLedger.Format(0, false) == "冷却就绪", "Server readiness wording remains definite");
+        Check(MonsterCooldownLedger.Format(2, true) == "预计冷却 2 回合", "Projected positive cooldown wording is explicit");
+        Check(MonsterCooldownLedger.Format(2, false) == "冷却 2 回合", "Confirmed positive cooldown wording remains direct");
+        Check(MonsterCooldownLedger.Format(-1, false) == "冷却未记录", "Unknown data no longer promises a nonexistent pending request");
         int variants = 0;
         if (args.Length > 0)
         {
@@ -101,11 +132,13 @@ class TestMonsterCooldownRunner
                 Check(state.Read(actor, skillId) == cd, label + ": same skill on another actor is independent");
                 var oldRound = state.Begin(actor, skillId, 1);
                 state.ObserveRound(2);
-                Check(state.Read(actor, skillId) == -1, label + ": shared round map cannot invent zero");
+                Check(state.Read(actor, skillId, out estimated) == Math.Max(0, cd - 1) && estimated, label + ": next round projects exactly one decrement and discloses it");
                 Check(!state.Reply(oldRound, 0, 2), label + ": previous round reply rejected");
                 var fresh = state.Begin(actor, skillId, 2);
                 Check(state.Reply(fresh, Math.Max(0, cd - 1), 3), label + ": server-confirmed cross-round value");
-                Check(state.Read(otherActor, skillId) == -1, label + ": other actor still awaits own confirmation");
+                Check(state.Read(otherActor, skillId, out estimated) == cd && estimated, label + ": the other actor projects from its own cooldown");
+                state.ObserveAction(actor); state.ObserveAction(otherActor);
+                Check(state.Read(actor, skillId, out estimated) == Math.Max(0, cd - 1) && !estimated, label + ": action transition preserves a fresh server value");
                 state.Remove(actor);
                 Check(state.Read(actor, skillId) == -1, label + ": removed actor cannot retain CD");
             }

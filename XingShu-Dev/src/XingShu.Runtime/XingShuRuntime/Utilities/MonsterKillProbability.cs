@@ -44,8 +44,10 @@ public sealed class MonsterKillProbability : MonoBehaviour
 
 		public string SkillName;
 
-		// A negative value means the current cooldown has not been synchronized yet.
+		// Negative means no observation; projections are disclosed separately.
 		public int SkillCooldown = -1;
+
+		public bool SkillCooldownEstimated;
 	}
 
 	private const string ActionId = "xingshu.match.monster-kill";
@@ -993,14 +995,14 @@ public sealed class MonsterKillProbability : MonoBehaviour
 			string name = config.NameID.GetLocal(UIStringType.Skill);
 			if (!string.IsNullOrEmpty(name)) prediction.SkillName = name;
 		}
-		// RoundStart applies a shared skill map to every actor and defaults a
-		// missing monster skill to zero. That UI cache is not authoritative.
-		prediction.SkillCooldown = MonsterCooldownRuntime.Read(target.player.Id, id);
+		// Keep per-actor cast/snapshot data. A missing entry in somebody else's
+		// round map must not clear it; cross-round estimates are labeled.
+		prediction.SkillCooldown = MonsterCooldownRuntime.Read(target.player.Id, id, out prediction.SkillCooldownEstimated);
 	}
 
 	private static string SkillCooldownText(Prediction p)
 	{
-		return p.SkillCooldown < 0 ? "冷却待同步" : p.SkillCooldown == 0 ? "冷却就绪" : $"冷却 {p.SkillCooldown} 回合";
+		return MonsterCooldownLedger.Format(p.SkillCooldown, p.SkillCooldownEstimated);
 	}
 
 	private string StatusMarkup(Prediction p, bool includeCooldown = true)
