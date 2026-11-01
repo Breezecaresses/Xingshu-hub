@@ -27,6 +27,9 @@ namespace XingShuRuntime.UI
         private Toggle _spectatorAutoOpenToggle;
         private Text _spectatorAutoOpenHintText;
         private Text _dockButtonText;
+        private Toggle _rosterToggle;
+        private Slider _rosterScaleSlider;
+        private Text _rosterScaleText;
 
         // Card Scale Card
         private Slider _scaleSlider;
@@ -103,11 +106,12 @@ namespace XingShuRuntime.UI
             // 1. 全局总开关控制 (Switch Card: 96px)
             BuildSwitchCard(contentArea);
 
+            BuildRosterCard(contentArea);
+
             // 2. 卡牌尺寸缩放设置 (Scale Card: 148px)
             BuildCardScaleCard(contentArea);
 
-            // 3. 播放标识大小设置 (BtnSize Card: 148px)
-            // Per-avatar play toggles were replaced by the floating detail dock.
+            // The roster grid has its own controls; the movable detail dock stays available.
 
             // 4. 同步与运行时状态卡片 (Status & Sync Card: 154px)
             BuildSyncStatusCard(contentArea);
@@ -155,7 +159,7 @@ namespace XingShuRuntime.UI
             titleRt.anchoredPosition = new Vector2(24f, 12f);
             titleRt.sizeDelta = new Vector2(360f, 28f);
 
-            Text descText = XingShuUIFactory.CreateText(headerGo, "Description", XingShuMobileUIHelper.IsMobile ? "手牌交错叠放，点卡牌放大查看，再点屏幕收起" : "手牌交错叠放，牌多自动压紧，悬停抬起查看完整信息", 13, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
+            Text descText = XingShuUIFactory.CreateText(headerGo, "Description", "角色旁直接展开卡牌，牌多轻叠；原有拖动悬浮窗也可独立使用", 13, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
             RectTransform descRt = descText.rectTransform;
             descRt.anchorMin = new Vector2(0f, 0.5f);
             descRt.anchorMax = new Vector2(0f, 0.5f);
@@ -194,7 +198,7 @@ namespace XingShuRuntime.UI
             GameObject cardGo = CreateCardContainer(parent, "SwitchCard", 148f);
 
             // Row 1: 实时手牌悬浮窗控制
-            Text cardTitle = XingShuUIFactory.CreateText(cardGo, "CardTitle", "实时手牌悬浮窗", 16, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
+            Text cardTitle = XingShuUIFactory.CreateText(cardGo, "CardTitle", "实时手牌同步", 16, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
             RectTransform ctRt = cardTitle.rectTransform;
             ctRt.anchorMin = new Vector2(0f, 1f);
             ctRt.anchorMax = new Vector2(0f, 1f);
@@ -202,7 +206,7 @@ namespace XingShuRuntime.UI
             ctRt.anchoredPosition = new Vector2(24f, -16f);
             ctRt.sizeDelta = new Vector2(240f, 24f);
 
-            _enableHintText = XingShuUIFactory.CreateText(cardGo, "HintText", "点击上方按钮或悬浮球打开手牌悬浮窗；可收起、拖动和切换玩家", 12, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
+            _enableHintText = XingShuUIFactory.CreateText(cardGo, "HintText", "手牌格子和独立悬浮窗共用同步数据；关闭同步会隐藏两种显示", 12, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
             RectTransform htRt = _enableHintText.rectTransform;
             htRt.anchorMin = new Vector2(0f, 1f);
             htRt.anchorMax = new Vector2(0f, 1f);
@@ -244,11 +248,33 @@ namespace XingShuRuntime.UI
             satRt.sizeDelta = new Vector2(150f, 32f);
         }
 
+        private void BuildRosterCard(GameObject parent)
+        {
+            var card = CreateCardContainer(parent, "RosterHandCard", 164f);
+            XingShuDetailLayout.Text(card.transform, "角色框旁手牌", 24, 16, 320, 28, 16).fontStyle = FontStyle.Bold;
+            _rosterToggle = XingShuUIFactory.CreateToggle(card, "RosterHandToggle", "显示入口", HandCardRoster.Enabled,
+                value => { if (!_suppressCallbacks) HandCardRoster.Enabled = value; });
+            var toggle = _rosterToggle.GetComponent<RectTransform>();
+            toggle.anchorMin = toggle.anchorMax = toggle.pivot = new Vector2(1, 1);
+            toggle.anchoredPosition = new Vector2(-24, -16); toggle.sizeDelta = new Vector2(150, 32);
+            XingShuDetailLayout.Text(card.transform, "点“手牌”展开或收起；牌多轻叠，超出可左右拖动；选筹码时自动隐藏", 24, 52, 640, 24, 12, true);
+            XingShuDetailLayout.Text(card.transform, "角色旁卡牌大小（默认 80%）", 24, 84, 300, 24, 13);
+            _rosterScaleText = XingShuDetailLayout.Text(card.transform, "80%", 0, 84, 100, 24, 14);
+            var valueRect = _rosterScaleText.rectTransform;
+            valueRect.anchorMin = valueRect.anchorMax = valueRect.pivot = new Vector2(1, 1);
+            valueRect.anchoredPosition = new Vector2(-24, -84); _rosterScaleText.alignment = TextAnchor.MiddleRight;
+            _rosterScaleSlider = XingShuUIFactory.CreateSlider(card, "RosterScaleSlider", .6f, 1.5f, HandCardRoster.Scale,
+                value => { if (!_suppressCallbacks) HandCardRoster.Scale = value; });
+            var slider = _rosterScaleSlider.GetComponent<RectTransform>();
+            slider.anchorMin = new Vector2(0, 1); slider.anchorMax = new Vector2(1, 1); slider.pivot = new Vector2(.5f, 1);
+            slider.anchoredPosition = new Vector2(0, -116); slider.sizeDelta = new Vector2(-48, 28);
+        }
+
         private void BuildCardScaleCard(GameObject parent)
         {
             GameObject cardGo = CreateCardContainer(parent, "CardScaleCard", 148f);
 
-            Text cardTitle = XingShuUIFactory.CreateText(cardGo, "CardTitle", "手牌挂件整体大小（40%–120%）", 16, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
+            Text cardTitle = XingShuUIFactory.CreateText(cardGo, "CardTitle", "独立手牌悬浮窗大小（40%–120%）", 16, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
             RectTransform ctRt = cardTitle.rectTransform;
             ctRt.anchorMin = new Vector2(0f, 1f);
             ctRt.anchorMax = new Vector2(0f, 1f);
@@ -497,14 +523,19 @@ namespace XingShuRuntime.UI
         internal void UpdateSync()
         {
             bool curEnabled = HandCardDisplayManager.IsEnabled;
+            _suppressCallbacks = true;
+            if (_rosterToggle != null && _rosterToggle.isOn != HandCardRoster.Enabled) _rosterToggle.isOn = HandCardRoster.Enabled;
+            if (_rosterScaleSlider != null && Mathf.Abs(_rosterScaleSlider.value - HandCardRoster.Scale) > .005f) _rosterScaleSlider.value = HandCardRoster.Scale;
+            if (_rosterScaleText != null) _rosterScaleText.text = HandCardRoster.Scale.ToString("P0");
+            _suppressCallbacks = false;
             bool curSpectatorAutoOpen = HandCardDisplayManager.SpectatorAutoOpen;
             float curScale = HandCardDock.Scale;
             float curBtnSize = HandCardDisplayManager.PlayBtnSize;
             bool curNeedFetch = HandCardDisplayManager.NeedFetchFromServer;
-            bool curActiveDisplay = HandCardDock.IsOpen;
+            bool curActiveDisplay = HandCardDock.IsOpen || HandCardRoster.HasExpanded;
             if (_dockButtonText != null)
             {
-                string dockLabel = curActiveDisplay ? "收起手牌悬浮窗" : "打开手牌悬浮窗";
+                string dockLabel = HandCardDock.IsOpen ? "收起手牌悬浮窗" : "打开手牌悬浮窗";
                 if (_dockButtonText.text != dockLabel) _dockButtonText.text = dockLabel;
             }
             bool curPveMode = HandCardDisplayManager.IsPVEMode();

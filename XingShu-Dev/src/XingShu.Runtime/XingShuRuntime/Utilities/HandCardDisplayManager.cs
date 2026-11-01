@@ -652,7 +652,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 				catch
 				{
 				}
-				if (!flag && (value.IsPinned || value.IsHovered))
+				if (!flag && (value.IsPinned || value.IsHovered || HandCardRoster.IsExpanded(value.PlayerId)))
 				{
 					return true;
 				}
@@ -663,6 +663,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 
 	public static void Install(GameObject host)
 	{
+		HandCardRoster.Ensure(host);
 		if (host != null && host.GetComponent<HandCardDisplayManager>() == null)
 		{
 			host.AddComponent<HandCardDisplayManager>();
@@ -2874,7 +2875,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 		return list2;
 	}
 
-	private static void SafeLoadCardTexture(List<string> candidateUrls, GImage targetImg, GComponent parent, int attemptIndex = 0)
+	internal static void SafeLoadCardTexture(List<string> candidateUrls, GImage targetImg, GComponent parent, int attemptIndex = 0)
 	{
 		if (candidateUrls == null || attemptIndex >= candidateUrls.Count || targetImg == null || parent == null)
 		{

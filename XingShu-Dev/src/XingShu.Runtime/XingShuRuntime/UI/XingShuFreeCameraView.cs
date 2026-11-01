@@ -245,7 +245,8 @@ namespace XingShuRuntime.UI
                 "• 鼠标平移：鼠标左键按下并拖拽空白地块\n" +
                 "• 视角缩放：滑动鼠标滚轮 (触屏支持双指张合拉近/拉远)\n" +
                 "• 视角旋转：暂无 (视角锁定在地图俯仰角，不响应右键/中键)\n" +
-                "• 选择突击/技能目标及战斗演出期间交还原版镜头，结束后自动恢复\n" +
+                "• 移动、技能及选目标沿用原生定位，同时保留当前缩放\n" +
+                "• 战斗演出使用原生镜头，结束后恢复之前的缩放\n" +
                 "• 拉远时名字和指向线同步缩小，正常视角保持原版大小";
 
             Text guideTxt = XingShuUIFactory.CreateText(card3, "GuideContent", guideContent, 12, XingShuUITheme.SecondaryText, TextAnchor.UpperLeft);

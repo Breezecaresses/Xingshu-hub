@@ -78,10 +78,16 @@ internal sealed class MapCamera
 
 	private bool _awaitFreshInput;
 
+	private bool _nativePoseReady;
+
+	private bool _nativePoseValid;
+
+	private bool _logNativePose;
+
 	internal float Zoom => _zoom;
 
 	// World labels should shrink with the board when zooming out, never grow past native size.
-	internal float AnnotationScale => !Enabled || (_control.Yielded && _control.Mode != CameraControlMode.Selection) || _referenceZoom <= 0f
+	internal float AnnotationScale => !Enabled || !_control.KeepsZoom || (_control.FollowsNative && !_nativePoseValid) || _referenceZoom <= 0f
 		? 1f : Mathf.Clamp(_referenceZoom / Mathf.Max(_zoom, 0.01f), 0.35f, 1f);
 
 	internal string OwnerDescription
@@ -94,7 +100,7 @@ internal sealed class MapCamera
 				{
 					return "自由镜头";
 				}
-				return "原版镜头接管：" + _control.Mode;
+				return _control.KeepsZoom ? "原版定位 · 保留缩放" : (_control.Mode == CameraControlMode.Combat ? "战斗镜头" : "原版镜头临时接管");
 			}
 			return "保留视角 · 输入暂停";
 		}
@@ -304,6 +310,8 @@ internal sealed class MapCamera
 		_referenceZoom = _zoom;
 		_mapBounds = mapBounds;
 		_control.Reset();
+		_nativePoseReady = false;
+		_nativePoseValid = true;
 		Enabled = true;
 		try
 		{
@@ -477,16 +485,9 @@ internal sealed class MapCamera
 			if (_control.Yielded)
 			{
 				if (_brain != null && (bool)_brain) _brain.enabled = _brainWasEnabled;
-				if (_control.Mode == CameraControlMode.Selection)
-				{
-					// Keep native panning/target picking, but do not inherit its default zoom.
-					// Projecting onto the board makes this correction safe to apply both
-					// before FairyGUI projection and after Cinemachine in the same frame.
-					if (ReadNativeFocus())
-					{
-						ApplyPose();
-					}
-				}
+				// Native target updates are captured in the Cinemachine callback.
+				// Reapplying must not feed this already corrected output back into them.
+				if (_control.KeepsZoom && _nativePoseValid) ApplyPose();
 				return;
 			}
 			if (_brain != null && (bool)_brain)
@@ -509,8 +510,18 @@ internal sealed class MapCamera
 			// The native camera still chooses the target and processes map panning.
 			// Only its final distance is replaced; combat/system cameras stay native.
 			if (!CanControl()) return;
-			if (!_control.Yielded || (_control.Mode == CameraControlMode.Selection && ReadNativeFocus()))
+			_nativePoseReady = true;
+			if (!_control.KeepsZoom) return;
+			if (!_control.FollowsNative || (_nativePoseValid = ReadNativeFocus()))
+			{
 				ApplyPose();
+				if (_logNativePose && _control.FollowsNative)
+				{
+					float appliedZoom = _camera.orthographic ? _camera.orthographicSize : Vector3.Distance(_camera.transform.position, _focus);
+					XingShuRuntime.UI.XingShuUIAssetService.LogUIRuntime("[CAMERA_ZOOM] Native target applied; Mode=" + _control.Mode + "; SavedZoom=" + _zoom.ToString("0.00") + "; AppliedZoom=" + appliedZoom.ToString("0.00"));
+					_logNativePose = false;
+				}
+			}
 		}
 		catch (Exception ex)
 		{
@@ -530,14 +541,18 @@ internal sealed class MapCamera
 
 	private bool ReadNativeFocus()
 	{
-		Quaternion rotation = _camera.transform.rotation;
+		var brain = _brain as CinemachineBrain;
+		if (brain == null) return false;
+		// The output Camera may already contain our selected distance, or may
+		// have been touched by another LateUpdate. Read Cinemachine's own state.
+		var state = brain.CurrentCameraState;
+		Quaternion rotation = state.FinalOrientation;
+		if (!PortMath.Finite(rotation.x) || !PortMath.Finite(rotation.y) ||
+			!PortMath.Finite(rotation.z) || !PortMath.Finite(rotation.w)) return false;
 		Vector3 forward = rotation * Vector3.forward;
 		if (Mathf.Abs(forward.y) <= 0.05f) return false;
-		Vector3 position = _camera.transform.position;
-		float distance = (_boardHeight - position.y) / forward.y;
-		if (!PortMath.Finite(distance) || distance <= 0f) return false;
-		Vector3 focus = position + forward * distance;
-		if (!PortMath.Finite(focus.x) || !PortMath.Finite(focus.z)) return false;
+		Vector3 position = state.FinalPosition;
+		if (!MapDragMath.TryHit(position, forward, _boardHeight, out var focus)) return false;
 		_rotation = rotation;
 		_focus = focus;
 		return true;
@@ -567,19 +582,24 @@ internal sealed class MapCamera
 		{
 			cameraControlMode = CameraControlMode.System;
 		}
+		cameraControlMode = _control.Resolve(cameraControlMode, MapCameraNative.IsBlending(_brain) == true, _nativePoseReady);
 		CameraControlMode previousMode = _control.Mode;
 		CameraControlChange change = _control.Update(cameraControlMode);
-		if (change == CameraControlChange.None && previousMode != cameraControlMode)
-			XingShuRuntime.UI.XingShuUIAssetService.LogUIRuntime("[CAMERA_OWNER] Mode=" + cameraControlMode + "; SavedZoom=" + _zoom.ToString("0.00"));
-		if (change != CameraControlChange.None)
+		if (change != CameraControlChange.None || previousMode != cameraControlMode)
 		{
-			XingShuRuntime.UI.XingShuUIAssetService.LogUIRuntime("[CAMERA_OWNER] " + change + "; Mode=" + cameraControlMode + "; SavedZoom=" + _zoom.ToString("0.00"));
+			XingShuRuntime.UI.XingShuUIAssetService.LogUIRuntime("[CAMERA_OWNER] " + change + "; Mode=" + cameraControlMode + "; SavedZoom=" + _zoom.ToString("0.00") + "; KeepZoom=" + _control.KeepsZoom);
 			CancelDrag();
 			_pointerBlocked = null;
 			_awaitFreshInput = true;
+			_logNativePose = _control.FollowsNative;
 			if (change == CameraControlChange.Yield)
 			{
-				RestoreLens();
+				_nativePoseReady = false;
+				_nativePoseValid = true;
+			}
+			if (_control.Yielded)
+			{
+				if (!_control.KeepsZoom) RestoreLens();
 				_brain.enabled = _brainWasEnabled;
 			}
 			else
@@ -587,7 +607,8 @@ internal sealed class MapCamera
 				// Follow the native camera's final target while keeping the user's zoom.
 				// Adopting its default distance here would permanently zoom in after
 				// every target selection, combat animation or system-camera handoff.
-				ReadNativeFocus();
+				if (_nativePoseReady) ReadNativeFocus();
+				_nativePoseValid = true;
 				_brain.enabled = false;
 			}
 		}
@@ -658,6 +679,9 @@ internal sealed class MapCamera
 					_freeObject = null;
 					_controller = null;
 					_control.Reset();
+						_nativePoseReady = false;
+						_nativePoseValid = false;
+						_logNativePose = false;
 				}
 			}
 		}

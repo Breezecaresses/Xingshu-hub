@@ -276,7 +276,7 @@ public sealed class MapCameraGUI : MonoBehaviour
 				if (_requested && !_camera.Enabled && !_camera.InputSuspended)
 				{
 					_camera.Toggle(_points);
-					_notice = (_camera.Enabled ? "已恢复自由镜头；选择目标时交还原版镜头" : "开关已保存，等待地图与镜头就绪");
+					_notice = (_camera.Enabled ? "已恢复自由镜头；移动和选目标保持缩放" : "开关已保存，等待地图与镜头就绪");
 				}
 			}
 			if (_camera.Enabled)
@@ -399,7 +399,7 @@ public sealed class MapCameraGUI : MonoBehaviour
 			}
 			ScanMap();
 			_camera.Toggle(_points);
-			_notice = (_camera.Enabled ? "已开启并保存。选择目标及战斗期间由原版镜头接管，结束后自动恢复。" : "开关已保存；等待地图、镜头混合或选择/战斗结束后接管");
+			_notice = (_camera.Enabled ? "已开启并保存。移动、技能和选目标保持缩放；战斗镜头结束后自动恢复。" : "开关已保存；等待地图、镜头混合或选择/战斗结束后接管");
 		}
 		catch (Exception ex)
 		{

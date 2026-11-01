@@ -104,6 +104,12 @@ internal static class XingShuConfigKeys
 
 	internal const bool HandCardEnabledDefault = true;
 
+	internal const string HandRosterEnabled = "XINGSHU_HAND_ROSTER_ENABLED";
+
+	internal const string HandRosterScale = "XINGSHU_HAND_ROSTER_SCALE";
+
+	internal const string HandRosterCompactDefaultApplied = "XINGSHU_HAND_ROSTER_COMPACT_DEFAULT_APPLIED";
+
 	// Phase HS4-P1.6: 实时手牌悬浮窗进入观战自动开启偏好
 	internal const string HandCardSpectatorAutoOpen = "XINGSHU_HAND_CARD_SPECTATOR_AUTO_OPEN";
 

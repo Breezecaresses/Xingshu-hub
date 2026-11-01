@@ -6,5 +6,6 @@ internal enum CameraControlMode
 	Selection,
 	Combat,
 	System,
-	Unavailable
+	Unavailable,
+	NativeBoard
 }

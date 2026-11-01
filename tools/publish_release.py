@@ -16,6 +16,8 @@ def main():
     parser.add_argument('--body', type=Path, required=True)
     parser.add_argument('--repo', default='Breezecaresses/Xingshu-hub')
     parser.add_argument('--tag', default='v0.1.0-test.20261021.3')
+    parser.add_argument('--stable', action='store_true',
+                        help='Publish as the latest regular release, discoverable without opting into previews')
     parser.add_argument('--android', '--extra-package', dest='extra_package', type=Path, action='append', required=True,
                         help='The single updater APK, byte-identical to the APK inside --android-package')
     parser.add_argument('--android-package', type=Path, required=True, help='One Android ZIP containing the phone APK and manual replacement files')
@@ -75,7 +77,7 @@ def main():
         raise SystemExit('This version is already published; no assets were replaced')
     release = existing or request('POST', api + '/releases', {
         'tag_name': args.tag, 'target_commitish': commit, 'name': '星枢群发测试版 ' + args.tag,
-        'body': args.body.read_text('utf-8'), 'draft': True, 'prerelease': True})
+        'body': args.body.read_text('utf-8'), 'draft': True, 'prerelease': not args.stable})
     assets = request('GET', api + '/releases/' + str(release['id']) + '/assets')
     packages = {archive.name, android_package.name, args.extra_package[0].name}
     unexpected = [a['name'] for a in assets if Path(a['name']).suffix.lower() in {'.zip', '.apk'} and a['name'] not in packages]
@@ -97,9 +99,10 @@ def main():
             assert asset.get('digest') == digest and asset['size'] == path.stat().st_size, 'Uploaded asset mismatch'
         print('Verified upload: ' + path.name, flush=True)
     published = request('PATCH', api + '/releases/' + str(release['id']), {
-        'body': args.body.read_text('utf-8'), 'draft': False, 'prerelease': True, 'make_latest': 'false'})
+        'body': args.body.read_text('utf-8'), 'draft': False, 'prerelease': not args.stable,
+        'make_latest': 'true' if args.stable else 'false'})
     confirmed = request('GET', api + '/releases/tags/' + urllib.parse.quote(args.tag, safe=''))
-    assert not confirmed['draft'] and confirmed['prerelease']
+    assert not confirmed['draft'] and confirmed['prerelease'] == (not args.stable)
     for path in upload_paths:
         asset = next(a for a in confirmed['assets'] if a['name'] == path.name)
         assert asset['state'] == 'uploaded' and asset['size'] == path.stat().st_size

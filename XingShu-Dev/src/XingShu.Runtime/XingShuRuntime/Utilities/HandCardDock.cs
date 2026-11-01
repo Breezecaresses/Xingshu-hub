@@ -40,6 +40,7 @@ namespace XingShuRuntime.Utilities
         private float _next;
         private string _signature;
         private bool _wasValid;
+        private bool _chipHidden;
         private int _cardCount;
         private float _cardWidth = 184, _cardHeight = 314;
         private const float CardsTop = 84;
@@ -120,6 +121,18 @@ namespace XingShuRuntime.Utilities
         }
         private void Update()
         {
+            bool chipHidden = HandCardVisibility.ShouldHide;
+            if (_chipHidden != chipHidden)
+            {
+                _chipHidden = chipHidden;
+                XingShu.Runtime.XingShuRuntimeHost.LogLifecycle("[HandDock] nativeModalHidden=" + chipHidden + "; window=" + HandCardVisibility.BlockingWindow);
+            }
+            if (chipHidden)
+            {
+                if (_canvas != null) _canvas.SetActive(false);
+                CloseTouchPreview();
+                return;
+            }
             bool valid = _open && HandCardDisplayManager.IsEnabled && (HandCardDisplayManager.IsPVEMode() || XingShu.Spectator.SpectatorStateStore.IsInSpectatorSession()) &&
                 SimpleSingletonProvider<SceneManager>.inst.currentType.Value == SceneType.Battle;
             if (!valid)
@@ -226,7 +239,7 @@ namespace XingShuRuntime.Utilities
                 (XingShuMobileUIHelper.IsMobile ? " · 点卡牌放大查看" : " · 悬停抬起查看详情");
             Layout();
         }
-        private static string PlainCardText(string value)
+        internal static string PlainCardText(string value)
         {
             value = Regex.Replace(value ?? "", "\\{[A-Za-z][A-Za-z0-9_]*=([^{}]+)\\}", "$1");
             value = Regex.Replace(value, "<sprite[^>]*>", " ◆ ", RegexOptions.IgnoreCase);
