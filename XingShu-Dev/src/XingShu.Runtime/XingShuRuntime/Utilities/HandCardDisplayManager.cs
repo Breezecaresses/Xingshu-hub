@@ -1555,6 +1555,18 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 					SyncSelfCardsFromContainer(orCreateHand, playerData);
 					orCreateHand.MaskedHandCount = orCreateHand.Cards.Count;
 				}
+				else if (!orCreateHand.IsBot && XingShu.Truth.HandTruthSource.TryGetCloudHand(roomInfo.Id, id, out var cloudCards))
+				{
+					// A valid local list can be an initial snapshot that never changes for human teammates.
+					if (orCreateHand.SyncState != HandSyncState.Latest || !CardListsMatch(orCreateHand.Cards, cloudCards))
+					{
+						ApplyCardIdsToHand(orCreateHand, cloudCards);
+						MarkOverlayDirty("CloudTeammateHandChanged");
+						Log("CLOUD_TEAMMATE_SYNC", $"Slot={orCreateHand.Slot} Count={cloudCards.Count}");
+					}
+					orCreateHand.IsAuthoritative = true;
+					orCreateHand.MaskedHandCount = cloudCards.Count;
+				}
 				else
 				{
 					// DECISION A: Check if local cardContainer._HandCards contains valid CardId > 0 for all cards
@@ -1599,21 +1611,13 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 					// DECISION B: Remote cards are masked in player client -> DO NOT FABRICATE fake cards!
 					if (!decisionASucceeded)
 					{
-						if (XingShu.Truth.HandTruthSource.TryGetPlayerHand(id, out var truthCards) && truthCards != null && truthCards.Count > 0)
+						if (XingShu.Truth.HandTruthSource.TryGetTeammateMirrorHand(roomInfo.Id, id, out var truthCards))
 						{
 							ApplyCardIdsToHand(orCreateHand, truthCards);
 							orCreateHand.SyncState = HandSyncState.Latest;
 							orCreateHand.IsAuthoritative = true;
 							orCreateHand.MaskedHandCount = truthCards.Count;
 							Log("DECISION_B_TRUTH_SYNC", $"Bot 玩家 {id} 从 HandTruthSource 获取权威手牌 (Count={truthCards.Count})");
-						}
-						else if (XingShu.Spectator.SpectatorStateStore.TryGetPlayerHand(id, out var storeCards) && storeCards != null && storeCards.Count > 0)
-						{
-							ApplyCardIdsToHand(orCreateHand, storeCards);
-							orCreateHand.SyncState = HandSyncState.Latest;
-							orCreateHand.IsAuthoritative = true;
-							orCreateHand.MaskedHandCount = storeCards.Count;
-							Log("DECISION_B_STORE_SYNC", $"Bot 玩家 {id} 从 SpectatorStateStore 获取权威手牌 (Count={storeCards.Count})");
 						}
 						else
 						{

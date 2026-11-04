@@ -27,6 +27,12 @@ namespace XingShuRuntime.UI
         private Toggle _spectatorAutoOpenToggle;
         private Text _spectatorAutoOpenHintText;
         private Text _dockButtonText;
+#if XINGSHU_ANDROID_PREVIEW
+        private Text _cloudHandStatus;
+        private Text _cloudHandButton;
+        private Button _copyCloudHandButton;
+        private Text _copyCloudHandLabel;
+#endif
         private Toggle _rosterToggle;
         private Slider _rosterScaleSlider;
         private Text _rosterScaleText;
@@ -105,6 +111,9 @@ namespace XingShuRuntime.UI
 
             // 1. 全局总开关控制 (Switch Card: 96px)
             BuildSwitchCard(contentArea);
+#if XINGSHU_ANDROID_PREVIEW
+            BuildCloudHandsCard(contentArea);
+#endif
 
             BuildRosterCard(contentArea);
 
@@ -119,6 +128,51 @@ namespace XingShuRuntime.UI
             // 5. 战局玩家手牌状态监控区 (Players Hands Card: min 200px)
             BuildPlayersHandCard(contentArea);
         }
+
+#if XINGSHU_ANDROID_PREVIEW
+        private void BuildCloudHandsCard(GameObject parent)
+        {
+            var card = CreateCardContainer(parent, "CloudHands", 120f);
+            _cloudHandStatus = XingShuUIFactory.CreateText(card, "Status", XingShu.Runtime.AndroidCloudHands.Status,
+                15, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft);
+            var status = _cloudHandStatus.rectTransform;
+            status.anchorMin = new Vector2(0, 1);
+            status.anchorMax = new Vector2(1, 1);
+            status.pivot = new Vector2(.5f, 1);
+            status.anchoredPosition = new Vector2(0, -14);
+            status.sizeDelta = new Vector2(-48, 44);
+
+            var sprite = XingShuUIAssetService.GetSprite("button_secondary.png");
+            var buttonColor = XingShuUIAssetService.IsFallbackSprite(sprite) ? XingShuUITheme.ButtonSecondaryBase : Color.white;
+            var button = XingShuUIFactory.CreateButton(card, "CloudHandsButton", XingShu.Runtime.AndroidCloudHands.ButtonLabel,
+                sprite, buttonColor,
+                XingShuUITheme.PrimaryText, XingShu.Runtime.AndroidCloudHands.Toggle, 16);
+            _cloudHandButton = button.GetComponentInChildren<Text>();
+            var rect = button.GetComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = new Vector2(.5f, 0);
+            rect.offsetMin = new Vector2(24, 14);
+            rect.offsetMax = new Vector2(-6, 57);
+
+            _copyCloudHandButton = XingShuUIFactory.CreateButton(card, "CopyCloudHandsCommand", "复制指令",
+                sprite, buttonColor, XingShuUITheme.PrimaryText, CopyCloudHandCommand, 16);
+            _copyCloudHandLabel = _copyCloudHandButton.GetComponentInChildren<Text>();
+            var copyRect = _copyCloudHandButton.GetComponent<RectTransform>();
+            copyRect.anchorMin = new Vector2(.5f, 0);
+            copyRect.anchorMax = new Vector2(1, 0);
+            copyRect.offsetMin = new Vector2(6, 14);
+            copyRect.offsetMax = new Vector2(-24, 57);
+            _copyCloudHandButton.gameObject.SetActive(false);
+        }
+
+        private void CopyCloudHandCommand()
+        {
+            string command = XingShu.Runtime.AndroidCloudHands.PairingCommand;
+            if (command == null) return;
+            GUIUtility.systemCopyBuffer = command;
+            _copyCloudHandLabel.text = "已复制";
+        }
+#endif
 
         private GameObject CreateCardContainer(GameObject parent, string name, float height)
         {
@@ -522,6 +576,18 @@ namespace XingShuRuntime.UI
         /// </summary>
         internal void UpdateSync()
         {
+#if XINGSHU_ANDROID_PREVIEW
+            if (_cloudHandStatus.text != XingShu.Runtime.AndroidCloudHands.Status)
+                _cloudHandStatus.text = XingShu.Runtime.AndroidCloudHands.Status;
+            if (_cloudHandButton.text != XingShu.Runtime.AndroidCloudHands.ButtonLabel)
+                _cloudHandButton.text = XingShu.Runtime.AndroidCloudHands.ButtonLabel;
+            bool canCopy = XingShu.Runtime.AndroidCloudHands.PairingCommand != null;
+            if (_copyCloudHandButton.gameObject.activeSelf != canCopy)
+            {
+                _copyCloudHandButton.gameObject.SetActive(canCopy);
+                if (!canCopy) _copyCloudHandLabel.text = "复制指令";
+            }
+#endif
             bool curEnabled = HandCardDisplayManager.IsEnabled;
             _suppressCallbacks = true;
             if (_rosterToggle != null && _rosterToggle.isOn != HandCardRoster.Enabled) _rosterToggle.isOn = HandCardRoster.Enabled;

@@ -75,8 +75,9 @@ def main():
     existing = next((r for r in releases if r['tag_name'] == args.tag), None)
     if existing and not existing['draft']:
         raise SystemExit('This version is already published; no assets were replaced')
+    title = ('星枢正式版 ' if args.stable else '星枢群发测试版 ') + args.tag
     release = existing or request('POST', api + '/releases', {
-        'tag_name': args.tag, 'target_commitish': commit, 'name': '星枢群发测试版 ' + args.tag,
+        'tag_name': args.tag, 'target_commitish': commit, 'name': title,
         'body': args.body.read_text('utf-8'), 'draft': True, 'prerelease': not args.stable})
     assets = request('GET', api + '/releases/' + str(release['id']) + '/assets')
     packages = {archive.name, android_package.name, args.extra_package[0].name}
@@ -90,7 +91,7 @@ def main():
             assert asset.get('digest') == digest and asset['size'] == path.stat().st_size, 'Existing draft asset differs'
         else:
             labels = {archive.name: '电脑端 ZIP', android_package.name: '安卓手机 ZIP（APK＋手动替换）',
-                      args.extra_package[0].name: '自动更新专用 APK（群发请下载安卓 ZIP）'}
+                      args.extra_package[0].name: '自动更新用 APK'}
             query = {'name': path.name}
             if path.name in labels: query['label'] = labels[path.name]
             upload = release['upload_url'].split('{', 1)[0] + '?' + urllib.parse.urlencode(query)
@@ -99,7 +100,7 @@ def main():
             assert asset.get('digest') == digest and asset['size'] == path.stat().st_size, 'Uploaded asset mismatch'
         print('Verified upload: ' + path.name, flush=True)
     published = request('PATCH', api + '/releases/' + str(release['id']), {
-        'body': args.body.read_text('utf-8'), 'draft': False, 'prerelease': not args.stable,
+        'name': title, 'body': args.body.read_text('utf-8'), 'draft': False, 'prerelease': not args.stable,
         'make_latest': 'true' if args.stable else 'false'})
     confirmed = request('GET', api + '/releases/tags/' + urllib.parse.quote(args.tag, safe=''))
     assert not confirmed['draft'] and confirmed['prerelease'] == (not args.stable)

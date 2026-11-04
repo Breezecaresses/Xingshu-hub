@@ -48,6 +48,10 @@ export function matchDetailRefreshComplete(detail: MatchDetail | null, requestId
 }
 export interface LibraryAccount {
   platform: string; role: string; observedAt: string;
+  source?: string;
+  official?: {inventory: {id: number; count: number}[]; career?: {matches: number; wins: number; heroes: number; adorns: number; skins: number};
+    battlePass?: {id: number; level: number; exp: number; gear: number}; wins?: number; unlockedDifficulty?: number;
+    mapPlayCounts?: Record<string, number>; mapWinCounts?: Record<string, number>};
   snapshot: { playerId: number; name: string; level: number; exp: number; heroes: HeroProgress[]; skins: number[]; altArts: number[]; matches: PlayedMatch[] | null };
 }
 export interface LibrarySession { connectionId: string; platformId: string; livePlayerId: number | null; boundRole: string; connectionState: string; runtimeVersion: string; lastSeenAt?: string }
@@ -66,7 +70,7 @@ export const plainGameText = (text: string) => text.replace(/\{[A-Za-z][A-Za-z0-
 export const characterName = (id: number) => gameCatalog.characters.find(c => c.id === id)?.name || `角色 #${id}`;
 export const isPreviewCharacter = (c: LibraryCharacter) => !!c.preview || !c.name.trim();
 export const libraryCharacterName = (c: LibraryCharacter) => c.name.trim() || `预更新角色 #${c.id}`;
-export const platformName = (platform: string) => ({ STEAM: 'Steam', STEAM_CN: 'Steam 国服', STEAM_GLOBAL: 'Steam 国际服', TAPTAP: 'TapTap', BILIBILI: '哔哩哔哩' }[platform] || platform);
+export const platformName = (platform: string) => ({ STEAM: 'Steam', STEAM_CN: 'Steam 国服', STEAM_GLOBAL: 'Steam 国际服', TAPTAP: 'TapTap', BILIBILI: '哔哩哔哩', WEGAME: 'WeGame', PHONE_CN: '手机号账号 · 云端' }[platform] || platform);
 
 /** Never silently use a spectator's data for an unsynchronized live main account. */
 export function defaultLibraryKey(accounts: LibraryAccount[], sessions: LibrarySession[], saved: string | null) {
@@ -74,6 +78,6 @@ export function defaultLibraryKey(accounts: LibraryAccount[], sessions: LibraryS
   const main = sessions.find(s => s.boundRole === 'MAIN' && s.livePlayerId && s.connectionState === 'CONNECTED');
   if (main) return sessionKey(main);
   const cachedMain = accounts.find(a => a.role === 'MAIN');
-  return cachedMain ? accountKey(cachedMain) : '';
+  return cachedMain ? accountKey(cachedMain) : accounts.find(a=>a.source==='official_account') ? accountKey(accounts.find(a=>a.source==='official_account')!) : '';
 }
 export function matchDate(time: number) { return new Date(time < 1e12 ? time * 1000 : time).toLocaleString('zh-CN'); }

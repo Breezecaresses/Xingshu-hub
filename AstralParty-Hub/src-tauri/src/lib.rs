@@ -4,6 +4,7 @@ pub mod diagnostics;
 pub mod domain;
 pub mod game;
 pub mod game_library;
+pub mod game_replay;
 pub mod extension_center;
 pub mod install;
 pub mod packages;
@@ -20,6 +21,8 @@ pub mod android_installer;
 pub mod external_mods;
 #[cfg(feature = "web-ui")]
 pub mod app_update;
+#[cfg(feature = "web-ui")]
+pub mod account_login;
 
 #[cfg(feature = "web-ui")]
 mod web_host {
@@ -74,6 +77,7 @@ pub fn run() {
 
             let db = Database::init(&db_path).expect("Failed to initialize XingShu Hub SQLite database");
             let game_library_store = game_library::GameLibraryStore::new(db.clone())?;
+            let game_replay_store = game_replay::GameReplayStore::default();
 
             let game_service = GameService::new(db.clone());
             let player_service = PlayerService::new(db.clone());
@@ -99,6 +103,8 @@ pub fn run() {
                 Arc::new(BridgeServer::new())
             };
             bridge_server.set_game_library_store(game_library_store.clone());
+            bridge_server.set_game_replay_store(game_replay_store.clone());
+            app.manage(game_replay_store);
             bridge_server.start().map_err(|e| format!("Failed to start XingShu Bridge production server: {}", e))?;
             bridge_server.set_app_handle(app_handle.clone());
             let spectator_service = Arc::new(SpectatorService::new(bridge_server.clone()));
@@ -120,6 +126,7 @@ pub fn run() {
             app.manage(extension_center::ExtensionCenter { db: db.clone() });
             app.manage(android_installer::AndroidInstaller::default());
             app.manage(app_update::AppUpdater::default());
+            app.manage(account_login::AccountLogin::default());
             app.manage(game_library_store);
             app.manage(player_service);
             app.manage(catalog_service);
@@ -131,6 +138,15 @@ pub fn run() {
             app.manage(spectator_service);
             app.manage(package_manager);
             app.manage(xing_shu::local_watcher::LocalWatcher::default());
+
+            if !offline_replay {
+                let handle = app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(err) = account_login::cloud_hand_sync::restore_on_startup(handle).await {
+                        tracing::warn!(code = %err.code, "Unable to restore cloud hands on startup");
+                    }
+                });
+            }
 
             // Parse optional startup CLI arguments e.g. --locale zh-CN or --locale=en-US
             let startup_locale = parse_locale_from_args(std::env::args());
@@ -166,8 +182,19 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            account_login::get_cloud_account,
+            account_login::get_cloud_game_library,
+            account_login::sync_cloud_game_library,
+            account_login::get_cloud_match_detail,
+            account_login::start_cloud_login,
+            account_login::poll_cloud_login,
+            account_login::logout_cloud_account,
+            account_login::cloud_hand_sync::cloud_hand_sync_status,
+            account_login::cloud_hand_sync::set_cloud_hand_sync,
             game_library::get_game_library,
             game_library::sync_game_library,
+            game_replay::request_game_replay,
+            game_replay::get_game_replay_status,
             game_library::get_game_match_detail,
             game_library::request_game_match_detail,
             // Game commands

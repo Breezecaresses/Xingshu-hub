@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useNavigate } from 'react-router-dom';
 import {
   Eye,
@@ -77,6 +78,39 @@ export const SpectatorPage: React.FC = () => {
     return true;
   });
   const [selectorForceVisible, setSelectorForceVisible] = useState(false);
+  type CloudHandState = { enabled: boolean; status: string };
+  const [cloudHands, setCloudHands] = useState<CloudHandState>({ enabled: false, status: 'disabled' });
+  const [cloudHandPending, setCloudHandPending] = useState(false);
+  React.useEffect(() => {
+    if (cloudHandPending) return;
+    let active = true;
+    const refresh = () => invoke<CloudHandState>('cloud_hand_sync_status')
+      .then(state => { if (active) setCloudHands(state); }).catch(() => {});
+    void refresh();
+    const timer = setInterval(refresh, 2000);
+    return () => { active = false; clearInterval(timer); };
+  }, [cloudHandPending]);
+
+  async function toggleCloudHands() {
+    setCloudHandPending(true);
+    try {
+      setCloudHands(await invoke<CloudHandState>('set_cloud_hand_sync', { enabled: !cloudHands.enabled }));
+    } catch {
+      setCloudHands(state => ({ ...state, status: 'unavailable' }));
+    } finally {
+      setCloudHandPending(false);
+    }
+  }
+  const cloudHandLabels: Record<string, [string, string]> = {
+    disabled: ['已关闭', 'Off'],
+    waiting_match: ['等待已更新的电脑端进入合作对局', 'Waiting for an updated PC client in a co-op match'],
+    waiting_snapshot: ['等待官方观战数据', 'Waiting for official spectator data'],
+    forwarded: ['手牌已转发给游戏', 'Hands forwarded to the game'],
+    signed_out: ['请在游戏账号页登录', 'Sign in on the Game Accounts page'],
+    busy: ['云端观战服务正在读取另一场对局', 'The cloud observer is serving another match'],
+    identity_mismatch: ['Hub 登录账号与游戏账号不同', 'Hub and game accounts do not match'],
+    unavailable: ['暂时无法连接云端观战服务', 'Cloud observer temporarily unavailable'],
+  };
 
   React.useEffect(() => {
     if (typeof window !== 'undefined' && window.location.search.includes('view=hands')) {
@@ -236,6 +270,22 @@ export const SpectatorPage: React.FC = () => {
 
   return (
     <div style={{ maxWidth: 1440, margin: '0 auto', paddingBottom: 40 }}>
+      <section className="card" style={{ padding: 16, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <strong>{isZh ? '游戏内队友手牌' : 'Teammate hands in game'}</strong>
+            <p style={{ margin: '6px 0', color: 'var(--text-secondary)' }}>
+              {isZh ? 'Hub 登录后默认开启。保持 Hub 运行，用同一账号进入允许观战的合作对局，再展开队友头像旁的「手牌」。'
+                : 'Enabled by default after Hub sign-in. Keep Hub running and join a co-op match that allows spectators with the same account, then expand Hands next to a teammate’s avatar.'}
+            </p>
+            <span role="status">{cloudHandLabels[cloudHands.status]?.[isZh ? 0 : 1]}</span>
+          </div>
+          <button className={cloudHands.enabled ? 'btn btn-secondary' : 'btn btn-primary'}
+            onClick={toggleCloudHands} disabled={cloudHandPending} aria-pressed={cloudHands.enabled}>
+            {cloudHands.enabled ? (isZh ? '关闭云端手牌' : 'Disable cloud hands') : (isZh ? '开启云端手牌' : 'Enable cloud hands')}
+          </button>
+        </div>
+      </section>
       {/* 1. Header */}
       <div
         style={{

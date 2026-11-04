@@ -21,6 +21,7 @@ import {
 import type { RuntimeSession } from '../../types/runtimeSession';
 import { api } from '../../shared/api/tauri';
 import { useTranslation } from '../../i18n';
+import { CloudLoginCard } from './CloudLoginCard';
 
 export const GameAccountCenter: React.FC = () => {
   const { locale } = useTranslation();
@@ -302,7 +303,9 @@ export const GameAccountCenter: React.FC = () => {
         </button>
       </div>
 
-      {/* 2. Zero-Credential Privacy Guarantee Banner */}
+      <CloudLoginCard isZh={isZh} />
+
+      {/* Account roles remain explicit and separate from cloud login. */}
       <div
         style={{
           padding: '12px 18px',
@@ -318,12 +321,12 @@ export const GameAccountCenter: React.FC = () => {
         <ShieldCheck size={20} color="#10b981" style={{ flexShrink: 0, marginTop: 2 }} />
         <div style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.5 }}>
           <strong style={{ color: '#10b981' }}>
-            {isZh ? '零凭据与隐私安全承诺' : 'Zero-Credential & Privacy Guarantee'}
+            {isZh ? '账号与登录信息保护' : 'Account and login protection'}
           </strong>
           <div style={{ marginTop: 2, color: 'var(--text-secondary, #94a3b8)' }}>
             {isZh
-              ? '星枢仅记录公开的游戏内 Player ID 与角色绑定关系，绝不保存、读取或上传任何 Steam 密码、令牌、2FA 秘钥或会话 Cookie。身份角色绝不自动猜测，必须由用户自主显式绑定。'
-              : 'XingShu only stores public in-game Player IDs and explicit role bindings. Passwords, Steam credentials, tokens, or cookies are NEVER stored or transmitted.'}
+              ? '手机号和短信验证码只用于本次官方 SDK 登录，不写入日志或数据库。授权服务加密保存必要的游戏授权凭据；Hub 仅保存经 Windows 保护的自身登录状态，不接收游戏令牌。主账号与观战账号角色仍需自主绑定。'
+              : 'Phone and SMS code are used only for this SDK login, without logging or database storage. The service encrypts required game credentials; Hub stores only its own Windows-protected session. Account roles remain explicit.'}
           </div>
         </div>
       </div>

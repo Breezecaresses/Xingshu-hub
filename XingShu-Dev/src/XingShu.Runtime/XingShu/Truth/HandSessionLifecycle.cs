@@ -13,6 +13,9 @@ namespace XingShu.Truth
         private static string _match;
         private static bool _observing;
         public static long RetiredMirrorEpoch { get; private set; }
+#if XINGSHU_ANDROID_PREVIEW
+        internal static long AndroidMatchEpoch { get; private set; }
+#endif
 
         public static long ActiveRoomId()
         {
@@ -51,6 +54,9 @@ namespace XingShu.Truth
                         SpectatorStateStore.RoomId == roomId &&
                         SimpleSingletonProvider<GameLogicManager>.inst.watch.PlayerIsWatcher();
                     _match = token;
+#if XINGSHU_ANDROID_PREVIEW
+                    AndroidMatchEpoch++;
+#endif
                     if (!initialWatch)
                     {
                         if (SimpleSingletonProvider<GameLogicManager>.inst?.watch?.PlayerIsWatcher() != true)

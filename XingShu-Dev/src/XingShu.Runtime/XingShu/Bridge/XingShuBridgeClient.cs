@@ -704,6 +704,7 @@ namespace XingShu.Bridge
                 case "WATCH_STOP":
                 case "GAME_LIBRARY_REQUEST":
                 case "GAME_LIBRARY_MATCH_REQUEST":
+                case "GAME_REPLAY_REQUEST":
                 case BridgeProtocol.TypeWatchTarget:
                     Log(string.Format("[XingShuBridgeClient] 收到 Hub 指令 {0}: reqId='{1}'", env.messageType, env.requestId));
                     // Receiving a command is not evidence of joining. Unity executes it on Update.
@@ -777,6 +778,17 @@ namespace XingShu.Bridge
 
                 // 2. Accept only a known platform; Hub has validated its bound producer.
                 string sourcePlat = payload.sourcePlatform ?? payload.platformId;
+                if (sourcePlat == "CLOUD_OFFICIAL")
+                {
+                    long sequence = Interlocked.Read(ref Instance._matchContextSequence);
+                    if (!XingShu.Truth.HandTruthSource.RecordCloudMirror(payload, sequence))
+                    {
+                        rejectionReason = "Cloud hand snapshot is stale or outside the current co-op match";
+                        Log("[XingShuBridgeClient] CLOUD_HAND_REJECTED: stale or unmatched snapshot.");
+                        return false;
+                    }
+                    return true;
+                }
                 if (!new[] { "TAPTAP", "STEAM_CN", "STEAM_GLOBAL", "BILIBILI", "WEGAME" }.Contains(sourcePlat))
                 {
                     rejectionReason = string.Format("Source platform invalid: '{0}'", sourcePlat);

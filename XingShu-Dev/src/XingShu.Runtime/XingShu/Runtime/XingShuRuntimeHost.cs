@@ -25,9 +25,9 @@ namespace XingShu.Runtime
         public const string LogFileName = "xingshu_runtime_lifecycle.log";
         public const string LegacyLogFileName = "xingshu_runtime_lifecycle.log";
 #if XINGSHU_ANDROID_PREVIEW
-        public const string RuntimeVersion = "1.0.0-android-preview8.17";
+        public const string RuntimeVersion = "1.0.0-android-preview8.20";
 #else
-        public const string RuntimeVersion = "1.0.0-game-ui-r8.17";
+        public const string RuntimeVersion = "1.0.0-game-ui-r8.20";
 #endif
 
         private static string _logPath;
@@ -109,6 +109,9 @@ namespace XingShu.Runtime
             }
 
             LogLifecycle("[XingShuRuntimeHost.Shutdown] 运行时正在关闭并清理服务...");
+#if XINGSHU_ANDROID_PREVIEW
+            AndroidCloudHands.Reset();
+#endif
 
             try
             {
@@ -264,6 +267,9 @@ namespace XingShu.Runtime
         private void Update()
         {
             XingShu.Truth.HandSessionLifecycle.Observe();
+#if XINGSHU_ANDROID_PREVIEW
+            AndroidCloudHands.Tick();
+#endif
             if (Interlocked.Exchange(ref _handshakePending, 0) != 0)
             {
                 _lastReportedPlayerId = 0;
@@ -280,6 +286,7 @@ namespace XingShu.Runtime
                 else if (message.messageType == BridgeProtocol.TypeHandTruthMirror) XingShuBridgeClient.Instance.HandleHandTruthMirror(message);
                 else if (message.messageType == "GAME_LIBRARY_REQUEST") GameLibraryExporter.Request();
                 else if (message.messageType == "GAME_LIBRARY_MATCH_REQUEST") GameLibraryExporter.RequestMatch(message);
+                else if (message.messageType == "GAME_REPLAY_REQUEST") HubReplayController.Execute(message);
             }
             // 1. 场景切换即时感知与事件驱动
             CheckSceneTransition();

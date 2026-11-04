@@ -7,6 +7,7 @@ import { matchHistorySummary, matchResult } from '../../shared/matchResults';
 import { GameImage, LibraryHeader, LibraryModal, LibraryStats, useGameLibrary } from './LibraryUI';
 import type { LibraryState } from './LibraryUI';
 import './matches.css';
+import {ReplayCodePlayer} from './ReplayCodePlayer';
 
 const errorMessage = (e: unknown) => typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
 const metric = (v: number | null | undefined) => v == null ? '—' : v.toLocaleString('zh-CN');
@@ -41,7 +42,22 @@ function MatchInspector({ record, state, close }: { record: PlayedMatch; state: 
       setLoading(true);setError('');
       if (!isTauri()) {setLoading(false);return;}
       try {
-        let next=await invoke<MatchDetail | null>('get_game_match_detail',args);
+        const localSaved=await invoke<MatchDetail | null>('get_game_match_detail',args);
+        if(cancelled)return;
+        if(state.isCloud&&!session){
+          const cloudArgs={time:record.time,heroId:record.heroId,mapId:record.mapId};
+          const started=Date.now();
+          const cloudPoll=async(first=false)=>{
+            const result=await invoke<{detail: MatchDetail | null; pending: boolean}>('get_cloud_match_detail',{...cloudArgs,readReplay:first});
+            if(cancelled)return;
+            const hasMetrics=(value:MatchDetail|null)=>['replay_settlement','game_settlement'].includes(value?.statsSource||'');
+            setDetail(result.detail&&(!hasMetrics(localSaved)||hasMetrics(result.detail))?result.detail:localSaved||result.detail);
+            if(result.pending&&Date.now()-started<65000){timer=setTimeout(()=>void cloudPoll().catch(e=>{if(!cancelled){setError(errorMessage(e));setLoading(false);}}),1200);}
+            else setLoading(false);
+          };
+          await cloudPoll(true);return;
+        }
+        let next=localSaved;
         if (cancelled) return;
         if (next?.status==='ready' && !request) {setDetail(next);setLoading(false);return;}
         if (!session) {setDetail(next);setLoading(false);return;}
@@ -63,7 +79,7 @@ function MatchInspector({ record, state, close }: { record: PlayedMatch; state: 
     }
     void run();
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);};
-  },[platform,pid,record.time,record.heroId,record.mapId,session?.connectionId,request]);
+  },[platform,pid,record.time,record.heroId,record.mapId,session?.connectionId,request,state.isCloud]);
   const players=detail?.participants || [];
   const ratings=['replay_settlement','game_settlement'].includes(detail?.statsSource || '') ? rateMatch(players) : players.map(()=>null);
   const best=Math.max(...ratings.filter((v):v is number=>v!=null));
@@ -73,7 +89,7 @@ function MatchInspector({ record, state, close }: { record: PlayedMatch; state: 
   const result=matchResult(record.rank,record.mapId,gameCatalog.modes);
   return <LibraryModal title="历史对局详情" close={close}>
     <div className="match-detail-hero"><GameImage asset={hero?.image || ''} name={characterName(record.heroId)} /><div><span className="match-eyebrow">{mode} · {matchDate(record.time)}</span><h2>{characterName(record.heroId)} <span className={`match-result-${result.outcome}`}>{result.label}</span></h2><p>{map?.name || '地图信息待回放补全'}{detail?.rounds!=null ? ` · ${detail.rounds} 回合` : ''}{detail?.durationSeconds!=null ? ` · ${Math.floor(detail.durationSeconds/60)} 分 ${detail.durationSeconds%60} 秒` : ''}</p><small>{record.version ? `版本 ${record.version} · ` : ''}回放 {record.replayId || '未提供'}</small></div></div>
-    <div className="match-detail-toolbar"><span>{loading ? '正在读取本场历史战绩与回放结算…' : detail?.status==='ready' ? `详情已保存 · ${new Date(detail.observedAt).toLocaleString('zh-CN')}` : '首次读取需要所选账号在游戏中在线，保存后可离线查看。'}</span><button className="btn btn-secondary" disabled={loading || !session} onClick={()=>setRequest(v=>v+1)}>{loading ? '读取中…' : '重新读取'}</button></div>
+    <div className="match-detail-toolbar"><span>{loading ? '正在读取本场历史战绩与回放结算…' : detail?.status==='ready' ? `详情已保存 · ${new Date(detail.observedAt).toLocaleString('zh-CN')}` : state.isCloud ? '请先同步云端官方战绩，已保存的详情无需启动游戏。' : '首次读取需要所选账号在游戏中在线，保存后可离线查看。'}</span><button className="btn btn-secondary" disabled={loading || (!session&&!state.isCloud)} onClick={()=>setRequest(v=>v+1)}>{loading ? '读取中…' : '重新读取'}</button></div>
     {(error || detail?.status==='error') && <div className="library-notice" role="status">{error || detail?.message || detail?.error || '游戏未返回本场详情，请稍后重试。'}</div>}
     {detail?.refreshError&&<div className="library-notice" role="status">重新读取未完成：{detail.refreshError}。当前显示已保存的结算。</div>}
     {detail?.statsError && <div className="match-source-note">{detailErrors[detail.statsError] || `回放统计暂不可用（${detail.statsError}），下方保留服务器提供的战绩。`}</div>}
@@ -104,6 +120,7 @@ export function MatchesPage() {
   const safePage=Math.min(page,Math.max(0,Math.ceil(visible.length/20)-1));
   const summary=matchHistorySummary(records || [],gameCatalog.modes);
   return <div><LibraryHeader title="对战记录" description="回顾每一场对局，查看参战阵容、结算数据与表现评分" state={state} />
+    <ReplayCodePlayer state={state}/>
     <LibraryStats items={[{label:'已保存对局',value:records?.length ?? '待同步'},{label:'胜利次数 / 胜率',value:summary.winRate!=null ? `${summary.wins} / ${Math.round(summary.winRate)}%` : '—'},{label:'平均名次（PVP）',value:summary.averagePvpRank?.toFixed(2) ?? '—'},{label:'已保存单场详情',value:records ? `${records.filter(m=>m.detailAvailable).length} / ${records.length}` : '—'}]} />
     <div className="match-source-note">点击对局查看详情。PVE 显示胜负，平均名次仅统计 PVP；胜率按已知结果计算。历史记录和结算按账号保存，未提供的指标显示“—”。星枢评分规则可在详情中查看。</div>
     <div className="library-filters"><select aria-label="战绩筛选" value={filter} onChange={e=>{setFilter(e.target.value);setPage(0);}}><option value="all">全部结果</option><option value="win">仅胜利</option></select><select aria-label="对局模式筛选" value={mode} onChange={e=>{setMode(e.target.value);setPage(0);}}><option value="all">全部模式</option>{[...new Set(records?.map(m=>m.mapId))].map(id=><option key={id} value={id}>{matchModeName(id,gameCatalog.modes)}</option>)}</select><span>{visible.length} 场</span></div>

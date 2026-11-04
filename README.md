@@ -20,21 +20,14 @@
 
 ---
 
-## Windows native migration candidate (on hold)
+## Stable Release
 
-2026-10-22: Native migration is on hold at the user's request. The existing React / Tauri Hub and R7 game runtime remain the active baseline. Native sources and the local ZIP are preserved without replacing the installed app. See the [R7 verification checklist](docs/records/R7_VERIFICATION_20261022.md) for background checks and pending live acceptance.
+[Download XingShu v0.1.0](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0) for Astral Party 3.3.0, resource 026.
 
-The locally built `0.2.0-native1` candidate uses WPF / .NET 10 for its interface and a Rust core built without Tauri or WebView. It includes 18 native pages, map guides, character progression details, and spectator following. The previous UI and published packages remain available; this candidate has not been uploaded or substituted for the group build.
+- **Windows** · One ZIP contains XingShu Hub, the installer, and game plugins for Steam China, TapTap Windows, Bilibili, and WeGame. Extract the entire ZIP and open `星枢安装助手.exe`.
+- **Android** · One ZIP contains the phone installer APK and the files for manual replacement and restore. For wireless debugging and installation, see the [phone installation guide](docs/guides/ANDROID_PHONE_INSTALL.md).
 
-Offline checks are complete. Live online validation is pending, and Spine/WebM playback plus the full LocalManaged management UI remain to be migrated. See [native build and validation notes](docs/guides/NATIVE_WINDOWS.md).
-
-## Group distribution build
-
-The current test release [0.1.0-test.20261102.1](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.0-test.20261102.1) is available as two distribution ZIPs: `XingShu_Desktop_<version>.zip` for Windows and `XingShu_Android_<version>.zip` for Android. Verified desktop channels share one installer ZIP. The Android ZIP contains the phone helper APK, manual replacement/restore files, and instructions. Extract the complete desktop ZIP before running `星枢安装助手.exe`. GitHub also retains the identical standalone APK, checksums, and signed metadata for existing automatic updaters; group announcements only need the two ZIPs. See the [packaging policy](docs/guides/RELEASE_PACKAGING.md). Historical downloads retain their original contents and validation notes.
-
-Runtime r8.17 adds compact cards beside native player portraits while retaining the standalone hand window, hides those cards during native dialogs, and preserves free-camera zoom during movement, skill and target controls. Validation scope and release details are in the [release record](docs/records/RELEASE_20261102.md).
-
-The Android phone helper pairs and connects to local wireless debugging inside its own APK. Android 11+ users can install, update, and restore using only their phone, without a computer or Shizuku notifications. Existing Shizuku installations remain optional. See the [phone installation guide](docs/guides/ANDROID_PHONE_INSTALL.md). The desktop Hub ZIP retains the companion components needed to install, update, or restore a connected phone.
+The Hub and phone installer use signed update metadata. Manual downloads and update assets are described in the [packaging guide](docs/guides/RELEASE_PACKAGING.md).
 
 ---
 
@@ -50,33 +43,25 @@ The project consists of two core components:
 
 ## Current Runtime Status
 
-The GitHub repository stores source and version history. The Hub, main game, and authenticated spectator client currently run on the local computer. A remote spectator account pool has not been deployed.
+In a supported co-op match with spectating enabled, the desktop runtime can display live teammate cards beside the avatars. Keep the Hub open and sign in with the game account in use. Steam China was verified in a four-human co-op match. TapTap, Bilibili, and WeGame passed installation file checks.
 
-- Resource 026 has been tested with a Steam CN main client and a TapTap spectator client: plugin startup, identity recognition, and four-player PVE hand mirroring work in the tested setup.
-- The main client has also been tested across two PVE rooms without restarting the game or Hub; the avatar hand widgets displayed the new match's cards.
-- Spectator commands use the bound `USER_SPECTATOR` platform and player identity. Bilibili, WeGame, and Steam Global still need client compatibility and end-to-end testing.
-- Consecutive spectator matches, automatic departure after natural match completion, and card/coin/healing auto-thanks still need live verification. The tenfold thinking timer changes local timers; server-enforced deadlines still apply.
-- Full hands currently come from authenticated official spectator messages. Login-free full-hand access remains unimplemented.
-
-See [the local watcher notes](AstralParty-Hub/docs/local-managed-watcher.md) for verification details and remaining work.
+For local spectating, use a separate signed-in official spectator client. See the [local watcher notes](AstralParty-Hub/docs/local-managed-watcher.md).
 
 ## Hub and Runtime Update
 
 - The character library includes 37 official configurations, including two unfinished preview entries. Missing names, skills, and artwork remain explicitly pending.
 - Character, skin, bond, and growth details; full portrait card layouts and native animated alternate artwork; token and map/field-effect libraries.
-- Match history and settlement details persist per account. PVE uses victory/defeat; PVP uses placement. Support transfers receive more rating weight; remaining gold stays visible and is excluded from ratings.
+- Match history and settlement details persist per account. PVE uses victory/defeat; PVP uses placement. Support transfers receive more rating weight; remaining gold is excluded from ratings.
 - Runtime, packages, plugins, and mods use five channels and explicit installation directories, including multiple locations per channel. Externally installed files show detection status only.
-- Runtime management separates file verification, the actual game process, and the version reported by a confirmed connection. This bundle supplies verified runtime payloads for Steam CN and TapTap Windows; other channels still need runtime testing.
-- The Hub sidebar, settings, and plugin F1 center link to the project source. The current desktop runtime version is `1.0.0-game-ui-r1`.
+- Runtime management separates file verification, the actual game process, and the version reported by a confirmed connection. This bundle includes checked payloads for Steam China, TapTap Windows, Bilibili, and WeGame.
+- The Hub sidebar, settings, and plugin F1 center link to the project source. The desktop runtime build is r8.20.
 - The in-game center now uses translucent surfaces without background stripes, the game's font, and official star-shaped sliders. Colored text previews are fixed. Target selection keeps native panning and the user's zoom; labels and leader lines shrink when zooming out. See the [UI and camera validation record](docs/records/GAME_UI_R1.md) for tested behavior and pending checks.
 
 See [extension channel documentation](AstralParty-Hub/docs/specs/extension_channels.md) for manifests, destination mappings, and management boundaries. Game artwork, configuration, and resources remain the property of their respective owners and are not relicensed under the code's MIT license.
 
-## Android Runtime Preview
+## Android
 
-`1.0.0-android-preview5` has been tested with the TapTap MuMu Android 12 game client (3.3.0, resource 026), including runtime loading, touch entry, and phone-helper installation/restore. The mobile button defaults to 64 UI units with a minimum of 48 and independent adjustment. Automatic edge hiding now persists correctly and leaves a tappable strip. Menu and text scaling remain independent; desktop defaults are unchanged.
-
-Xiaomi 14 Pro (Android 16 / HyperOS 3) passed in-APK pairing, local connection, directory checks, official restore, and plugin installation, with device hashes independently verified. System wireless-debugging authorization is still required; Shizuku is optional. Xiaomi 15, other devices, and extended gesture/background scenarios have not been individually verified. The desktop bridge is paused on Android, and future server integration remains unimplemented. This is not an Android Hub APK. See [Android compatibility and device deployment](docs/guides/ANDROID_COMPATIBILITY.md) for the tested scope and build/restore commands.
+The phone installer supports local wireless debugging on Android 11 and later. On Xiaomi 14 Pro, the r8.20 plugin loaded and reached the game sign-in screen. QQ binding and live co-op hand updates on Android are pending device verification. See the [Android compatibility guide](docs/guides/ANDROID_COMPATIBILITY.md).
 
 ## 🏗️ Architecture Overview
 

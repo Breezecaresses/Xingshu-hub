@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using GameLogic;
 using Tools;
@@ -98,6 +99,83 @@ namespace XingShu.Truth
     {
         private static readonly object _syncRoot = new object();
         private static HandTruthSnapshot _currentSnapshot = new HandTruthSnapshot();
+        private static HandTruthSnapshot _cloudSnapshot;
+        private static readonly TimeSpan CloudSnapshotLifetime = TimeSpan.FromSeconds(8);
+
+#if XINGSHU_ANDROID_PREVIEW
+        internal static void ClearCloudMirror()
+        {
+            lock (_syncRoot) _cloudSnapshot = null;
+        }
+#endif
+
+        internal static bool RecordCloudMirror(SpectatorHandPayload payload, long matchSequence)
+        {
+            var manager = SimpleSingletonProvider<GameLogicManager>.inst;
+            var room = manager?.room?.curRoomInfo;
+            if (room == null || payload.roomId <= 0 || payload.roomId != HandSessionLifecycle.ActiveRoomId()
+                || !HandCardDisplayManager.IsPVEMode() || manager.watch?.PlayerIsWatcher() == true
+                || payload.spectatorAccountPlayerId <= 0 || payload.playerId <= 0
+                || manager.account?.IsSelf(payload.playerId) != true
+                || payload.spectatorAccountPlayerId == payload.playerId
+                || matchSequence <= 0 || payload.spectatorSessionEpoch != matchSequence
+                || payload.roomPlayers == null || payload.roomPlayers.Count == 0 || payload.roomPlayers.Count > 16
+                || !DateTimeOffset.TryParse(payload.snapshotTimestamp, CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal, out var observedAt))
+            {
+                return false;
+            }
+
+            var age = DateTime.UtcNow - observedAt.UtcDateTime;
+            if (age >= CloudSnapshotLifetime || age < TimeSpan.FromSeconds(-3)) return false;
+
+            var hands = new Dictionary<long, IReadOnlyList<int>>();
+            foreach (var player in payload.roomPlayers.Values)
+            {
+                if (player == null || player.playerId <= 0 || player.playerId == payload.playerId
+                    || player.cardIds == null || player.cardIds.Count > 128 || player.cardIds.Any(id => id <= 0)
+                    || room.Players == null || !room.Players.Any(p => p != null && p.Id == player.playerId))
+                {
+                    return false;
+                }
+                hands[player.playerId] = new List<int>(player.cardIds).AsReadOnly();
+            }
+
+            lock (_syncRoot)
+            {
+                if (_cloudSnapshot != null && _cloudSnapshot.Epoch == matchSequence
+                    && _cloudSnapshot.Timestamp > observedAt.UtcDateTime) return false;
+                _cloudSnapshot = new HandTruthSnapshot
+                {
+                    RoomId = payload.roomId, Epoch = matchSequence, Timestamp = observedAt.UtcDateTime, Hands = hands
+                };
+            }
+            return true;
+        }
+
+        internal static bool TryGetTeammateMirrorHand(long roomId, long playerId, out IReadOnlyList<int> cards)
+        {
+            if (SpectatorStateStore.TryGetActivePlayerSnapshot(roomId, playerId, out var local))
+            {
+                cards = local.CardIds;
+                return true;
+            }
+            return TryGetCloudHand(roomId, playerId, out cards);
+        }
+
+        internal static bool TryGetCloudHand(long roomId, long playerId, out IReadOnlyList<int> cards)
+        {
+            lock (_syncRoot)
+            {
+                if (_cloudSnapshot != null && _cloudSnapshot.RoomId == roomId
+                    && DateTime.UtcNow - _cloudSnapshot.Timestamp < CloudSnapshotLifetime)
+                {
+                    return _cloudSnapshot.TryGetPlayerCards(playerId, out cards);
+                }
+                cards = null;
+                return false;
+            }
+        }
 
         public static HandTruthSnapshot CurrentSnapshot
         {
@@ -491,9 +569,15 @@ namespace XingShu.Truth
                     isAuth = true;
                     statusDesc = "本地己方权威手牌";
                 }
+                else if (!isBot && TryGetCloudHand(roomInfo.Id, pid, out var cloudCards))
+                {
+                    cardIds = new List<int>(cloudCards);
+                    isAuth = true;
+                    statusDesc = "云端观战手牌";
+                }
                 else
                 {
-                    // Non-self / Bot player hand
+                    // Bot or teammate without a fresh cloud snapshot.
                     // Decision A: If local container._HandCards has all valid CardId > 0, sample directly
                     bool decisionASucceeded = false;
                     var container = bpd.cardContainer;
@@ -524,7 +608,7 @@ namespace XingShu.Truth
                     // Decision B: If remote cards are masked, check Spectator mirror truth
                     if (!decisionASucceeded)
                     {
-                        if (hasHubMirror && SpectatorStateStore.TryGetPlayerHand(pid, out var mirrorCards))
+                        if (TryGetTeammateMirrorHand(roomInfo.Id, pid, out var mirrorCards))
                         {
                             cardIds = new List<int>(mirrorCards);
                             isAuth = true;
@@ -552,7 +636,7 @@ namespace XingShu.Truth
                     IsBot = isBot,
                     IsAuthoritative = isAuth,
                     CardIds = cardIds.AsReadOnly(),
-                    HandCount = cardIds.Count > 0 ? cardIds.Count : (bpd.cardContainer?.CardCount ?? 0),
+                    HandCount = isAuth ? cardIds.Count : (bpd.cardContainer?.CardCount ?? 0),
                     StatusDescription = statusDesc
                 });
             }
@@ -589,6 +673,7 @@ namespace XingShu.Truth
             lock (_syncRoot)
             {
                 _currentSnapshot = new HandTruthSnapshot();
+                _cloudSnapshot = null;
                 _authoritativeSteamMainRoomId = 0;
                 _lastPublishedRoomId = -1;
                 _lastPublishedInMatch = false;

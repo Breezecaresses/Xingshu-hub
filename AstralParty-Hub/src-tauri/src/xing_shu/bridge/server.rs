@@ -623,6 +623,7 @@ pub struct BridgeServer {
     app_handle: Arc<Mutex<Option<crate::desktop_host::AppHandle>>>,
     session_events_tx: tokio::sync::broadcast::Sender<SessionEvent>,
     game_library: Arc<Mutex<Option<crate::game_library::GameLibraryStore>>>,
+    game_replay: Arc<Mutex<Option<crate::game_replay::GameReplayStore>>>,
 }
 
 impl Default for BridgeServer {
@@ -658,6 +659,7 @@ impl BridgeServer {
             app_handle: Arc::new(Mutex::new(None)),
             session_events_tx,
             game_library: Arc::new(Mutex::new(None)),
+            game_replay: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -667,6 +669,9 @@ impl BridgeServer {
 
     pub fn set_game_library_store(&self, store: crate::game_library::GameLibraryStore) {
         *self.game_library.lock().unwrap() = Some(store);
+    }
+    pub fn set_game_replay_store(&self, store: crate::game_replay::GameReplayStore) {
+        *self.game_replay.lock().unwrap()=Some(store);
     }
 
     pub fn connection_manager(&self) -> &super::connection::ConnectionManager {
@@ -719,6 +724,39 @@ impl BridgeServer {
 
     pub fn get_runtime_session(&self, connection_id: &str) -> Option<RuntimeSession> {
         self.session_manager.get(connection_id)
+    }
+
+    pub(crate) fn cloud_hand_target(&self) -> Option<RuntimeSession> {
+        let mut candidates = self.get_runtime_sessions().into_iter().filter(|session| {
+            matches!(session.platform_id.as_str(), "STEAM_CN" | "TAPTAP" | "BILIBILI" | "WEGAME")
+                && session.connection_state == "CONNECTED" && !session.executable_path.is_empty()
+                && session.runtime_version.strip_prefix("1.0.0-game-ui-r8.")
+                    .and_then(|patch| patch.parse::<u32>().ok()).is_some_and(|patch| patch >= 20)
+                && session.match_context.as_ref().is_some_and(|ctx| {
+                    ctx.match_state == "MAIN_IN_MATCH" && ctx.match_kind.as_deref() == Some("PVE")
+                        && ctx.sequence > 0 && session.room_id.is_some_and(|id| id > 0)
+                        && session.live_player_id.is_some_and(|uid| {
+                            uid > 0 && ctx.local_player_id == Some(uid) && ctx.roster_player_ids.contains(&uid)
+                        })
+                })
+        });
+        let target = candidates.next()?;
+        candidates.next().is_none().then_some(target)
+    }
+
+    pub(crate) fn send_cloud_hand_mirror(&self, requested: &RuntimeSession, payload: &SpectatorHandPayload) -> bool {
+        // Re-check the verified game session after the network request returns.
+        let Some(target) = self.cloud_hand_target() else { return false; };
+        if requested.connection_id != target.connection_id || requested.generation != target.generation
+            || target.live_player_id != i64::try_from(payload.player_id).ok()
+            || target.room_id != Some(payload.room_id)
+            || target.match_context.as_ref().map(|ctx| ctx.sequence) != Some(payload.spectator_session_epoch)
+        {
+            return false;
+        }
+        let Ok(data) = serde_json::to_value(payload) else { return false; };
+        let envelope = BridgeEnvelope::new(message_types::HAND_TRUTH_MIRROR, data);
+        serde_json::to_string(&envelope).is_ok_and(|line| self.connection_manager.send_to(&target.connection_id, &line))
     }
 
     pub fn get_runtime_match_context(&self, connection_id: &str) -> Option<RuntimeMatchContextPayload> {
@@ -1996,6 +2034,14 @@ impl BridgeServer {
         }
 
         match envelope.message_type.as_str() {
+            "GAME_REPLAY_STATUS" => {
+                if self.connection_manager.get_generation(connection_id)!=Some(generation){return;}
+                let Some(session)=self.get_runtime_session(connection_id) else{return;};
+                if session.generation!=generation||session.platform_id!=platform_id{return;}
+                if let Ok(result)=serde_json::from_value::<crate::game_replay::ReplayStatus>(envelope.payload){
+                    if let Some(store)=self.game_replay.lock().unwrap().as_ref(){store.accept(&session,result);}
+                }
+            }
             "GAME_LIBRARY_LIVE_SETTLEMENT" => {
                 if self.connection_manager.get_generation(connection_id) != Some(generation) { return; }
                 let Some(session) = self.get_runtime_session(connection_id) else { return; };
@@ -3059,6 +3105,30 @@ impl BridgeServer {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn cloud_hand_target_accepts_supported_verified_pc_sessions_only() {
+        let server = BridgeServer::new_test();
+        for platform in ["STEAM_CN", "TAPTAP", "BILIBILI", "WEGAME", "STEAM_GLOBAL", "ANDROID"] {
+            let mut session = RuntimeSession::new("cloud_test", platform, 1, "game.exe", Some(10), "1.0.0-game-ui-r8.20", 1, "MAIN");
+            session.room_id = Some(20);
+            session.match_context = Some(RuntimeMatchContext {
+                local_player_id: Some(10),
+                roster_player_ids: vec![10, 11],
+                match_state: "MAIN_IN_MATCH".into(),
+                match_kind: Some("PVE".into()),
+                sequence: 1,
+                ..Default::default()
+            });
+            server.session_manager.insert(session.clone());
+            assert_eq!(server.cloud_hand_target().is_some(), matches!(platform, "STEAM_CN" | "TAPTAP" | "BILIBILI" | "WEGAME"));
+            server.session_manager.remove("cloud_test");
+            session.executable_path.clear();
+            server.session_manager.insert(session);
+            assert!(server.cloud_hand_target().is_none());
+            server.session_manager.remove("cloud_test");
+        }
+    }
+
     use super::*;
 
     #[test]

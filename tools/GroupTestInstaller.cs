@@ -239,9 +239,9 @@ internal static class GroupTest
     internal static void StartHub()
     {
         var hub = Within(PackageRoot, "Hub/xingshu-hub.exe");
-        if (Hash(hub) != Release.HubSha256) throw new IOException("Hub 文件校验失败，请重新解压测试包。");
+        if (Hash(hub) != Release.HubSha256) throw new IOException("Hub 文件校验失败，请重新解压安装包。");
         var running = Process.GetProcessesByName("xingshu-hub");
-        try { if (running.Length != 0) throw new InvalidOperationException("星枢 Hub 已在运行，请先退出旧窗口，再启动此测试版。"); }
+        try { if (running.Length != 0) throw new InvalidOperationException("星枢 Hub 已在运行，请先退出旧窗口，再启动此版本。"); }
         finally { foreach (var process in running) process.Dispose(); }
         Process.Start(new ProcessStartInfo(hub) { WorkingDirectory = Path.GetDirectoryName(hub), UseShellExecute = true });
     }
@@ -333,13 +333,13 @@ internal sealed class InstallerWindow : Form
         Controls.Add(Button("还原安装前版本", 204, 172, 170, delegate { Act("restore"); }));
         Controls.Add(Button("启动星枢 Hub", 386, 172, 156, delegate { Run(delegate { GroupTest.StartHub(); return "已启动星枢 Hub。请在设置和游戏账号页选择自己的主端、观战端及账号。"; }); }));
         Controls.Add(Button("说明", 554, 172, 80, delegate { Run(delegate {
-            Process.Start(new ProcessStartInfo(GroupTest.Within(GroupTest.PackageRoot, "先读我.txt")) { UseShellExecute = true }); return "已打开安装与测试说明。";
+            Process.Start(new ProcessStartInfo(GroupTest.Within(GroupTest.PackageRoot, "先读我.txt")) { UseShellExecute = true }); return "已打开安装说明。";
         }); }));
         status.SetBounds(22, 224, 612, 166);
         status.Multiline = true;
         status.ReadOnly = true;
         status.ScrollBars = ScrollBars.Vertical;
-        status.Text = "星枢群发测试版。\r\n\r\n请先点“说明”。安装成功后通过对应渠道的官方启动器进入游戏。完整观战手牌仍需已登录的官方观战客户端。";
+        status.Text = "请先点“说明”。安装成功后通过对应渠道的官方启动器进入游戏。";
         Controls.Add(status);
     }
 

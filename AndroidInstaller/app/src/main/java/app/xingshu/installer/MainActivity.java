@@ -81,7 +81,7 @@ public final class MainActivity extends Activity {
         });
         scroll.addView(page); setContentView(scroll);
         TextView title = text("星枢 · 手机安装助手",25); title.setTypeface(null,Typeface.BOLD); page.addView(title);
-        page.addView(text("安卓预览更新  ·  " + BuildConfig.VERSION_NAME,12));
+        page.addView(text("安卓安装助手  ·  " + BuildConfig.VERSION_NAME,12));
         updateStatus=text("助手版本："+BuildConfig.VERSION_NAME+"\n助手内置游戏插件："+PayloadSpec.VERSION,13); page.addView(updateStatus);
         updateCheck=button(page,"检查助手更新",true,v -> checkAssistantUpdate());
         updateProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
