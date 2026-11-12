@@ -395,7 +395,7 @@ mod tests {
         assert!(steam_cn.last_verified_at.is_none());
         assert!(!steam_cn.hook_signatures.is_empty());
         assert!(steam_cn.bundle_id.is_some());
-        assert_eq!(steam_cn.bundle_id.as_deref(), Some("320fce87896474de61380ab8538f2671"));
+        assert_eq!(steam_cn.bundle_id.as_deref(), Some("536196fba89e10e449fc9b864bfdbd51"));
 
         let steam_global = profiles.iter().find(|p| p.platform_id == PlatformId::SteamGlobal).unwrap();
         assert_eq!(steam_global.compatibility_status, CompatibilityStatus::PartiallyAudited);
@@ -554,9 +554,9 @@ mod tests {
     // 12 SPECIFICATION CONFORMANCE SCENARIOS (PROJECT XINGSHU HS4-A.1)
     // =========================================================================
 
-    // Scenario 1: Resource 026 selects the new cache and does not inherit old runtime verification.
+    // Scenario 1: Resource 152 selects the new cache and does not inherit old runtime verification.
     #[test]
-    fn test_scenario_1_resource_026_profile_requires_new_verification() {
+    fn test_scenario_1_resource_152_profile_requires_new_verification() {
         let profile = get_profile(PlatformId::SteamCn).expect("STEAM_CN profile must exist");
         assert_eq!(profile.platform_id, PlatformId::SteamCn);
         assert_eq!(profile.channel, "CN_STEAM");
@@ -576,10 +576,10 @@ mod tests {
             None
         );
         assert!(profile.bundle_relative_path.is_some());
-        assert_eq!(profile.bundle_id.as_deref(), Some("320fce87896474de61380ab8538f2671"));
+        assert_eq!(profile.bundle_id.as_deref(), Some("536196fba89e10e449fc9b864bfdbd51"));
         assert_eq!(
             profile.container_sha256.as_deref(),
-            Some("CCD9EEDC02B28C04859263C8CF4F1F9846D35A7A3FC36DC7E5344E5D6E0BBB48")
+            Some("2110578F420D2DC436E1A411C28BE1381F4B9611774E64CD6549BC4D10BBFD9A")
         );
         assert_eq!(profile.hook_text_asset_path_id, Some(99992000));
         assert_eq!(

@@ -13,6 +13,10 @@ BASELINES = {
         'resourceVersion': '150',
         'bundleRelativePath': 'com.unity.addressables/AssetBundles/4da1f23c112208b0f8df2a1327b4e4ce/7a5e751e708c075b7272acfd3dbe1249/__data',
     },
+    '77da946bf7d331351a93ff16707aab426f534b7577a771f21267478b7bc70c87': {
+        'resourceVersion': '152',
+        'bundleRelativePath': 'com.unity.addressables/AssetBundles/4da1f23c112208b0f8df2a1327b4e4ce/0c6650c5e9eccffde61b8397d4694f72/__data',
+    },
 }
 
 

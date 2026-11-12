@@ -22,12 +22,12 @@
 
 ## Stable Release
 
-[Download XingShu v0.1.1](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.1). The Windows and Android packages support Astral Party 3.3.0, resource 150.
+[Download XingShu v0.1.2](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.2). The Windows and Android packages support Astral Party 3.3.0, resource 152.
 
 - **Windows** · One ZIP contains XingShu Hub, the installer, and game plugins for Steam China, TapTap Windows, Bilibili, and WeGame. Extract the entire ZIP and open `星枢安装助手.exe`.
 - **Android** · One ZIP contains the phone installer APK, manual replacement files, and official recovery files. The installer now includes installation and usage guides and can back up conflicting files at the same resource path before an explicitly confirmed replacement. See the [phone installation guide](docs/guides/ANDROID_PHONE_INSTALL.md).
 
-This release restores the floating menu after the official update and adapts the hero-selection timer hook. The Steam China floating menu and Xiaomi phone startup, menu, hand page, and installer guides passed manual acceptance; the other three desktop channels passed file compatibility checks. The streaming privacy experiment is archived. See the [release record](docs/records/RELEASE_20261112.md).
+This hotfix restores the floating menu after resource 152 while preserving the official changes. Steam China, TapTap Windows, and Xiaomi phone floating menus, function centers, and hands pages passed manual acceptance. Bilibili and WeGame passed file and interface compatibility checks. The streaming privacy experiment is archived. See the [release record](docs/records/RELEASE_20261113.md).
 
 Both applications retain the existing signed update feed. The separate updater APK is byte-identical to the one in the Android ZIP. Updating an application does not replace the game plugin: exit the game and use the installer afterward. See the [packaging guide](docs/guides/RELEASE_PACKAGING.md).
 
@@ -56,14 +56,14 @@ For local spectating, use a separate signed-in official spectator client. See th
 - Match history and settlement details persist per account. PVE uses victory/defeat; PVP uses placement. Support transfers receive more rating weight; remaining gold is excluded from ratings.
 - Runtime, packages, plugins, and mods use five channels and explicit installation directories, including multiple locations per channel. Externally installed files show detection status only.
 - Runtime management separates file verification, the actual game process, and the version reported by a confirmed connection. This bundle includes checked payloads for Steam China, TapTap Windows, Bilibili, and WeGame.
-- The Hub sidebar, settings, and plugin F1 center link to the project source. The desktop runtime build is r8.24. New character and map configurations have not been fully re-exported; the library retains its previous data.
+- The Hub sidebar, settings, and plugin F1 center link to the project source. The desktop runtime build is r8.25. New character and map configurations have not been fully re-exported; the library retains its previous data.
 - The in-game center now uses translucent surfaces without background stripes, the game's font, and official star-shaped sliders. Colored text previews are fixed. Target selection keeps native panning and the user's zoom; labels and leader lines shrink when zooming out. See the [UI and camera validation record](docs/records/GAME_UI_R1.md) for tested behavior and pending checks.
 
 See [extension channel documentation](AstralParty-Hub/docs/specs/extension_channels.md) for manifests, destination mappings, and management boundaries. Game artwork, configuration, and resources remain the property of their respective owners and are not relicensed under the code's MIT license.
 
 ## Android
 
-The phone installer supports local wireless debugging on Android 11 and later. On Xiaomi 14 Pro, the 0.1.1 installation and usage guides, r8.24 game startup, floating star, function center, and hands page were verified. The complete live co-op cloud-hand flow still requires device verification for this release. See the [Android compatibility guide](docs/guides/ANDROID_COMPATIBILITY.md).
+The phone installer supports local wireless debugging on Android 11 and later. On Xiaomi 14 Pro, the 0.1.2 installer upgrade and r8.25 game startup, floating star, function center, and hands page were verified. The complete live co-op cloud-hand flow still requires device verification for this release. See the [Android compatibility guide](docs/guides/ANDROID_COMPATIBILITY.md).
 
 ## 🏗️ Architecture Overview
 

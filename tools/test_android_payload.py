@@ -24,11 +24,22 @@ class AndroidBaselineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'does not match'):
             payload.validate_baseline_manifest(wrong)
 
-    def test_old_plugin_hash_is_never_accepted_for_resource_150(self):
+    def test_old_plugin_hash_is_never_accepted_for_later_resources(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(payload, 'ROOT', Path(directory)):
-            old, current = [self.manifest(digest) for digest in payload.BASELINES]
-            self.assertEqual(len(payload.previous_hashes(old)), 1)
-            self.assertEqual(payload.previous_hashes(current), [])
+            for digest in payload.BASELINES:
+                manifest = self.manifest(digest)
+                expected = 1 if manifest['resourceVersion'] == '026' else 0
+                self.assertEqual(len(payload.previous_hashes(manifest)), expected)
+
+    def test_resource_paths_cannot_be_mixed_across_baselines(self):
+        for digest, baseline in payload.BASELINES.items():
+            self.assertEqual(payload.validate_baseline_manifest(self.manifest(digest)), baseline)
+            for other_digest, other in payload.BASELINES.items():
+                if digest == other_digest:
+                    continue
+                wrong = {**self.manifest(digest), 'bundleRelativePath': other['bundleRelativePath']}
+                with self.assertRaisesRegex(ValueError, 'does not match'):
+                    payload.validate_baseline_manifest(wrong)
 
 
 if __name__ == '__main__':

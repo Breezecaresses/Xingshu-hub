@@ -58,10 +58,10 @@
 目标文件为：
 
 ```text
-/storage/emulated/0/Android/data/com.feimo.astralparty/files/com.unity.addressables/AssetBundles/4da1f23c112208b0f8df2a1327b4e4ce/7a5e751e708c075b7272acfd3dbe1249/__data
+/storage/emulated/0/Android/data/com.feimo.astralparty/files/com.unity.addressables/AssetBundles/4da1f23c112208b0f8df2a1327b4e4ce/0c6650c5e9eccffde61b8397d4694f72/__data
 ```
 
-以上路径用于 0.1.1 的资源 150。其他资源版本以各包 `candidate.json` 的 `bundleRelativePath` 为准，不沿用旧路径。
+以上路径用于 0.1.2 的资源 152。其他资源版本以各包 `candidate.json` 的 `bundleRelativePath` 为准，不沿用旧路径。
 
 1. 先完成官方资源更新并进入过大厅，再正常退出游戏。
 2. 使用已经得到目标目录权限的文件工具，先把现有 `__data` 复制到单独的备份目录，保留原路径与备份时间。

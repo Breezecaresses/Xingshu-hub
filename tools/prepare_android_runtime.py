@@ -11,6 +11,7 @@ import subprocess
 import UnityPy
 import prepare_runtime_truth_fix as shared
 from android_payload import verified_baseline
+from pc_resource_audit import managed_bundle_id
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -25,7 +26,7 @@ def main():
     baseline = verified_baseline(shared.sha(original))
     catalog = json.loads(args.catalog.read_text('utf-8-sig'))
     bundle_id = baseline['bundleRelativePath'].split('/')[-2]
-    if not any(bundle_id in value for value in catalog.get('m_InternalIds', [])):
+    if managed_bundle_id(catalog) != bundle_id:
         raise RuntimeError('Official Android catalog does not reference this baseline')
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)

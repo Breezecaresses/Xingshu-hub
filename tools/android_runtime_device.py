@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import shlex
 import subprocess
+from android_payload import validate_baseline_manifest
 
 PACKAGE = "com.feimo.astralparty"
 ROOT = f"/sdcard/Android/data/{PACKAGE}/files/"
@@ -29,6 +30,7 @@ def main():
     manifest = json.loads(args.manifest.read_text("utf8"))
     if manifest["package"] != PACKAGE or manifest["platform"] != "ANDROID_CN":
         raise RuntimeError("Unexpected package/platform")
+    validate_baseline_manifest(manifest)
     relative = manifest["bundleRelativePath"]
     if not re.fullmatch(r"com\.unity\.addressables/AssetBundles/[a-f0-9]{32}/[a-f0-9]{32}/__data", relative):
         raise RuntimeError("Unexpected cache path")
@@ -57,12 +59,25 @@ def main():
             raise RuntimeError("Invalid device hash response")
         return value
 
+    def require_game_closed():
+        result = subprocess.run(["adb", "-s", args.serial, "shell", "pidof", PACKAGE],
+                                capture_output=True, text=True, encoding="utf8", errors="replace")
+        if result.returncode not in (0, 1):
+            raise RuntimeError("Cannot verify whether the game is running")
+        if result.stdout.strip():
+            raise RuntimeError("Please exit the game normally before installing or restoring")
+
     if adb("get-state") != "device":
         raise RuntimeError("Device is not ready")
+    require_game_closed()
     package_info = shell("dumpsys", "package", PACKAGE)
     version = re.search(r"^\s*versionName=(\S+)\s*$", package_info, re.MULTILINE)
     if version is None or version.group(1) != manifest["appVersion"]:
         raise RuntimeError("Game app version differs from the verified candidate")
+    catalog_sha = manifest.get("catalogSha256", "")
+    if (not re.fullmatch(r"[a-f0-9]{64}", catalog_sha)
+            or remote_sha(ROOT + "com.unity.addressables/catalog_" + version.group(1) + ".json") != catalog_sha):
+        raise RuntimeError("Official catalog differs from the verified candidate")
     current_sha = remote_sha(target)
     vanilla = manifest["originalSha256"]
     candidate_sha = manifest["candidateSha256"]
@@ -100,14 +115,14 @@ def main():
         if not source.exists() or sha(source) != vanilla:
             raise RuntimeError("Vanilla backup is missing or invalid")
 
-    # Stage and verify before stopping the app or touching the live cache.
+    # Stage and verify before touching the live cache. Never stop a user's game.
     adb("push", str(source), stage)
     if remote_sha(stage) != expected:
         raise RuntimeError("Staged bytes failed verification; live cache untouched")
     # Recheck immediately before replacement to avoid overwriting an official update.
     if remote_sha(target) != current_sha:
         raise RuntimeError("Game cache changed during staging; live cache untouched")
-    shell("am", "force-stop", PACKAGE)
+    require_game_closed()
     try:
         shell("cp", stage, target)
         if remote_sha(target) != expected:
@@ -125,7 +140,7 @@ def main():
               "backup": str(backup), "action": args.action,
               "timestamp": datetime.now(timezone.utc).isoformat()}
     receipt.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf8")
-    print(f"{args.action}: verified {expected}; game stopped, ready for normal launch")
+    print(f"{args.action}: verified {expected}; ready for normal launch")
 
 
 if __name__ == "__main__":

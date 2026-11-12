@@ -9,16 +9,16 @@
 
 不再把 Steam 和 TapTap 分成不同下载包，也不把安卓 APK 和手动替换文件分开群发。旧版本资源保留。
 
-## 0.1.1 双端正式发布
+## 0.1.2 双端正式发布
 
-本次电脑端和安卓端验证后一起发布，使用下方双端流程及原名 `xingshu-update.json`。Hub 和手机助手版本均为 0.1.1，构建序号为 2026111201；既有更新入口可继续使用，安卓 ZIP 内 APK 与独立更新 APK 保持一致。
+本次电脑端和安卓端验证后一起发布，使用下方双端流程及原名 `xingshu-update.json`。Hub 和手机助手版本均为 0.1.2，构建序号为 2026111301；既有更新入口可继续使用，安卓 ZIP 内 APK 与独立更新 APK 保持一致。
 
 ## 可选的电脑独立发布
 
 以后只有电脑完成验证时，可以单独发布；不要为凑双端清单重新广告未经验证的安卓 APK。
 
 - 使用 `prepare_update_release.py --desktop-only --desktop <电脑.zip> --notes <说明> --out <目录>/xingshu-desktop-update.json` 生成签名清单；签名身份保持不变。
-- 使用 `publish_release.py --desktop-only --stable --package <电脑.zip> --update-manifest <目录>/xingshu-desktop-update.json --source <源码仓库> --body <说明> --tag v0.1.1` 上传正式版。
+- 使用 `publish_release.py --desktop-only --stable --package <电脑.zip> --update-manifest <目录>/xingshu-desktop-update.json --source <源码仓库> --body <说明> --tag v<版本>` 上传正式版。
 - 0.1.1 Hub 优先读取电脑独立清单，也兼容旧双端清单。0.1.0 及更早 Hub 首次升级电脑独立版本需手动完整解压；双端发布不受此限制。
 - 电脑独立发布不提供旧名 `xingshu-update.json`，旧手机助手会跳过本次发布并继续检查此前的安卓清单，避免错误提示或下载不适用的 APK。
 - 若未附带安卓组件，Hub 不提供本包的手机安装文件；以后电脑与安卓都完成验证时，仍可使用下方双端发布流程。
