@@ -34,7 +34,7 @@ foreach($taskName in $taskOldMethods.Keys) {
         $taskChanged += $taskName
         if ($taskName -notmatch 'StaticGlobalData::get_SELECT_ROLE(SKIN)?_TIMELIMIT\(' -and
             $taskName -notmatch 'GameLogic.OperationTimer::ActionDownTime\(' -and
-            $taskName -notmatch 'UI.RoomHeroPanel::(Refresh|RefreshSelectSkin)\(' -and
+            $taskName -notmatch 'UI.RoomHeroPanel::(Refresh|RefreshChoiceHero|RefreshSelectSkin)\(' -and
             $taskName -notmatch 'Core.Unit.BattleProperty::OnGoldChanged\(' -and
             $taskName -notmatch 'GameLogic.BattleResultLogic::OnGameFinishS2CServerCallBack\(' -and
             $taskName -notmatch 'GameLogic.BattleLogic::OnGetHeroInfoS2CServerCallBackAsync\(' -and
@@ -47,6 +47,12 @@ foreach($taskName in $taskOldMethods.Keys) {
             $taskName -notmatch 'UI.OperateTimeWindow::UpdateShowProgress\(') { throw "Unexpected method change: $taskName" }
     }
 }
+$taskHeroTimers = @($taskNewMethods.Values | Where-Object {
+    $_.DeclaringType.FullName -eq 'UI.RoomHeroPanel' -and $_.Name -in @('Refresh','RefreshChoiceHero') -and
+    @($_.Body.Instructions | Where-Object { $_.Operand -and $_.Operand.ToString().Contains('XingShuDecisionTimer::Register') }).Count -gt 0
+})
+if ($taskHeroTimers.Count -ne 1) { throw "Expected one hero-selection timer in Refresh or RefreshChoiceHero, found $($taskHeroTimers.Count)" }
+$taskHeroTimerName = 'UI.RoomHeroPanel::' + $taskHeroTimers[0].Name + '('
 foreach ($taskTarget in @(
     @('StaticGlobalData::get_SELECT_ROLE_TIMELIMIT(', 'ThinkingTime::ScaleSeconds'),
     @('StaticGlobalData::get_SELECT_ROLESKIN_TIMELIMIT(', 'ThinkingTime::ScaleSeconds'),
@@ -55,7 +61,7 @@ foreach ($taskTarget in @(
     @('GameLogic.OperationTimer::ActionDownTime(', 'ThinkingTime::BeginProgress'),
     @('GameLogic.OperationTimer::Dispose(', 'ThinkingTime::ClearProgress'),
     @('UI.OperateTimeWindow::UpdateShowProgress(', 'ThinkingTime::AllowRemoteProgress'),
-    @('UI.RoomHeroPanel::Refresh(', 'XingShuDecisionTimer::Register'),
+    @($taskHeroTimerName, 'XingShuDecisionTimer::Register'),
     @('UI.RoomHeroPanel::RefreshSelectSkin(', 'XingShuDecisionTimer::Register'),
     @('Core.Unit.BattleProperty::OnGoldChanged(', 'BattleStatsOverlay::ObserveGold'),
     @('GameLogic.BattleResultLogic::OnGameFinishS2CServerCallBack(', 'BattleStatsOverlay::ObserveSettlement'),

@@ -7,6 +7,7 @@ import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
+import zipfile
 
 
 def main():
@@ -18,12 +19,16 @@ def main():
     parser.add_argument('--tag', default='v0.1.0-test.20261021.3')
     parser.add_argument('--stable', action='store_true',
                         help='Publish as the latest regular release, discoverable without opting into previews')
-    parser.add_argument('--android', '--extra-package', dest='extra_package', type=Path, action='append', required=True,
+    parser.add_argument('--android', '--extra-package', dest='extra_package', type=Path, action='append', default=[],
                         help='The single updater APK, byte-identical to the APK inside --android-package')
-    parser.add_argument('--android-package', type=Path, required=True, help='One Android ZIP containing the phone APK and manual replacement files')
+    parser.add_argument('--android-package', type=Path, help='One Android ZIP containing the phone APK and manual replacement files')
+    parser.add_argument('--desktop-only', action='store_true', help='Publish only the desktop ZIP using a separate signed desktop update feed')
     parser.add_argument('--update-manifest', type=Path, required=True, help='Signed xingshu-update.json for both application updaters')
     args = parser.parse_args()
-    if args.package.suffix.lower() != '.zip' or args.android_package.suffix.lower() != '.zip' or len(args.extra_package) != 1 or args.extra_package[0].suffix.lower() != '.apk':
+    if args.desktop_only:
+        if args.extra_package or args.android_package or args.package.suffix.lower() != '.zip':
+            parser.error('Desktop-only releases accept one desktop ZIP and no Android packages')
+    elif args.package.suffix.lower() != '.zip' or args.android_package is None or args.android_package.suffix.lower() != '.zip' or len(args.extra_package) != 1 or args.extra_package[0].suffix.lower() != '.apk':
         parser.error('Publish one desktop ZIP, one Android ZIP, and its updater APK')
     archive = args.package.resolve(strict=True)
     checksum = Path(str(archive) + '.sha256').resolve(strict=True)
@@ -35,22 +40,31 @@ def main():
         extra_checksum=Path(str(extra)+'.sha256').resolve(strict=True)
         assert hashlib.sha256(extra.read_bytes()).hexdigest()==extra_checksum.read_text('utf8').split()[0], 'Android APK checksum mismatch'
         upload_paths.extend([extra,extra_checksum])
-    from package_android_preview import verify_android_archive
-    android_package = args.android_package.resolve(strict=True)
-    assert android_package != archive, 'Desktop and Android ZIP must be separate files'
-    android_checksum = Path(str(android_package) + '.sha256').resolve(strict=True)
-    assert hashlib.sha256(android_package.read_bytes()).hexdigest() == android_checksum.read_text('utf8').split()[0], 'Android ZIP checksum mismatch'
-    android_info = verify_android_archive(android_package, args.extra_package[0])
-    assert args.tag == 'v' + android_info['releaseVersion'], 'Android ZIP targets another release'
-    upload_paths.extend([android_package, android_checksum])
+    if not args.desktop_only:
+        from package_android_preview import verify_android_archive
+        android_package = args.android_package.resolve(strict=True)
+        assert android_package != archive, 'Desktop and Android ZIP must be separate files'
+        android_checksum = Path(str(android_package) + '.sha256').resolve(strict=True)
+        assert hashlib.sha256(android_package.read_bytes()).hexdigest() == android_checksum.read_text('utf8').split()[0], 'Android ZIP checksum mismatch'
+        android_info = verify_android_archive(android_package, args.extra_package[0])
+        assert args.tag == 'v' + android_info['releaseVersion'], 'Android ZIP targets another release'
+        upload_paths.extend([android_package, android_checksum])
     from prepare_update_release import verify_envelope, verify_assets
     manifest = args.update_manifest.resolve(strict=True)
-    assert manifest.name == 'xingshu-update.json'
+    assert manifest.name == ('xingshu-desktop-update.json' if args.desktop_only else 'xingshu-update.json')
     metadata = verify_envelope(manifest)
     assert metadata['tag'] == args.tag, 'Signed update targets another release'
+    assert ('android' not in metadata) == args.desktop_only, 'Signed update components differ from the selected release mode'
     verify_assets(metadata, upload_paths)
     upload_paths.append(manifest)
+    with zipfile.ZipFile(archive) as package:
+        entries = [n for n in package.namelist() if n.endswith('/release.json') and n.count('/') == 1]
+        assert len(entries) == 1, 'Not a complete desktop release'
+        packaged = json.loads(package.read(entries[0]))
+        assert packaged['Version'] == metadata['version'] and packaged['HubBuildSequence'] == metadata['sequence']
+        assert not packaged.get('LocalWorktreeCandidate'), 'Do not publish a local adaptation candidate'
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=args.source, text=True).strip()
+    assert packaged['SourceCommit'] == commit, 'Packaged source commit differs from the release checkout'
     tag_commit = subprocess.check_output(['git', 'rev-parse', args.tag + '^{commit}'], cwd=args.source, text=True).strip()
     assert commit == tag_commit, 'Source and release tag differ'
     remote_tag = subprocess.check_output(['git', 'ls-remote', 'origin', 'refs/tags/' + args.tag], cwd=args.source, text=True).strip()
@@ -80,18 +94,19 @@ def main():
         'tag_name': args.tag, 'target_commitish': commit, 'name': title,
         'body': args.body.read_text('utf-8'), 'draft': True, 'prerelease': not args.stable})
     assets = request('GET', api + '/releases/' + str(release['id']) + '/assets')
-    packages = {archive.name, android_package.name, args.extra_package[0].name}
+    packages = {p.name for p in upload_paths if p.suffix.lower() in {'.zip', '.apk'}}
     unexpected = [a['name'] for a in assets if Path(a['name']).suffix.lower() in {'.zip', '.apk'} and a['name'] not in packages]
     if unexpected:
-        raise SystemExit('Draft contains extra packages; keep the two ZIPs and their updater APK before publishing: ' + ', '.join(unexpected))
+        raise SystemExit('Draft contains packages outside the selected release: ' + ', '.join(unexpected))
     for path in upload_paths:
         digest = 'sha256:' + hashlib.sha256(path.read_bytes()).hexdigest()
         asset = next((a for a in assets if a['name'] == path.name), None)
         if asset:
             assert asset.get('digest') == digest and asset['size'] == path.stat().st_size, 'Existing draft asset differs'
         else:
-            labels = {archive.name: '电脑端 ZIP', android_package.name: '安卓手机 ZIP（APK＋手动替换）',
-                      args.extra_package[0].name: '自动更新用 APK'}
+            labels = {archive.name: '电脑端 ZIP'}
+            if not args.desktop_only:
+                labels.update({android_package.name: '安卓手机 ZIP（APK＋手动替换）', args.extra_package[0].name: '自动更新用 APK'})
             query = {'name': path.name}
             if path.name in labels: query['label'] = labels[path.name]
             upload = release['upload_url'].split('{', 1)[0] + '?' + urllib.parse.urlencode(query)

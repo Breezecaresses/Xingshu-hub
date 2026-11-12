@@ -725,6 +725,9 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 
 	private void OnDestroy()
 	{
+#if !XINGSHU_ANDROID_PREVIEW
+		StreamPrivacyHands.Close();
+#endif
 		XingShu.Spectator.SpectatorStateStore.OnPlayerHandUpdated -= OnSpectatorStorePlayerHandUpdated;
 		XingShu.Spectator.SpectatorStateStore.OnSessionReset -= OnSpectatorStoreSessionReset;
 		XingShu.Spectator.SpectatorStateStore.OnSpectatorJoined -= OnSpectatorJoined;
@@ -744,6 +747,13 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 		}
 		catch { }
 	}
+
+#if !XINGSHU_ANDROID_PREVIEW
+	private void LateUpdate()
+	{
+		StreamPrivacyHands.Update();
+	}
+#endif
 
 	private void Update()
 	{
@@ -1966,7 +1976,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 	public static void RefreshAllWidgets()
 	{
 		bool inSpectator = XingShu.Spectator.SpectatorStateStore.IsInSpectatorSession();
-		if (!IsEnabled || (!inSpectator && !IsPVEMode()))
+		if (StreamPrivacyHands.Enabled || !IsEnabled || (!inSpectator && !IsPVEMode()))
 		{
 			ClearAllWidgets();
 			return;
@@ -2069,7 +2079,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 
 	private static void AttachOrUpdateWidget(UIBattleInfo_Button_PlayerInfo headBtn, TrackedPlayerHand hand)
 	{
-		if (UseModernView)
+		if (UseModernView || StreamPrivacyHands.Enabled)
 		{
 			CleanWidgetFromHeadButton(headBtn);
 			return;
@@ -2956,7 +2966,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 
 	private void OnGUI()
 	{
-		if (UseModernView || !_showDebugUI)
+		if (StreamPrivacyHands.Enabled || UseModernView || !_showDebugUI)
 		{
 			return;
 		}

@@ -10,19 +10,23 @@ import subprocess
 
 import UnityPy
 import prepare_runtime_truth_fix as shared
+from android_payload import verified_baseline
 
 ROOT = Path(__file__).resolve().parents[1]
-VANILLA_SHA256 = "01ee8b4332fdb024fd4c5b9bfdb38ce25f9d42e0b07941765bc7cd06efdaaaa4"
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bundle", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
+    parser.add_argument("--catalog", required=True, type=Path, help="Audited official catalog for the same resource bundle")
     args = parser.parse_args()
     original = args.bundle.read_bytes()
-    if shared.sha(original) != VANILLA_SHA256:
-        raise RuntimeError("Unknown Android baseline; verify version and compatibility before patching")
+    baseline = verified_baseline(shared.sha(original))
+    catalog = json.loads(args.catalog.read_text('utf-8-sig'))
+    bundle_id = baseline['bundleRelativePath'].split('/')[-2]
+    if not any(bundle_id in value for value in catalog.get('m_InternalIds', [])):
+        raise RuntimeError('Official Android catalog does not reference this baseline')
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     env = UnityPy.load(original)
@@ -77,12 +81,13 @@ def main():
     source = (ROOT / "XingShu-Dev/src/XingShu.Runtime/XingShu/Runtime/XingShuRuntimeHost.cs").read_text("utf8")
     runtime_version = re.search(r'#if XINGSHU_ANDROID_PREVIEW\s+public const string RuntimeVersion = "([^"]+)"', source).group(1)
     manifest = {"platform": "ANDROID_CN", "package": "com.feimo.astralparty",
-                "appVersion": "3.3.0", "runtimeVersion": runtime_version,
+                "appVersion": "3.3.0", "resourceVersion": baseline['resourceVersion'], "runtimeVersion": runtime_version,
+                "catalogSha256": shared.sha(args.catalog.read_bytes()),
                 "originalSha256": shared.sha(original),
                 "candidateSha256": shared.sha(candidate.read_bytes()),
                 "hooksSha256": shared.sha(hooks), "candidate": str(candidate),
                 "unchangedTextAssets": len(before) - 1,
-                "bundleRelativePath": "com.unity.addressables/AssetBundles/4da1f23c112208b0f8df2a1327b4e4ce/3c7700aa58877b365d45231b1225fcbb/__data",
+                "bundleRelativePath": baseline['bundleRelativePath'],
                 "nativeLibraries": [], "desktopHubBridgeVerified": False}
     (out / "candidate.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf8")
     print(f"Android candidate verified: {len(before) - 1} other TextAssets unchanged; no native libraries")

@@ -35,14 +35,19 @@ internal static class HubUpdater {
            S(m,"version")!=tag.Substring(1) || N(m,"sequence")<1 || N(m,"sequence")>2100000000 || S(m,"notes").Length>6000)
             throw new Exception("不支持此更新清单");
         foreach(string name in new[]{"desktop","android"}) {
+            if(name=="android" && !m.ContainsKey(name))continue;
             var a=(Dictionary<string,object>)m[name];
             string asset=S(a,"asset"), extension=name=="desktop"?".zip":".apk";
             if(!Regex.IsMatch(asset,@"^[A-Za-z0-9_.\-]{1,150}$") || !asset.EndsWith(extension,StringComparison.Ordinal) ||
                !Regex.IsMatch(S(a,"sha256"),"^[0-9a-f]{64}$") || N(a,"size")<1 || N(a,"size")>1024L*1024*1024)
                 throw new Exception("更新文件声明无效");
         }
-        if(N((Dictionary<string,object>)m["android"],"versionCode")!=N(m,"sequence"))throw new Exception("安卓版本号不一致");
+        if(m.ContainsKey("android") && N((Dictionary<string,object>)m["android"],"versionCode")!=N(m,"sequence"))throw new Exception("安卓版本号不一致");
         return m;
+    }
+    internal static string ManifestName(IEnumerable<string> assets) {
+        if(assets.Contains("xingshu-desktop-update.json"))return "xingshu-desktop-update.json";
+        return assets.Contains("xingshu-update.json")?"xingshu-update.json":null;
     }
     static byte[] Fetch(string url,long limit) {
         // GitHub redirects to its asset CDN. Each redirect is checked before following it.
@@ -76,8 +81,9 @@ internal static class HubUpdater {
             var release=(Dictionary<string,object>)raw;
             if(Convert.ToBoolean(release["draft"]) || (!preview && Convert.ToBoolean(release["prerelease"])))continue;
             string tag=S(release,"tag_name"); if(!Regex.IsMatch(tag,@"^v[0-9A-Za-z][0-9A-Za-z.\-]{0,79}$"))continue;
-            if(!((object[])release["assets"]).Cast<Dictionary<string,object>>().Any(a => S(a,"name")=="xingshu-update.json"))continue;
-            string text=Encoding.UTF8.GetString(Fetch(Releases+"/download/"+Uri.EscapeDataString(tag)+"/xingshu-update.json",300000));
+            string manifestName=ManifestName(((object[])release["assets"]).Cast<Dictionary<string,object>>().Select(a => S(a,"name")));
+            if(manifestName==null)continue;
+            string text=Encoding.UTF8.GetString(Fetch(Releases+"/download/"+Uri.EscapeDataString(tag)+"/"+manifestName,300000));
             var m=Verify(text,tag); // Fail closed on a tampered published update; never silently fall back.
             if(best==null || N(m,"sequence")>N(best,"sequence")) { best=m; envelope=text; }
         }

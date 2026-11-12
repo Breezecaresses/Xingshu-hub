@@ -82,6 +82,8 @@ public final class MainActivity extends Activity {
         scroll.addView(page); setContentView(scroll);
         TextView title = text("星枢 · 手机安装助手",25); title.setTypeface(null,Typeface.BOLD); page.addView(title);
         page.addView(text("安卓安装助手  ·  " + BuildConfig.VERSION_NAME,12));
+        button(page,"安装说明 · 首次安装 / 更新 / 还原",true,v -> showGuide("安装说明",HelpContent.INSTALL));
+        button(page,"使用说明 · 悬浮球 / 手牌 / 显示设置",true,v -> showGuide("使用说明",HelpContent.USAGE));
         updateStatus=text("助手版本："+BuildConfig.VERSION_NAME+"\n助手内置游戏插件："+PayloadSpec.VERSION,13); page.addView(updateStatus);
         updateCheck=button(page,"检查助手更新",true,v -> checkAssistantUpdate());
         updateProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
@@ -107,7 +109,7 @@ public final class MainActivity extends Activity {
         connectionPort=input(page,"连接端口或完整地址（无线调试主页面）",false);
         connectionPort.setText(getPreferences(0).getString("connectionPort",""));
         connect=button(page,"② 连接本机无线调试",false, v -> connectPhone());
-        inspect=button(page,"③ 检查游戏与目录权限",true, v -> inspect());
+        inspect=button(page,"③ 检查游戏、权限与覆盖冲突",true, v -> inspect());
         install=button(page,"安装 / 更新星枢",false, v -> execute(false));
         restore=button(page,"还原官方原版",true, v -> new AlertDialog.Builder(this)
             .setMessage("将恢复此版本的官方程序集缓存，保留账号与设置。请先正常退出游戏。")
@@ -140,6 +142,12 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1,dp(52)); p.setMargins(0,dp(5),0,dp(5)); page.addView(b,p); b.setOnClickListener(action); return b;
     }
     private void open(String url) { try { startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url))); } catch(Exception e) { write(url); } }
+    private void showGuide(String title,String content) {
+        ScrollView scroll=new ScrollView(this);
+        TextView body=text(content,16); body.setPadding(dp(20),dp(12),dp(20),dp(16)); body.setTextIsSelectable(true);
+        scroll.addView(body);
+        new AlertDialog.Builder(this).setTitle(title).setView(scroll).setPositiveButton("知道了",null).show();
+    }
     private void write(String s) { if (!destroyed) log.append(s+"\n"); }
     private EditText input(LinearLayout page,String hint,boolean secret) {
         EditText field=new EditText(this); field.setHint(hint); field.setTextSize(16); field.setSingleLine(true);
@@ -218,13 +226,39 @@ public final class MainActivity extends Activity {
             refresh();
         } catch(Exception e) { binding=false; write("连接失败："+e.getMessage()); refresh(); }
     }
-    private void inspect() { run(false,false); }
-    private void execute(boolean undo) { run(true,undo); }
-    private void run(boolean apply,boolean undo) {
+    private void inspect() { run(false,false,null); }
+    private void execute(boolean undo) {
+        if(undo) { run(true,true,null); return; }
+        if(busy)return;
+        busy=true; lastResult=""; write("正在检查资源版本和同位置覆盖冲突…"); refresh();
+        worker.execute(() -> {
+            String result;
+            try { result=useShizuku?remote.inspect():local().inspect(); }
+            catch(Exception e) { result="检查未通过："+e.getMessage(); }
+            final String output=result;
+            runOnUiThread(() -> {
+                if(destroyed)return;
+                busy=false; lastResult=output; write(output); refresh();
+                if(!output.startsWith("游戏版本匹配") || output.contains("游戏仍在运行") || output.contains("未知版本")) {
+                    new AlertDialog.Builder(this).setTitle("安装检查未通过").setMessage(output).setPositiveButton("知道了",null).show();
+                    return;
+                }
+                if(output.contains("同位置覆盖冲突")) {
+                    java.util.regex.Matcher match=java.util.regex.Pattern.compile("冲突文件SHA256：([a-f0-9]{64})").matcher(output);
+                    if(!match.find()) { write("无法确认冲突文件，请重新检查。"); return; }
+                    final String conflictHash=match.group(1);
+                    new AlertDialog.Builder(this).setTitle("同位置文件已被修改")
+                        .setMessage("已确认官方资源清单与本版匹配，但插件目标文件被其他内容覆盖。\n\n继续会先完整备份该文件并记录路径与 SHA256，校验成功后再安装星枢；原有同位置修改将不再生效。其他目录的 MOD 不会移动。\n\n"+output)
+                        .setNegativeButton("暂不安装",null).setPositiveButton("备份整理并安装",(d,w) -> run(true,false,conflictHash)).show();
+                } else run(true,false,null);
+            });
+        });
+    }
+    private void run(boolean apply,boolean undo,String conflictHash) {
         if(busy)return;
         if(!useShizuku) {
             submit(apply?"正在核验、传送并写入，请保持助手在前台…":"正在检查游戏与文件权限…",
-                () -> apply?local().apply(undo):local().inspect());
+                () -> apply?local().apply(undo,conflictHash):local().inspect());
             return;
         }
         if(remote==null)return;
@@ -234,7 +268,7 @@ public final class MainActivity extends Activity {
             File patch=undo?null:stage("candidate.__data"), vanilla=stage("vanilla.__data");
             try(ParcelFileDescriptor p=undo?null:ParcelFileDescriptor.open(patch,ParcelFileDescriptor.MODE_READ_ONLY);
                 ParcelFileDescriptor v=ParcelFileDescriptor.open(vanilla,ParcelFileDescriptor.MODE_READ_ONLY)) {
-                return service.apply(undo,p,v);
+                return service.apply(undo,conflictHash,p,v);
             }
         });
     }

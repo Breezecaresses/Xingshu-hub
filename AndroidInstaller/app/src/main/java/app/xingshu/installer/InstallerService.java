@@ -17,11 +17,11 @@ public final class InstallerService extends IInstaller.Stub {
         System.exit(0);
     }
     @Override public synchronized String inspect() { caller(); return engine.inspect(); }
-    @Override public synchronized String apply(boolean restore, ParcelFileDescriptor candidate, ParcelFileDescriptor vanilla) {
+    @Override public synchronized String apply(boolean restore, String conflictHash, ParcelFileDescriptor candidate, ParcelFileDescriptor vanilla) {
         caller();
         try (InputStream p=candidate==null?null:new ParcelFileDescriptor.AutoCloseInputStream(candidate);
              InputStream v=vanilla==null?null:new ParcelFileDescriptor.AutoCloseInputStream(vanilla)) {
-            return engine.apply(restore,p,v);
+            return engine.apply(restore,conflictHash,p,v);
         } catch(Exception e) { return "未完成："+e.getMessage(); }
     }
 }

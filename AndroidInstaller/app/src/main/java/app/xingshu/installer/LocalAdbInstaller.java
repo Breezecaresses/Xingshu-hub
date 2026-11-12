@@ -42,14 +42,15 @@ final class LocalAdbInstaller implements Closeable {
         } catch(Exception e) { manager.disconnect(); throw e; }
     }
     String inspect() throws Exception { return operation("inspect"); }
-    String apply(boolean restore) throws Exception {
+    String apply(boolean restore,String conflictHash) throws Exception {
         // Preflight before sending payloads; the engine repeats every gate before touching the target.
         String preflight=inspect();
         if(!preflight.startsWith("游戏版本匹配") || preflight.contains("游戏仍在运行") || preflight.contains("未知版本")) return preflight;
+        if(preflight.contains("同位置覆盖冲突") && conflictHash==null)return "检测到同位置覆盖冲突，请先确认备份整理。\n"+preflight;
         shell("mkdir -p "+quote(LocalInstallerMain.STAGING),20000);
         try {
             push("vanilla.__data"); if(!restore) push("candidate.__data");
-            return operation(restore?"restore":"install");
+            return operation(restore?"restore":conflictHash==null?"install":"install-conflict:"+conflictHash);
         } finally {
             try { shell("rm -f "+quote(LocalInstallerMain.STAGING+"/vanilla.__data")+" "+quote(LocalInstallerMain.STAGING+"/candidate.__data"),20000); } catch(Exception ignored) { }
         }

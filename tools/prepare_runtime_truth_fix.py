@@ -88,16 +88,18 @@ def write_inventory(manifest):
 
 
 def main():
-    global OUT, DLL
+    global OUT, DLL, PROFILES
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, default=OUT, help='Candidate directory; does not install files')
     parser.add_argument('--previous-manifest', type=Path, help='Previously verified installed candidates')
     parser.add_argument('--skip-inventory', action='store_true', help='Keep Hub deployment inventory unchanged')
     parser.add_argument('--hooks-dll', type=Path, default=DLL, help='Use an isolated runtime build without replacing the default build output')
+    parser.add_argument('--profiles', type=Path, default=PROFILES, help='Use separately verified platform profiles for a new official resource version')
     parser.add_argument('--platform', choices=['STEAM_CN', 'TAPTAP', 'BILIBILI', 'WEGAME'], action='append', help='Prepare only selected Windows channels')
     args = parser.parse_args()
     OUT = args.out.resolve()
     DLL = args.hooks_dll.resolve()
+    PROFILES = args.profiles.resolve()
     OUT.mkdir(parents=True, exist_ok=True)
     manifest = []
     dll = DLL.read_bytes()

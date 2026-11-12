@@ -27,6 +27,9 @@ namespace XingShuRuntime.UI
         private Toggle _spectatorAutoOpenToggle;
         private Text _spectatorAutoOpenHintText;
         private Text _dockButtonText;
+#if !XINGSHU_ANDROID_PREVIEW
+        private Text _streamPrivacyStatus;
+#endif
 #if XINGSHU_ANDROID_PREVIEW
         private Text _cloudHandStatus;
         private Text _cloudHandButton;
@@ -113,6 +116,8 @@ namespace XingShuRuntime.UI
             BuildSwitchCard(contentArea);
 #if XINGSHU_ANDROID_PREVIEW
             BuildCloudHandsCard(contentArea);
+#else
+            if (StreamPrivacyHands.IsSupported) BuildStreamPrivacyCard(contentArea);
 #endif
 
             BuildRosterCard(contentArea);
@@ -128,6 +133,21 @@ namespace XingShuRuntime.UI
             // 5. 战局玩家手牌状态监控区 (Players Hands Card: min 200px)
             BuildPlayersHandCard(contentArea);
         }
+
+#if !XINGSHU_ANDROID_PREVIEW
+        private void BuildStreamPrivacyCard(GameObject parent)
+        {
+            var card = CreateCardContainer(parent, "StreamPrivacyHands", 90f);
+            XingShuDetailLayout.Text(card.transform, "直播隐私模式（手牌试用）", 24, 12, 330, 24, 16).fontStyle = FontStyle.Bold;
+            _streamPrivacyStatus = XingShuDetailLayout.Text(card.transform, StreamPrivacyHands.Status, 24, 40, 530, 20, 13);
+            XingShuDetailLayout.Text(card.transform, "直播姬请选择「窗口捕捉」并先检查预览。", 24, 61, 520, 19, 12);
+            var toggle = XingShuUIFactory.CreateToggle(card, "StreamPrivacyToggle", "直播隐私", StreamPrivacyHands.Enabled,
+                StreamPrivacyHands.SetEnabled).GetComponent<RectTransform>();
+            toggle.anchorMin = toggle.anchorMax = toggle.pivot = new Vector2(1, 1);
+            toggle.anchoredPosition = new Vector2(-24, -17);
+            toggle.sizeDelta = new Vector2(150, 32);
+        }
+#endif
 
 #if XINGSHU_ANDROID_PREVIEW
         private void BuildCloudHandsCard(GameObject parent)
@@ -576,6 +596,10 @@ namespace XingShuRuntime.UI
         /// </summary>
         internal void UpdateSync()
         {
+#if !XINGSHU_ANDROID_PREVIEW
+            if (_streamPrivacyStatus != null && _streamPrivacyStatus.text != StreamPrivacyHands.Status)
+                _streamPrivacyStatus.text = StreamPrivacyHands.Status;
+#endif
 #if XINGSHU_ANDROID_PREVIEW
             if (_cloudHandStatus.text != XingShu.Runtime.AndroidCloudHands.Status)
                 _cloudHandStatus.text = XingShu.Runtime.AndroidCloudHands.Status;
@@ -601,13 +625,21 @@ namespace XingShuRuntime.UI
             bool curActiveDisplay = HandCardDock.IsOpen || HandCardRoster.HasExpanded;
             if (_dockButtonText != null)
             {
-                string dockLabel = HandCardDock.IsOpen ? "收起手牌悬浮窗" : "打开手牌悬浮窗";
-                if (_dockButtonText.text != dockLabel) _dockButtonText.text = dockLabel;
+                string dockLabel = StreamPrivacyHands.Enabled ? "已切换到私密手牌" :
+                    HandCardDock.IsOpen ? "收起手牌悬浮窗" : "打开手牌悬浮窗";
+                if (_dockButtonText.text != dockLabel)
+                {
+                    _dockButtonText.text = dockLabel;
+                    _dockButtonText.GetComponentInParent<Button>().interactable = !StreamPrivacyHands.Enabled;
+                }
             }
             bool curPveMode = HandCardDisplayManager.IsPVEMode();
             bool curSpectatorMode = XingShu.Spectator.SpectatorStateStore.IsInSpectatorSession();
             HandTruthSourceMode curTruthMode = HandTruthSource.CurrentMode;
-            string curResponse = HandCardDisplayManager.LastServerResponseText ?? "";
+            bool privateHands = StreamPrivacyHands.Enabled;
+            if (_serverResponseText != null && _serverResponseText.enabled == privateHands)
+                _serverResponseText.enabled = !privateHands;
+            string curResponse = privateHands ? "" : HandCardDisplayManager.LastServerResponseText ?? "";
             var playerHands = HandCardDisplayManager.PlayerHands;
 
             // Roster Invariant Filter: Strictly constrain playerHands to the active authoritative room roster
@@ -795,6 +827,16 @@ namespace XingShuRuntime.UI
 
         private void UpdatePlayerHandsProjection(IReadOnlyDictionary<long, TrackedPlayerHand> playerHands, int curPlayersCount)
         {
+            if (StreamPrivacyHands.Enabled)
+            {
+                _lastObservedPlayersCount = -1;
+                if (_playersListText != null && _playersListText.text != "直播隐私模式已开启，请在独立窗口查看手牌。")
+                {
+                    _playersHeaderLabel.text = "当前战局玩家手牌状态";
+                    _playersListText.text = "直播隐私模式已开启，请在独立窗口查看手牌。";
+                }
+                return;
+            }
             if (playerHands == null || curPlayersCount == 0)
             {
                 if (_lastObservedPlayersCount != 0)

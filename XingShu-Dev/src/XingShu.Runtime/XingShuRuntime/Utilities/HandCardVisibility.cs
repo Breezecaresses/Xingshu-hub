@@ -17,7 +17,7 @@ namespace XingShuRuntime.Utilities
             "LandHospitalWindow", "LandDivinationWindow", "LandFillingStationWindow", "LandRollGoldWindow",
             "LandPursuitWindow", "LandPrayWindow", "LandRelicWindow", "RelicWindow", "DisplayCardWindow", "ATMWindow"
         };
-        internal static bool ShouldHide => BlockingWindow != null;
+        internal static bool ShouldHide => StreamPrivacyHands.Enabled || BlockingWindow != null;
         internal static string BlockingWindow
         {
             get

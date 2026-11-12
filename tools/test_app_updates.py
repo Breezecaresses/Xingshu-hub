@@ -28,6 +28,7 @@ class AppUpdates(unittest.TestCase):
 class Harness { static int Main(string[] a) { try {
  if(a[0]=="wire") return (int)typeof(HubUpdater).GetMethod("Main",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static).Invoke(null,new object[]{new[]{"--apply"}});
  else if(a[0]=="verify") HubUpdater.Verify(File.ReadAllText(a[1]),a[2]);
+ else if(a[0]=="manifest") { Console.WriteLine(HubUpdater.ManifestName(a[1].Split(','))??"NONE");return 0; }
  else if(a[0]=="extract") { var m=HubUpdater.Verify(File.ReadAllText(a[3]),a[4]); HubUpdater.Extract(a[1],a[2],m); }
  else if(a[0]=="apply") { var files=HubUpdater.Json.Deserialize<Dictionary<string,string>>(File.ReadAllText(a[3])); HubUpdater.Apply(a[1],a[2],files,a[4],Int32.Parse(a[5])); }
  Console.WriteLine("PASS");return 0;
@@ -100,6 +101,30 @@ class Harness { static int Main(string[] a) { try {
         verify_assets(m, [archive, phone_zip, phone_apk])
         self.assertEqual(m['desktop']['asset'], archive.name)
         self.assertEqual(m['android']['asset'], phone_apk.name)
+
+    def test_desktop_only_manifest_and_extraction(self):
+        from prepare_update_release import verify_assets
+        folder, archive, m = self.fixture()
+        del m['android']
+        envelope = self.sign(folder, m)
+        self.run_case('verify', envelope, m['tag'])
+        self.run_case('extract', archive, folder / 'stage', envelope, m['tag'])
+        verify_assets(m, [archive])
+        # Desktop-only updates must not use the legacy name read by old Android installers.
+        self.assertEqual(self.run_case('manifest', 'xingshu-desktop-update.json'), 'xingshu-desktop-update.json\n')
+        self.assertEqual(self.run_case('manifest', 'xingshu-update.json'), 'xingshu-update.json\n')
+        self.assertEqual(self.run_case('manifest', 'xingshu-update.json,xingshu-desktop-update.json'), 'xingshu-desktop-update.json\n')
+        self.assertEqual(self.run_case('manifest', 'XingShu_Desktop.zip'), 'NONE\n')
+
+    def test_present_android_component_still_requires_matching_identity(self):
+        folder, _, m = self.fixture()
+        m['android']['versionCode'] = 2
+        self.run_case('verify', self.sign(folder, m), m['tag'], ok=False)
+
+    def test_missing_desktop_component_is_rejected(self):
+        folder, _, m = self.fixture()
+        del m['desktop']
+        self.run_case('verify', self.sign(folder, m), m['tag'], ok=False)
 
     def test_repository_tag_size_and_downgrade_identity(self):
         for key, value in [('repository', 'other/repo'), ('tag', 'vother'), ('sequence', -1), ('version', 'other')]:

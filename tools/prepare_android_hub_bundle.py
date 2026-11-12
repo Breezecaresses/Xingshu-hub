@@ -55,7 +55,7 @@ def main():
         shutil.copy2(a.adb_dir / name, tools / name)
     (tools / '来源.txt').write_text('Android SDK Platform-Tools (ADB components)\nhttps://developer.android.com/tools/releases/platform-tools\nhttps://android.googlesource.com/platform/packages/modules/adb/\n原始第三方许可见 NOTICE.txt。\n', encoding='utf8')
     compiler = Path(os.environ['WINDIR']) / 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
-    subprocess.run([str(compiler), '/nologo', '/target:winexe', '/optimize+', '/reference:System.Windows.Forms.dll',
+    subprocess.run([str(compiler), '/nologo', '/codepage:65001', '/target:winexe', '/optimize+', '/reference:System.Windows.Forms.dll',
                     '/reference:System.Drawing.dll', '/reference:System.Web.Extensions.dll',
                     '/out:' + str(root / '星枢安卓安装助手.exe'), str(ROOT / 'tools/AndroidPreviewInstaller.cs')], check=True)
     shutil.copy2(project_document(ROOT, 'ANDROID_PHONE_INSTALL.md'), root / '手机独立安装说明.md')

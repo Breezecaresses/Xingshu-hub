@@ -25,6 +25,8 @@ internal sealed class PlatformInfo
     public string Label;
     public string ExeName;
     public string GameAssemblySha256;
+    public string GameVersion;
+    public string ResourceVersion;
     public string BundleRelativePath;
     public string Payload;
     public string PayloadSha256;
@@ -46,6 +48,12 @@ internal static class GroupTest
     internal static readonly string PackageRoot = AppDomain.CurrentDomain.BaseDirectory;
     internal static readonly JavaScriptSerializer Json = new JavaScriptSerializer();
     internal static ReleaseInfo Release;
+
+    internal static string CompatibleVersion(PlatformInfo platform)
+    {
+        return "吉星派对" + (String.IsNullOrWhiteSpace(platform.GameVersion) ? "" : " " + platform.GameVersion) +
+            (String.IsNullOrWhiteSpace(platform.ResourceVersion) ? "（清单指定资源）" : " / 资源 " + platform.ResourceVersion);
+    }
 
     internal static string Hash(string path)
     {
@@ -95,7 +103,7 @@ internal static class GroupTest
         if (!File.Exists(Within(root, platform.ExeName)))
             throw new InvalidOperationException("此目录没有对应的游戏程序，请选择实际游戏 exe，不能选择启动器。");
         if (Hash(Within(root, "GameAssembly.dll")) != platform.GameAssemblySha256)
-            throw new InvalidOperationException("游戏版本或渠道不匹配；本包只适配 3.3.0 / 资源 026 的对应 Windows 客户端。");
+            throw new InvalidOperationException("游戏版本或渠道不匹配；本包仅支持" + CompatibleVersion(platform) + " 的" + platform.Label + "客户端。");
         return root;
     }
 
@@ -177,7 +185,7 @@ internal static class GroupTest
             try
             {
                 if (!File.Exists(target))
-                    throw new InvalidOperationException("未找到资源 026 缓存。请先完成官方游戏更新并正常进入一次大厅，再退出游戏重试。");
+                    throw new InvalidOperationException("未找到本包对应的资源缓存（" + CompatibleVersion(platform) + "）。请先完成官方游戏更新并正常进入一次大厅，再退出游戏重试。");
                 var current = Hash(target);
                 var accepted = platform.AcceptedHashes.Contains(current);
                 if (current != platform.PayloadSha256 && !accepted)
@@ -307,7 +315,7 @@ internal sealed class InstallerWindow : Form
         MaximizeBox = false;
         AutoScaleMode = AutoScaleMode.Dpi;
         var intro = new Label { Left = 22, Top = 18, Width = 612, Height = 48,
-            Text = "适配吉星派对 3.3.0 / 资源 026（Windows）\r\n先退出游戏，再选择对应平台和游戏程序；主端、观战端分别安装。" };
+            Text = "适配" + String.Join("、", GroupTest.Release.Platforms.Select(GroupTest.CompatibleVersion).Distinct()) + "（Windows）\r\n先退出游戏，再选择对应平台和游戏程序；主端、观战端分别安装。" };
         Controls.Add(intro);
         platforms.SetBounds(22, 80, 210, 28);
         platforms.DropDownStyle = ComboBoxStyle.DropDownList;

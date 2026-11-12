@@ -34,15 +34,27 @@ class ThinkingClockPatcher
             var tickField = clock.Fields.Single(f => f.Name == "Tick");
             var owner = module.Types.FirstOrDefault(t => t.Name == "XingShuDecisionTimer");
             if (owner == null) { owner = new TypeDefinition("", "XingShuDecisionTimer", TypeAttributes.NotPublic | TypeAttributes.Abstract | TypeAttributes.Sealed, module.TypeSystem.Object); module.Types.Add(owner); }
+            // Resource 150 moved hero selection from Refresh into RefreshChoiceHero.
+            // Require exactly one real registration; never patch both or silently skip it.
+            var heroPanel = module.Types.Single(t => t.FullName == "UI.RoomHeroPanel");
+            var heroTimers = heroPanel.Methods.Where(m => m.HasBody &&
+                (m.Name == "Refresh" || m.Name == "RefreshChoiceHero") &&
+                m.Body.Instructions.Any(i => IsTimerRegistration(i, owner.Name))).ToArray();
+            if (heroTimers.Length != 1)
+                throw new Exception("Expected one hero-selection timer in Refresh or RefreshChoiceHero, found " + heroTimers.Length);
+            var heroTimer = heroTimers[0];
             int count = 0;
             foreach (var type in module.Types.ToArray())
             foreach (var method in type.Methods.ToArray())
             {
                 bool operation = type.FullName == "GameLogic.OperationTimer" && method.Name == "ActionDownTime";
-                bool selection = type.FullName == "UI.RoomHeroPanel" && (method.Name == "Refresh" || method.Name == "RefreshSelectSkin");
+                bool selection = ReferenceEquals(method, heroTimer) || (type.FullName == "UI.RoomHeroPanel" && method.Name == "RefreshSelectSkin");
                 if ((!operation && !selection) || !method.HasBody) continue;
                 if (method.Body.Instructions.Any(i => i.Operand is MethodReference && ((MethodReference)i.Operand).DeclaringType.Name == owner.Name)) { count++; continue; }
-                var call = method.Body.Instructions.Single(i => i.Operand is MethodReference && ((MethodReference)i.Operand).DeclaringType.FullName == "UnityTimer.Timer" && ((MethodReference)i.Operand).Name == "Register");
+                var registrations = method.Body.Instructions.Where(i => IsTimerRegistration(i, owner.Name)).ToArray();
+                if (registrations.Length != 1)
+                    throw new Exception("Expected one decision timer in " + method.FullName + ", found " + registrations.Length);
+                var call = registrations[0];
                 var register = (MethodReference)call.Operand;
                 if (register.Parameters.Count != 13 || register.Parameters[2].ParameterType.FullName != "System.Action" || register.Parameters[4].ParameterType.FullName != "System.Action" || register.Parameters[7].ParameterType.FullName != "System.Action`1<System.Single>") throw new Exception("Unexpected decision timer signature");
                 var wrapper = new MethodDefinition("Register" + count, MethodAttributes.Static | MethodAttributes.Assembly, module.ImportReference(register.ReturnType));
@@ -93,6 +105,13 @@ class ThinkingClockPatcher
             game.Write(args[2]);
             Console.WriteLine("Real-clock decision timers: " + count);
         }
+    }
+
+    static bool IsTimerRegistration(Instruction instruction, string wrapperName)
+    {
+        var method = instruction.Operand as MethodReference;
+        return method != null && ((method.DeclaringType.FullName == "UnityTimer.Timer" && method.Name == "Register") ||
+            (method.DeclaringType.Name == wrapperName && method.Name.StartsWith("Register", StringComparison.Ordinal)));
     }
 
     static void PatchProgress(ModuleDefinition module, TypeDefinition hooks)

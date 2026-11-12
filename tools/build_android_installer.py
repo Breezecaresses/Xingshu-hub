@@ -7,10 +7,11 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
-from android_payload import previous_hashes
+from android_payload import previous_hashes, validate_baseline_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -28,7 +29,7 @@ def main():
     m=json.loads(a.manifest.read_text('utf8'))
     patch=Path(m['candidate'])
     assert m['package']=='com.feimo.astralparty' and m['appVersion']=='3.3.0'
-    assert m['bundleRelativePath']=='com.unity.addressables/AssetBundles/4da1f23c112208b0f8df2a1327b4e4ce/3c7700aa58877b365d45231b1225fcbb/__data'
+    validate_baseline_manifest(m)
     assert sha(patch)==m['candidateSha256'] and sha(a.vanilla)==m['originalSha256']
     source=ROOT/'AndroidInstaller'
     assert (source/'app/src/main/assets/update-public-cert.txt').read_bytes() == (ROOT/'tools/update-public-cert.txt').read_bytes(), 'Desktop and Android update identities differ'
@@ -48,13 +49,14 @@ def main():
     assets=generated/'assets'; assets.mkdir(parents=True,exist_ok=True)
     shutil.copy2(patch,assets/'candidate.__data'); shutil.copy2(a.vanilla,assets/'vanilla.__data')
     java=generated/'java/app/xingshu/installer/PayloadSpec.java'; java.parent.mkdir(parents=True,exist_ok=True)
-    # Only previously published, verified preview4; unknown cache variants require official repair.
+    # Accept only verified payloads for this exact resource baseline.
     known=previous_hashes(m)
-    constants={'RELATIVE':m['bundleRelativePath'],'VERSION':m['runtimeVersion'], 'VANILLA':m['originalSha256'],'PATCH':m['candidateSha256']}
+    if not re.fullmatch('[a-f0-9]{64}',m.get('catalogSha256','')): raise RuntimeError('Missing audited official catalog hash')
+    constants={'RELATIVE':m['bundleRelativePath'],'VERSION':m['runtimeVersion'], 'VANILLA':m['originalSha256'],'PATCH':m['candidateSha256'],'CATALOG':m['catalogSha256']}
     java.write_text('package app.xingshu.installer;\nfinal class PayloadSpec {\n'+''.join('static final String '+k+' = '+json.dumps(v)+';\n' for k,v in constants.items())+'static final String[] PREVIOUS = {'+','.join(json.dumps(v) for v in known)+'};\n}\n',encoding='utf8')
     env=os.environ.copy(); env['ANDROID_HOME']=str(a.sdk)
     print('Build directory:',project,flush=True)
-    subprocess.run([a.gradle,'--no-daemon','--console=plain','assembleRelease'],cwd=project,env=env,check=True)
+    subprocess.run([a.gradle,'--no-daemon','--console=plain','testReleaseUnitTest','assembleRelease'],cwd=project,env=env,check=True)
     unsigned=project/'app/build/outputs/apk/release/app-release-unsigned.apk'
     signing=Path(os.environ['LOCALAPPDATA'])/'XingShu/Signing'; signing.mkdir(parents=True,exist_ok=True)
     key=signing/'android-installer.jks'; secret=signing/'android-installer.password'

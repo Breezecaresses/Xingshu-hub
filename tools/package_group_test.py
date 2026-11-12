@@ -18,6 +18,20 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def verify_profile_snapshot(payload, canonical_path):
+    """Reject a runtime compiled before the channel resource table was updated."""
+    import UnityPy
+    env = UnityPy.load(str(payload))
+    hooks = [obj.read() for obj in env.objects
+             if obj.path_id == 99992000 and obj.type.name == 'TextAsset']
+    if len(hooks) != 1 or hooks[0].m_Name != 'XingShu.Runtime.dll':
+        raise RuntimeError('Expected one XingShu runtime in the release payload')
+    canonical = canonical_path.read_text('utf8').strip().replace('\r\n', '\n').replace('\n', '\r\n')
+    binary = hooks[0].m_Script.encode('utf8', errors='surrogateescape')
+    if canonical.encode('utf-16-le') not in binary:
+        raise RuntimeError('Runtime embeds stale platform profiles; rebuild it before packaging')
+
+
 def invoke(exe, *args, ok=True):
     result = subprocess.run([str(exe), *map(str, args)], capture_output=True)
     if (result.returncode == 0) != ok:
@@ -229,8 +243,12 @@ def main():
         if args.platform != 'all' and platform != args.platform:
             continue
         prepared = next(p for p in deployment if p['platform'] == platform)
+        if (Path(prepared['target']).resolve() != (Path(profile['installRoot']) / profile['bundleRelativePath']).resolve() or
+                prepared.get('resourceVersion') != profile.get('resourceVersion')):
+            raise SystemExit(f'{platform}: candidate path or resource version differs from the channel profile')
         source = Path(prepared['candidate'])
         assert sha(source) == prepared['candidateSha256']
+        verify_profile_snapshot(source, ROOT / 'AstralParty-Hub/src-tauri/src/xing_shu/platform/platform_profiles.json')
         relative = f'Runtime/{platform}/__data'
         target = stage / relative
         target.parent.mkdir(parents=True)
@@ -238,6 +256,7 @@ def main():
         platform_release = {
             'Id': platform, 'Label': {'STEAM_CN': 'Steam 国服', 'TAPTAP': 'TapTap Windows 版', 'BILIBILI': '哔哩哔哩 Windows 版', 'WEGAME': 'WeGame Windows 版'}[platform],
             'ExeName': profile['processExecutable'], 'GameAssemblySha256': profile['gameRuntimeDllSha256'].lower(),
+            'GameVersion': profile.get('gameVersion'), 'ResourceVersion': profile.get('resourceVersion'),
             'BundleRelativePath': profile['bundleRelativePath'], 'Payload': relative,
             'PayloadSha256': prepared['candidateSha256'],
             'AcceptedHashes': sorted({profile['containerSha256'].lower(), prepared['beforeSha256'].lower()}),
@@ -250,12 +269,16 @@ def main():
     identity = stage / 'PackageIdentity.cs'
     identity.write_text('internal static class PackageIdentity { internal const string ManifestSha256 = "' + sha(manifest) + '"; }', encoding='utf-8')
     compiler = Path(os.environ['WINDIR']) / 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
-    subprocess.run([str(compiler), '/nologo', '/target:winexe', '/optimize+', '/platform:anycpu', '/nowarn:0649',
+    subprocess.run([str(compiler), '/nologo', '/codepage:65001', '/target:winexe', '/optimize+', '/platform:anycpu', '/nowarn:0649',
                     '/reference:System.Windows.Forms.dll', '/reference:System.Drawing.dll',
                     '/reference:System.Web.Extensions.dll', '/out:' + str(stage / '星枢安装助手.exe'),
                     str(ROOT / 'tools/GroupTestInstaller.cs'), str(identity)], check=True)
     identity.unlink()
     channel_label = '、'.join(p['Label'] for p in release['Platforms'])
+    resource_label = '、'.join(dict.fromkeys(
+        f"{p['Label']} {p.get('GameVersion') or '清单指定游戏版本'} / 资源 {p.get('ResourceVersion') or '清单指定版本'}"
+        for p in release['Platforms']))
+    resource_versions = '、'.join(dict.fromkeys(p.get('ResourceVersion') or '清单指定版本' for p in release['Platforms']))
     android_note = '''
 安卓手机安装已合并到电脑版 Hub：
 进入“星枢包管理器 → 安卓手机安装 / 更新 → 连接手机”。USB 接线并在手机允许调试后点“检测手机”；也可展开无线连接，按手机的配对地址和连接地址分别操作。
@@ -267,7 +290,7 @@ def main():
     edition = '本地候选版' if args.local_build else ('测试版' if '-' in args.version else '正式版')
     (stage / '先读我.txt').write_text(f'''星枢 XingShu {edition} {args.version}
 {local_note}
-适配：Windows 10/11 64 位，吉星派对 3.3.0 / 资源 026。
+适配：Windows 10/11 64 位，{resource_label}。
 本下载项包含的运行时：{channel_label}。其他端请下载同一 Release 的对应 Assets。
 已安装相同版本运行时会保持原样，无需重复写入；请保留原版助手和既有备份，使用对应安装版本还原。
 Hub 扩展目录管理：Steam 国服、Steam 国际服、TapTap Windows、哔哩哔哩、WeGame；支持同渠道保存多个安装位置。Steam 国际服本版未附带经过验证的运行时安装文件。
@@ -283,7 +306,7 @@ Hub 扩展目录管理：Steam 国服、Steam 国际服、TapTap Windows、哔�
 8. 使用本地观战时，在 Hub 分别绑定主账号与观战账号，保存对应游戏路径。观战账号进入大厅后，在 Hub 选择“我的观战账号”。
 
 本版 Hub 更新
-设置页提供“检查更新”：核验官方 Release 的签名清单，再下载、校验并更新重启 Hub。首次使用需手动安装支持此入口的版本；旧发布没有签名清单时会明确提示前往官方发布页。手机助手首页提供“检查助手更新”，APK 覆盖安装由系统确认。两者都不代替游戏内插件更新；请完成其他安装/还原任务后再更新软件。
+设置页提供“检查更新”：核验官方 Release 的签名清单，再下载、校验并更新重启 Hub。双端一起发布沿用 xingshu-update.json，旧 Hub 和手机助手可继续检查更新；0.1.1 Hub 也支持电脑独立发布清单。手机助手更新后仍需退出游戏、连接授权并安装游戏内插件。请完成其他安装/还原任务后再更新软件。
 角色中心展示 37 条官方角色配置，其中 2 条名称、技能和立绘尚未完整发布，单列为“官方预更新”，未提供的内容显示待更新，不算作未持有的已上线角色。
 角色、皮肤、羁绊与档案采用立绘详情布局；卡牌提供完整竖版大图、效果详情及原生动态异画。特殊异化与场地效果归入地图与场地，筹码另有图鉴。
 历史对战按账号保存，可点开单场阵容、结算数据与星枢评分。PVE 显示胜负，PVP 显示名次；暂不展示结算金币，辅助转账 20 以上有额外贡献权重。没有返回的指标显示“—”。
@@ -301,6 +324,7 @@ Hub 扩展目录管理：Steam 国服、Steam 国际服、TapTap Windows、哔�
 F1 / 悬浮球：功能中心。Ctrl+Shift+H：手牌面板。十倍思考时间与自动致谢请在功能设置中开启。
 本包包含启动修复、头像旁手牌挂件跨局清理、Hub 等待页清理、观战结束退房逻辑、选人/回合/筹码的本地十倍计时和自动致谢修复。
 运行时 {runtime_version}：角色框旁增加独立手牌入口，单张卡牌直接排列，牌多轻叠，默认80%，可在手牌监视页调节60%–150%。角色旁卡牌没有悬停或点击详情；选筹码、商店、目标选择等原生界面打开时隐藏，返回棋盘恢复。原独立长卡悬浮窗保留拖动、收起、P1–P4切换和大小调节。
+直播隐私试用已封存，本版不启动私密手牌程序；旧的试用开关不会隐藏普通手牌显示。
 自由镜头保留用户缩放，原生移动、技能和选目标按钮不再强制拉回默认视角；战斗镜头仍交由游戏控制。
 对局统计挂件与功能中心保留三排九项：击杀、死亡、输出、承伤、治疗、累计金币、转账、对局轮数、移动步数；暂不展示结算金币。无数据保留“—”，结算评分按星枢规则计算。
 局内治疗“≥”表示已确认的有效恢复量，不能当作完整官方治疗分；评分“≈”为参考估算。结算按官方数值校准，星枢评分使用自有规则。筹码、Buff等未知来源仍可能使局内参考量不完整。
@@ -344,16 +368,16 @@ Windows 便携程序未附 Authenticode 代码签名；应用更新清单和手�
     digest = sha(archive)
     (publish / (name + '.zip.sha256')).write_text(digest + '  ' + archive.name + '\n', encoding='utf-8')
     group_note = f'''星枢{edition} {args.version}
-适配吉星派对3.3.0／资源026，本下载项包含{channel_label}运行时。
+适配吉星派对3.3.0／资源{resource_versions}，包含{channel_label}运行时。
 
 安装：完整解压，退出游戏后用“星枢安装助手.exe”安装；主端、观战端分别安装，可备份还原。
 
 更新：
-• 角色框旁新增手牌入口，单卡排列、牌多轻叠，默认80%，可单独调大小；取消悬停和点击详情，保留原独立悬浮窗。
-• 手牌跟随原生头像层级；筹码、商店、选目标及战斗界面打开时隐藏，返回棋盘恢复。
-• 自由镜头保留缩放，点击原生移动、技能或选目标按钮不再强制回拉。
-• 保留治疗参考、三排统计、怪物CD修复及原生“主播模式”。治疗“≥”为已确认部分，评分“≈”为估算，结算按官方数据校准；人机局不加入官方战绩。
-• 电脑ZIP合并四渠道与Hub手机连接工具；安卓ZIP包含APK、手动替换、原版还原和说明。更新器仍使用同一APK与签名清单。
+• 修复官方资源更新后悬浮球不出现，适配选人倒计时的新入口；保留手牌、三排统计、治疗参考、怪物CD和自由镜头。
+• 四个电脑渠道合并一个ZIP，安装助手按各渠道的新资源路径与指纹校验，保留备份还原。
+• 直播隐私试用封存，旧开关不会隐藏普通手牌。
+• Steam国服悬浮球已人工验收；其余电脑渠道通过文件兼容及安装事务检查。
+• {'安卓包同时提供新版手机助手和手动替换／还原文件；增加顶部安装、使用说明和同位置覆盖冲突备份整理。' if args.android_bundle else '本包未附安卓安装组件，请使用已验证的安卓发布。'}
 
 使用反馈：同房／换房连续两局换牌、观战退房再跟房、自然结算退出、收牌／星币／治疗致谢。
 合作局云端手牌需 Hub 同账号授权；本地观战需登录官方观战端。十倍计时受服务端限制。

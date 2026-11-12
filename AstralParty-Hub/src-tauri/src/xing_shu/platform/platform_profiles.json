@@ -11,9 +11,9 @@
     "gameRuntimeDllPath": "GameAssembly.dll",
     "gameRuntimeDllSha256": "6279B4A1814E9B0DEF32779EBC2DFD5810373F112F0B12EE02F5C97CAA4F46FA",
     "xingshuRuntimeDllSha256": null,
-    "bundleRelativePath": "AstralParty_CN_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\3486f99276eba77677d4880fd8d32918\\__data",
-    "bundleId": "3486f99276eba77677d4880fd8d32918",
-    "containerSha256": "420FBB1DEE1CEFE7298213EBF5F292B4722D0CB08A2A5E3F96EE94AB4AABDDEF",
+    "bundleRelativePath": "AstralParty_CN_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\320fce87896474de61380ab8538f2671\\__data",
+    "bundleId": "320fce87896474de61380ab8538f2671",
+    "containerSha256": "CCD9EEDC02B28C04859263C8CF4F1F9846D35A7A3FC36DC7E5344E5D6E0BBB48",
     "hookTextAssetPathId": 99992000,
     "hookSignatures": [
       "XingShuBootstrap.EnsureRuntimeHost",
@@ -23,7 +23,7 @@
     ],
     "compatibilityStatus": "PARTIALLY_AUDITED",
     "lastVerifiedAt": null,
-    "resourceVersion": "026"
+    "resourceVersion": "150"
   },
   {
     "platformId": "STEAM_GLOBAL",
@@ -64,10 +64,10 @@
     "gameRuntimeDllPath": "GameAssembly.dll",
     "gameRuntimeDllSha256": "BAE3828CEF31104E4B77856115E7106FB8539FCC0A0A6098B57A34E9354044E6",
     "xingshuRuntimeDllSha256": null,
-    "bundleRelativePath": "吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\71c9197f5dd65c9b30bdf1e716719991\\__data",
-    "bundleId": "71c9197f5dd65c9b30bdf1e716719991",
-    "containerSha256": "EA45C939DBC86ACA6950AC757FCABB773A86F9D14FEF6B3D8ED7C49F47D33598",
-    "containerHash": "EA45C939DBC86ACA6950AC757FCABB773A86F9D14FEF6B3D8ED7C49F47D33598",
+    "bundleRelativePath": "吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\5fb8e4d5f293126b3cddcd49d39f8863\\__data",
+    "bundleId": "5fb8e4d5f293126b3cddcd49d39f8863",
+    "containerSha256": "0030E1B062EF9B528388189495BD046D4446BAC7FB2DA20C35C391647BE29B31",
+    "containerHash": "0030E1B062EF9B528388189495BD046D4446BAC7FB2DA20C35C391647BE29B31",
     "hookTextAssetPathId": 99992000,
     "hookSignatures": [
       "XingShuBootstrap.EnsureRuntimeHost",
@@ -79,7 +79,7 @@
     "status": "PARTIALLY_AUDITED",
     "runtimeCompatible": true,
     "lastVerifiedAt": null,
-    "resourceVersion": "026"
+    "resourceVersion": "150"
   },
   {
     "platformId": "BILIBILI",
@@ -93,9 +93,9 @@
     "gameRuntimeDllPath": "GameAssembly.dll",
     "gameRuntimeDllSha256": "8C4C0DEE771F85622011A3500E2A69C7A6446AC57C840DFE68E32262A8A3D16B",
     "xingshuRuntimeDllSha256": null,
-    "bundleRelativePath": "吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\49ab072f9bf592158e6dae09e7881e26\\__data",
-    "bundleId": "49ab072f9bf592158e6dae09e7881e26",
-    "containerSha256": "98E61A8EB21523EB87AD5845F028CBE2C8200A638E6B45D466E30C67AA26FE50",
+    "bundleRelativePath": "吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\4bcc3a19c2795f69ee854d3e6474e62b\\__data",
+    "bundleId": "4bcc3a19c2795f69ee854d3e6474e62b",
+    "containerSha256": "4271B7FC6090562A0ACCC0A959973C633C0742297C272D894942AF87934F7DDD",
     "hookTextAssetPathId": 99992000,
     "hookSignatures": [
       "XingShuBootstrap.EnsureRuntimeHost",
@@ -105,7 +105,7 @@
     ],
     "compatibilityStatus": "PARTIALLY_AUDITED",
     "lastVerifiedAt": null,
-    "resourceVersion": "026"
+    "resourceVersion": "150"
   },
   {
     "platformId": "WEGAME",
@@ -119,9 +119,9 @@
     "gameRuntimeDllPath": "GameAssembly.dll",
     "gameRuntimeDllSha256": "34E53BD7690ECC97E50EA062A33007845D3CC189D3048AF8CDCBC5000A82F21D",
     "xingshuRuntimeDllSha256": null,
-    "bundleRelativePath": "吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\0d9755148c21d070f1816d3821664c4e\\__data",
-    "bundleId": "0d9755148c21d070f1816d3821664c4e",
-    "containerSha256": "93CEA828AD8BC182353F933554418E38284BAE8D7DFDD067D007DB251BDA2B54",
+    "bundleRelativePath": "吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\7411372cf1fae7be12113e1804427ef1\\__data",
+    "bundleId": "7411372cf1fae7be12113e1804427ef1",
+    "containerSha256": "1879D686E881B2D8C14127F7775816C364BAD00645845B1551190D8CEF520432",
     "hookTextAssetPathId": 99992000,
     "hookSignatures": [
       "XingShuBootstrap.EnsureRuntimeHost",
@@ -131,6 +131,6 @@
     ],
     "compatibilityStatus": "PARTIALLY_AUDITED",
     "lastVerifiedAt": null,
-    "resourceVersion": "026"
+    "resourceVersion": "150"
   }
 ]

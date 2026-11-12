@@ -66,6 +66,7 @@ namespace XingShuRuntime.Utilities
         }
         internal static void Toggle()
         {
+            if (StreamPrivacyHands.Enabled) return;
             SetOpen(!IsOpen, true);
         }
         internal static void SetOpen(bool open, bool closeCenter = false)
