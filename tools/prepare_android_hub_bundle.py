@@ -32,6 +32,7 @@ def main():
     p.add_argument('--phone-apk', type=Path, required=True)
     p.add_argument('--adb-dir', type=Path, default=Path('C:/Android/sdk/platform-tools'))
     p.add_argument('--out', type=Path, required=True)
+    p.add_argument('--previous-manifest', type=Path, action='append', default=[])
     a = p.parse_args()
     m = json.loads(a.manifest.read_text('utf-8-sig'))
     assert m['package'] == 'com.feimo.astralparty' and m['platform'] == 'ANDROID_CN'
@@ -47,7 +48,7 @@ def main():
     shutil.copy2(m['candidate'], root / '__data')
     shutil.copy2(a.vanilla, root / 'vanilla.__data')
     shutil.copy2(a.phone_apk, root / '星枢手机安装助手.apk')
-    m.update(candidate='__data', vanilla='vanilla.__data', supportedPreviousSha256=previous_hashes(m))
+    m.update(candidate='__data', vanilla='vanilla.__data', supportedPreviousSha256=previous_hashes(m, a.previous_manifest))
     (root / 'candidate.json').write_text(json.dumps(m, ensure_ascii=False, indent=2) + '\n', encoding='utf8')
     tools = root / 'platform-tools'
     tools.mkdir()

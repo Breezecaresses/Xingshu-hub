@@ -127,7 +127,7 @@ export const BridgePage: React.FC = () => {
                 padding: '2px 8px',
                 borderRadius: 4,
                 background: 'rgba(56, 189, 248, 0.15)',
-                color: '#38bdf8',
+                color: '#0369a1',
                 border: '1px solid rgba(56, 189, 248, 0.3)',
               }}
             >
@@ -183,7 +183,7 @@ export const BridgePage: React.FC = () => {
                 borderRadius: 12,
                 fontWeight: 600,
                 background: isConnected ? 'rgba(34, 197, 94, 0.15)' : 'rgba(234, 179, 8, 0.15)',
-                color: isConnected ? '#4ade80' : '#facc15',
+                color: isConnected ? '#15803d' : '#a16207',
                 border: `1px solid ${isConnected ? 'rgba(34, 197, 94, 0.3)' : 'rgba(234, 179, 8, 0.3)'}`,
               }}
             >
@@ -208,7 +208,7 @@ export const BridgePage: React.FC = () => {
                 background: isConnected ? '#22c55e' : '#eab308',
               }}
             />
-            <span style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
               {isConnected ? t('bridge.duplexActive') : t('bridge.waitingGame')}
             </span>
           </div>
@@ -252,7 +252,7 @@ export const BridgePage: React.FC = () => {
           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('bridge.heartbeatTitle')}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
             <Zap size={18} color="var(--primary)" />
-            <span style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
               {status?.lastHeartbeatLatencyMs !== undefined && status?.lastHeartbeatLatencyMs !== null
                 ? `${status.lastHeartbeatLatencyMs} ms`
                 : isConnected
@@ -267,13 +267,13 @@ export const BridgePage: React.FC = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10, fontSize: 11 }}>
             <div style={{ background: 'var(--bg-secondary)', padding: '6px 8px', borderRadius: 4 }}>
               <span style={{ color: 'var(--text-muted)' }}>{t('bridge.lastHeartbeat')}: </span>
-              <span style={{ color: '#fff', fontFamily: 'var(--font-mono)' }}>
+              <span style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
                 {status?.lastHeartbeatTimestamp ? formatTime(status.lastHeartbeatTimestamp) : '--'}
               </span>
             </div>
             <div style={{ background: 'var(--bg-secondary)', padding: '6px 8px', borderRadius: 4 }}>
               <span style={{ color: 'var(--text-muted)' }}>{t('bridge.connectedAt')}: </span>
-              <span style={{ color: '#fff', fontFamily: 'var(--font-mono)' }}>
+              <span style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
                 {status?.connectedAt ? formatTime(status.connectedAt) : '--'}
               </span>
             </div>
@@ -289,7 +289,7 @@ export const BridgePage: React.FC = () => {
           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('bridge.metadataTitle')}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
             <Cpu size={18} color="var(--accent)" />
-            <span style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
               {status?.gamePid ? `PID: ${status.gamePid}` : t('bridge.noTargetProcess')}
             </span>
           </div>
@@ -297,7 +297,7 @@ export const BridgePage: React.FC = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10, fontSize: 11 }}>
             <div style={{ background: 'var(--bg-secondary)', padding: '6px 8px', borderRadius: 4 }}>
               <span style={{ color: 'var(--text-muted)' }}>{t('bridge.gameVersion')}: </span>
-              <span style={{ color: '#fff', fontWeight: 600 }}>{status?.gameVersion || t('bridge.unknown')}</span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{status?.gameVersion || t('bridge.unknown')}</span>
             </div>
             <div style={{ background: 'var(--bg-secondary)', padding: '6px 8px', borderRadius: 4 }}>
               <span style={{ color: 'var(--text-muted)' }}>{t('bridge.runtimeVersion')}: </span>
@@ -361,7 +361,7 @@ export const BridgePage: React.FC = () => {
               alignItems: 'center',
               gap: 8,
               background: feedback.type === 'success' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-              color: feedback.type === 'success' ? '#4ade80' : '#f87171',
+              color: feedback.type === 'success' ? '#15803d' : '#be123c',
               border: `1px solid ${feedback.type === 'success' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
             }}
           >
@@ -448,13 +448,13 @@ export const BridgePage: React.FC = () => {
                             : isOut
                             ? 'rgba(168, 85, 247, 0.2)'
                             : 'rgba(56, 189, 248, 0.2)',
-                          color: isSys ? '#facc15' : isOut ? '#c084fc' : '#38bdf8',
+                          color: isSys ? '#a16207' : isOut ? '#6d28d9' : '#0369a1',
                         }}
                       >
                         {entry.direction}
                       </span>
 
-                      <span style={{ fontWeight: 600, color: '#fff', fontFamily: 'var(--font-mono)' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
                         {entry.messageType}
                       </span>
 
@@ -487,7 +487,7 @@ export const BridgePage: React.FC = () => {
                           fontSize: 11,
                           fontFamily: 'var(--font-mono)',
                           color: 'var(--text-secondary)',
-                          background: 'rgba(0,0,0,0.3)',
+                          background: 'var(--glass-code-bg)',
                           borderRadius: 4,
                           overflowX: 'auto',
                           maxHeight: 180,

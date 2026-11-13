@@ -87,7 +87,7 @@ def stage_mod_library(source, destination):
             'ItemCount': len(expected['items']), 'PayloadCount': len(selected) - 2, 'LocalAdaptationCandidate': True}
 
 
-def verify_installer(package, profiles, release, deployment):
+def verify_installer(package, profiles, release, deployment, official_baselines=None):
     exe = package / '星枢安装助手.exe'
     invoke(exe, '--verify-package')
     temp_base = Path(tempfile.gettempdir()).resolve()
@@ -106,10 +106,11 @@ def verify_installer(package, profiles, release, deployment):
             (fixture / platform['ExeName']).write_bytes(b'installer fixture; not executable')
             target = fixture / platform['BundleRelativePath']
             target.parent.mkdir(parents=True)
-            baseline = ROOT / 'XingShu-Dev/build/runtime-truth-fix' / platform['Id'] / ('__data.before.' + profile['containerSha256'].lower()[:12])
-            if not baseline.is_file():
-                baseline = Path(next(p['backup'] for p in deployment if p['platform'] == platform['Id']))
-            assert sha(baseline) == profile['containerSha256'].lower(), 'Fresh-install fixture must use the audited official baseline'
+            baselines = ([official_baselines / platform['Id'] / 'vanilla.__data'] if official_baselines else []) + [
+                ROOT / 'XingShu-Dev/build/runtime-truth-fix' / platform['Id'] / ('__data.before.' + profile['containerSha256'].lower()[:12]),
+                Path(next(p['backup'] for p in deployment if p['platform'] == platform['Id']))]
+            baseline = next((p for p in baselines if p.is_file() and sha(p) == profile['containerSha256'].lower()), None)
+            assert baseline is not None, 'Fresh-install fixture needs a hash-matched official baseline; use --official-baselines'
             shutil.copy2(baseline, target)
             original = sha(target)
             invoke(exe, '--check', platform['Id'], fixture)
@@ -180,6 +181,7 @@ def main():
     parser.add_argument('--source-commit', required=True)
     parser.add_argument('--platform', choices=['all','STEAM_CN','TAPTAP','BILIBILI','WEGAME'], default='all')
     parser.add_argument('--deployment', type=Path, default=ROOT / 'XingShu-Dev/build/runtime-truth-fix/deployment.json')
+    parser.add_argument('--official-baselines', type=Path, help='Audited directory containing PLATFORM/vanilla.__data for fresh-install checks')
     parser.add_argument('--android-bundle', type=Path, help='Verified Android companion directory from prepare_android_hub_bundle.py')
     parser.add_argument('--mod-library', type=Path, help='Local texture adaptation candidate; not automatically uploaded or relicensed')
     parser.add_argument('--local-build', action='store_true', help='Mark a local worktree candidate; SourceCommit is a baseline, not a published source tag')
@@ -191,6 +193,9 @@ def main():
     version_source = (ROOT / 'XingShu-Dev/src/XingShu.Runtime/XingShu/Runtime/XingShuRuntimeHost.cs').read_text('utf-8')
     runtime_version = re.search(r'#else\s+public const string RuntimeVersion = "([^"]+)"', version_source).group(1)
     hub_version = json.loads((ROOT / 'AstralParty-Hub/package.json').read_text('utf-8'))['version']
+    catalog = json.loads((ROOT / 'AstralParty-Hub/src/shared/gameCatalog.generated.json').read_text('utf-8'))
+    character_count = len(catalog['characters'])
+    preview_count = sum(bool(c.get('preview')) for c in catalog['characters'])
     publish = ROOT / '发布包'
     publish.mkdir(exist_ok=True)
     channel = {'all':'Desktop_','STEAM_CN':'Steam_','TAPTAP':'TapTap_','BILIBILI':'Bilibili_','WEGAME':'WeGame_'}[args.platform]
@@ -218,7 +223,7 @@ def main():
     release = {'FormatVersion': 1, 'Version': args.version, 'HubSha256': sha(hub),
                'SourceCommit': args.source_commit, 'RuntimeVersion': runtime_version, 'HubVersion': hub_version,
                'ExtensionManagementChannels': ['STEAM_CN', 'STEAM_GLOBAL', 'TAPTAP', 'BILIBILI', 'WEGAME'],
-               'CharacterCatalogCount': 37, 'PreviewCharacterCount': 2, 'Platforms': []}
+               'CharacterCatalogCount': character_count, 'PreviewCharacterCount': preview_count, 'Platforms': []}
     update_build = json.loads((ROOT / 'AstralParty-Hub/src-tauri/src/update_build.json').read_text('utf8'))
     if args.version != update_build['version'] and not args.local_build:
         raise SystemExit('Published version must match the build identity embedded in Hub')
@@ -307,7 +312,9 @@ Hub 扩展目录管理：Steam 国服、Steam 国际服、TapTap Windows、哔�
 
 本版 Hub 更新
 设置页提供“检查更新”：核验官方 Release 的签名清单，再下载、校验并更新重启 Hub。双端一起发布沿用 xingshu-update.json，旧 Hub 和手机助手可继续检查更新；0.1.1 Hub 也支持电脑独立发布清单。手机助手更新后仍需退出游戏、连接授权并安装游戏内插件。请完成其他安装/还原任务后再更新软件。
-角色中心展示 37 条官方角色配置，其中 2 条名称、技能和立绘尚未完整发布，单列为“官方预更新”，未提供的内容显示待更新，不算作未持有的已上线角色。
+每日星币商店：在“自动化与社交”开启，按游戏账号保存，默认关闭。只处理每日随机货架中的免费/星币商品；逐笔核对官方限购记录，余额不足时保留剩余项，不使用其他货币。
+防御点数提示：在“击飞预测”单独设置。本人防御时提示压至最低伤害、避免击飞所需的总防御和普通防御骰点；特殊效果需以游戏结算为准。
+角色中心展示 {character_count} 条官方角色配置，其中 {preview_count} 条名称、技能和立绘尚未完整发布，单列为“官方预更新”，未提供的内容显示待更新，不算作未持有的已上线角色。
 角色、皮肤、羁绊与档案采用立绘详情布局；卡牌提供完整竖版大图、效果详情及原生动态异画。特殊异化与场地效果归入地图与场地，筹码另有图鉴。
 历史对战按账号保存，可点开单场阵容、结算数据与星枢评分。PVE 显示胜负，PVP 显示名次；暂不展示结算金币，辅助转账 20 以上有额外贡献权重。没有返回的指标显示“—”。
 人机对局不加入官方战绩；本次运行内保留上一局结算，可返回房间后从“对局数据”查看，开始新局或切换账号会清除。
@@ -354,7 +361,7 @@ Windows 便携程序未附 Authenticode 代码签名；应用更新清单和手�
     shutil.copy2(ROOT / 'AstralParty-Hub/docs/specs/extension_channels.md', stage / '扩展包格式说明.md')
     shutil.copy2(ROOT / 'LICENSE', stage / 'LICENSE.txt')
     (stage / '项目来源.txt').write_text('星枢 Hub 与游戏内运行时\nhttps://github.com/Breezecaresses/Xingshu-hub\n\n代码许可见 LICENSE.txt。角色、卡面、配置及游戏资源版权归吉星派对原权利人所有，不随本项目代码许可证重新授权。\n', encoding='utf-8-sig')
-    verify_installer(stage, profiles, release, deployment)
+    verify_installer(stage, profiles, release, deployment, args.official_baselines)
     entries = sorted(p for p in stage.rglob('*') if p.is_file())
     (stage / 'SHA256SUMS.txt').write_text(''.join(f'{sha(p)}  {p.relative_to(stage).as_posix()}\n' for p in entries), encoding='utf-8')
     stage.rename(destination)

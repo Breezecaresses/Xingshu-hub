@@ -59,11 +59,11 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
       style={{
         marginBottom: 20,
         padding: '16px 20px',
-        backgroundColor: 'rgba(17, 24, 39, 0.85)',
-        borderRadius: 12,
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        backdropFilter: 'blur(10px)',
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35)',
+        backgroundColor: 'var(--glass-surface-strong)',
+        borderRadius: 14,
+        border: '1px solid var(--glass-border)',
+        backdropFilter: 'blur(18px) saturate(1.38)',
+        boxShadow: 'var(--glass-shadow)',
       }}
     >
       {/* 1. Header Bar: Multi-Client Routing Title & Global Banner */}
@@ -76,7 +76,7 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
           gap: 12,
           paddingBottom: 14,
           marginBottom: 14,
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          borderBottom: '1px solid rgba(28, 28, 28, 0.08)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -86,7 +86,7 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
               height: 34,
               borderRadius: 8,
               backgroundColor: 'rgba(99, 102, 241, 0.18)',
-              color: '#818cf8',
+              color: '#4338ca',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -96,14 +96,14 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#fff' }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
                 {isZh ? '多客户端运行状态与执行端路由' : 'Multi-Client Runtime Routing'}
               </h3>
               <span
                 style={{
                   fontSize: 10,
                   fontWeight: 700,
-                  color: '#a5b4fc',
+                  color: '#4338ca',
                   backgroundColor: 'rgba(99, 102, 241, 0.2)',
                   padding: '1px 6px',
                   borderRadius: 4,
@@ -113,7 +113,7 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
                 HS4-P1.5 DUAL-ROUTING
               </span>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
               {isZh
                 ? '主游戏账号与观战执行端独立并行运行，精准分流'
                 : 'Primary game and dedicated spectator run in parallel with deterministic routing'}
@@ -136,8 +136,8 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
               fontSize: 12,
             }}
           >
-            <span style={{ color: '#94a3b8' }}>{isZh ? '主游戏账号:' : 'Main:'}</span>
-            <strong style={{ color: mainSession ? '#4ade80' : '#94a3b8', fontFamily: 'monospace' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>{isZh ? '主游戏账号:' : 'Main:'}</span>
+            <strong style={{ color: mainSession ? '#15803d' : 'var(--text-secondary)', fontFamily: 'monospace' }}>
               {mainAccountText}
             </strong>
           </div>
@@ -155,11 +155,11 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
               fontSize: 12,
             }}
           >
-            <Zap size={13} color={isTapTapConnected ? '#818cf8' : '#fbbf24'} />
+            <Zap size={13} color={isTapTapConnected ? '#4338ca' : '#b45309'} />
             <span style={{ color: isTapTapConnected ? '#c7d2fe' : '#fef3c7' }}>
               {isZh ? '观战执行端:' : 'Spectator Runtime:'}
             </span>
-            <strong style={{ color: isTapTapConnected ? '#a5b4fc' : '#fbbf24', fontFamily: 'monospace' }}>
+            <strong style={{ color: isTapTapConnected ? '#4338ca' : '#b45309', fontFamily: 'monospace' }}>
               {spectatorExecutionText}
             </strong>
           </div>
@@ -186,13 +186,13 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
             ? '2px solid rgba(99, 102, 241, 0.8)'
             : isMain
             ? '1px solid rgba(34, 197, 94, 0.35)'
-            : '1px solid rgba(255, 255, 255, 0.1)';
+            : '1px solid rgba(28, 28, 28, 0.12)';
 
           const cardBg = isSelectedSpectator
             ? 'rgba(99, 102, 241, 0.08)'
             : isMain
             ? 'rgba(34, 197, 94, 0.05)'
-            : 'rgba(255, 255, 255, 0.02)';
+            : 'var(--glass-surface-subtle)';
 
           return (
             <div
@@ -215,8 +215,8 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
                     style={{
                       fontSize: 11,
                       fontWeight: 700,
-                      color: '#94a3b8',
-                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                      color: 'var(--text-secondary)',
+                      backgroundColor: 'var(--glass-surface-subtle)',
                       padding: '1px 6px',
                       borderRadius: 4,
                     }}
@@ -228,7 +228,7 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
                     style={{
                       fontSize: 12,
                       fontWeight: 700,
-                      color: client.platformId === 'TAPTAP' ? '#38bdf8' : '#4ade80',
+                      color: client.platformId === 'TAPTAP' ? '#0369a1' : '#15803d',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 4,
@@ -242,7 +242,7 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
                       : client.platformId}
                   </span>
 
-                  <span style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                     PID: {client.processId}
                   </span>
                 </div>
@@ -253,7 +253,7 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
                       style={{
                         fontSize: 11,
                         fontWeight: 700,
-                        color: '#fff',
+                        color: 'var(--text-primary)',
                         backgroundColor: '#6366f1',
                         padding: '2px 8px',
                         borderRadius: 4,
@@ -300,13 +300,13 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
                   alignItems: 'center',
                   fontSize: 12,
                   paddingTop: 6,
-                  borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                  borderTop: '1px solid rgba(28, 28, 28, 0.08)',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <User size={13} color="#94a3b8" />
-                  <span style={{ color: '#94a3b8' }}>PlayerId:</span>
-                  <strong style={{ color: '#fff', fontFamily: 'monospace' }}>
+                  <User size={13} color="var(--text-secondary)" />
+                  <span style={{ color: 'var(--text-secondary)' }}>PlayerId:</span>
+                  <strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                     {client.playerId !== null
                       ? client.playerId
                       : isZh
@@ -316,7 +316,7 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
                 </div>
 
                 <div>
-                  <span style={{ color: '#94a3b8', marginRight: 6 }}>{isZh ? '角色：' : 'Role:'}</span>
+                  <span style={{ color: 'var(--text-secondary)', marginRight: 6 }}>{isZh ? '角色：' : 'Role:'}</span>
                   <span
                     style={{
                       fontSize: 11,
@@ -329,10 +329,10 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
                         ? 'rgba(99, 102, 241, 0.18)'
                         : 'rgba(234, 179, 8, 0.15)',
                       color: isMain
-                        ? '#4ade80'
+                        ? '#15803d'
                         : isSpectator
-                        ? '#a5b4fc'
-                        : '#fde047',
+                        ? '#4338ca'
+                        : '#b45309',
                       border: isMain
                         ? '1px solid rgba(34, 197, 94, 0.35)'
                         : isSpectator
@@ -367,12 +367,12 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1, minWidth: 260 }}>
             <AlertTriangle size={18} color="#f59e0b" style={{ flexShrink: 0, marginTop: 2 }} />
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#b45309' }}>
                 {spectatorPrompt || (isZh
                   ? '专用观战账号尚未启动。请启动 TapTap 客户端并登录观战账号'
                   : 'Dedicated spectator account not running. Please launch TapTap with spectator account')}
               </div>
-              <div style={{ fontSize: 12, color: '#cbd5e1', marginTop: 3, lineHeight: 1.4 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.4 }}>
                 {isZh
                   ? '💡 提示：你的主游戏账号 (Steam CN) 正在独立运行，无需退出主账号！请直接启动 TapTap 客户端进入观战房间，星枢将自动路由并捕获 4 人全景手牌。'
                   : 'Note: Your primary account (Steam CN) can keep running! Launch TapTap to spectate side-by-side.'}
@@ -390,7 +390,7 @@ export const ClientSessionStatusCard: React.FC<ClientSessionStatusCardProps> = (
                 gap: 6,
                 padding: '6px 14px',
                 fontSize: 12,
-                color: '#38bdf8',
+                color: '#0369a1',
                 borderColor: 'rgba(56, 189, 248, 0.4)',
               }}
             >

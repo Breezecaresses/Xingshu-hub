@@ -1024,7 +1024,7 @@ public sealed class MonsterKillProbability : MonoBehaviour
 		return false;
 	}
 
-	private static int SyncedPveMarkDamage(BattlePlayerData attacker, BattlePlayerData defender)
+	internal static int SyncedPveMarkDamage(BattlePlayerData attacker, BattlePlayerData defender)
 	{
 		if (!IsPveAttack(attacker, defender) || defender.Property.MarkCount.property.Value <= 0)
 		{

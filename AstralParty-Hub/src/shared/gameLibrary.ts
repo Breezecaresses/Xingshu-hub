@@ -56,7 +56,7 @@ export interface LibraryAccount {
 }
 export interface LibrarySession { connectionId: string; platformId: string; livePlayerId: number | null; boundRole: string; connectionState: string; runtimeVersion: string; lastSeenAt?: string }
 export const gameCatalog = rawCatalog as unknown as {
-  version: string; source: string; configSha256: string; characters: LibraryCharacter[];
+  version: string; resourceVersion?: string; source: string; configSha256: string; characters: LibraryCharacter[];
   cards: LibraryCard[]; altArts: LibraryAltArt[]; mutators: LibraryMutator[];
   favorLevels: { Id?: number; NeedExp?: number; TotalExp: number }[];
   playerLevels: { Level: number; NeedExp: number }[];

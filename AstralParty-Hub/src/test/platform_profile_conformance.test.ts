@@ -29,7 +29,7 @@ console.log('PROJECT XINGSHU HS4-A.2: TYPESCRIPT PLATFORMPROFILE CONFORMANCE TES
 console.log('================================================================================');
 
 try {
-  // Scenario 1: Resource 150 selects the new cache without inheriting previous runtime verification
+  // Scenario 1: Resource 152 selects the new cache without inheriting previous runtime verification
   {
     const p = getDefaultPlatformProfile(PlatformId.STEAM_CN);
     assert(p !== undefined, 'Scenario 1: STEAM_CN profile exists');
@@ -53,9 +53,9 @@ try {
       'Scenario 1: old runtime hash cleared'
     );
     assert(p.bundleRelativePath !== null && p.bundleRelativePath.length > 0, 'Scenario 1: bundleRelativePath is set');
-    assert(p.bundleId === '320fce87896474de61380ab8538f2671', 'Scenario 1: bundleId matches resource 150');
+    assert(p.bundleId === '536196fba89e10e449fc9b864bfdbd51', 'Scenario 1: bundleId matches resource 152');
     assert(
-      p.containerSha256 === 'CCD9EEDC02B28C04859263C8CF4F1F9846D35A7A3FC36DC7E5344E5D6E0BBB48',
+      p.containerSha256 === '2110578F420D2DC436E1A411C28BE1381F4B9611774E64CD6549BC4D10BBFD9A',
       'Scenario 1: containerSha256 matches baseline'
     );
     assert(p.hookTextAssetPathId === 99992000, 'Scenario 1: hookTextAssetPathId === 99992000');
@@ -156,8 +156,8 @@ try {
     assert(pt.installRoot === 'F:\\TapTap\\PC Games\\524022\\CN_TAPTAP_V3.3.0', 'Scenario 4: TAPTAP installRoot matches');
     assert(pt.processExecutable === '吉星派对.exe', 'Scenario 4: TAPTAP processExecutable === 吉星派对.exe');
     assert(pt.gameRuntimeDllSha256 === 'BAE3828CEF31104E4B77856115E7106FB8539FCC0A0A6098B57A34E9354044E6', 'Scenario 4: TAPTAP gameRuntimeDllSha256 matches');
-    assert(pt.bundleId === '5fb8e4d5f293126b3cddcd49d39f8863', 'Scenario 4: TAPTAP bundleId matches resource 150');
-    assert(pt.containerSha256 === '0030E1B062EF9B528388189495BD046D4446BAC7FB2DA20C35C391647BE29B31', 'Scenario 4: TAPTAP containerSha256 matches official resource 150');
+    assert(pt.bundleId === '9fd5d18e11899a0a7de6534f8e3cda38', 'Scenario 4: TAPTAP bundleId matches resource 152');
+    assert(pt.containerSha256 === '23C072102DA9488FFFC09D9B75750D9D62B68BD16DEDA323C00467277355094F', 'Scenario 4: TAPTAP containerSha256 matches official resource 152');
     assert(pt.hookTextAssetPathId === 99992000, 'Scenario 4: TAPTAP hookTextAssetPathId is 99992000');
     assert(pt.hookSignatures !== null && pt.hookSignatures.length === 4, 'Scenario 4: TAPTAP hookSignatures has 4 signatures');
     const resTap = validatePlatformProfile(pt);

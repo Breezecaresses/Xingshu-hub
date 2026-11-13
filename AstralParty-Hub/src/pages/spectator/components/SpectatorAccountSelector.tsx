@@ -90,7 +90,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
         };
       case 'WAITING_RUNTIME':
         return {
-          color: '#38bdf8',
+          color: '#0369a1',
           bg: 'rgba(56, 189, 248, 0.15)',
           text: isZh ? '等待 Runtime 连接' : 'WAITING_RUNTIME',
           badgeText: isZh ? '【等待 Runtime 连接】' : '【WAITING RUNTIME】',
@@ -105,7 +105,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
       case 'OFFLINE':
       default:
         return {
-          color: '#94a3b8',
+          color: 'var(--text-secondary)',
           bg: 'rgba(148, 163, 184, 0.15)',
           text: isZh ? '离线 (OFFLINE)' : 'OFFLINE',
           badgeText: isZh ? '【离线】' : '【OFFLINE】',
@@ -132,12 +132,12 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
         badgeColor: '#22c55e',
         badgeBg: 'rgba(34, 197, 94, 0.15)',
         badgeBorder: 'rgba(34, 197, 94, 0.35)',
-        cardBorder: isManagedActive ? '2px solid rgba(34, 197, 94, 0.7)' : '1px solid rgba(255, 255, 255, 0.1)',
-        cardGlow: isManagedActive ? '0 0 24px rgba(34, 197, 94, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.2)',
+        cardBorder: isManagedActive ? '2px solid rgba(34, 197, 94, 0.7)' : '1px solid rgba(28, 28, 28, 0.12)',
+        cardGlow: isManagedActive ? '0 0 24px rgba(34, 197, 94, 0.2)' : '0 6px 20px rgba(28, 28, 28, 0.07)',
         bannerBg: 'rgba(34, 197, 94, 0.12)',
         bannerBorder: 'rgba(34, 197, 94, 0.35)',
-        bannerText: '#bbf7d0',
-        bannerHeaderColor: '#4ade80',
+        bannerText: '#166534',
+        bannerHeaderColor: '#15803d',
         headerIcon: <CheckCircle2 size={16} />,
         headerTitle: isZh ? '可用 (随时可分配)' : 'Available (Ready to Allocate)',
       };
@@ -149,12 +149,12 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
         badgeColor: '#ef4444',
         badgeBg: 'rgba(239, 68, 68, 0.15)',
         badgeBorder: 'rgba(239, 68, 68, 0.35)',
-        cardBorder: isManagedActive ? '2px solid rgba(239, 68, 68, 0.7)' : '1px solid rgba(255, 255, 255, 0.1)',
-        cardGlow: isManagedActive ? '0 0 24px rgba(239, 68, 68, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.2)',
+        cardBorder: isManagedActive ? '2px solid rgba(239, 68, 68, 0.7)' : '1px solid rgba(28, 28, 28, 0.12)',
+        cardGlow: isManagedActive ? '0 0 24px rgba(239, 68, 68, 0.2)' : '0 6px 20px rgba(28, 28, 28, 0.07)',
         bannerBg: 'rgba(239, 68, 68, 0.12)',
         bannerBorder: 'rgba(239, 68, 68, 0.35)',
-        bannerText: '#fecaca',
-        bannerHeaderColor: '#f87171',
+        bannerText: '#9f1239',
+        bannerHeaderColor: '#be123c',
         headerIcon: <ServerOff size={16} />,
         headerTitle: isZh ? '服务异常' : 'Service Error',
       };
@@ -163,15 +163,15 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
     if (isManagedUnconfigured) {
       return {
         badgeText: isZh ? '服务未配置' : 'Service Not Configured',
-        badgeColor: '#f59e0b',
-        badgeBg: 'rgba(245, 158, 11, 0.15)',
-        badgeBorder: 'rgba(245, 158, 11, 0.35)',
-        cardBorder: isManagedActive ? '2px solid rgba(245, 158, 11, 0.7)' : '1px solid rgba(255, 255, 255, 0.1)',
-        cardGlow: isManagedActive ? '0 0 24px rgba(245, 158, 11, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.2)',
-        bannerBg: 'rgba(245, 158, 11, 0.12)',
-        bannerBorder: 'rgba(245, 158, 11, 0.35)',
-        bannerText: '#fef3c7',
-        bannerHeaderColor: '#fbbf24',
+        badgeColor: '#d97706',
+        badgeBg: 'rgba(245, 158, 11, 0.16)',
+        badgeBorder: 'rgba(217, 119, 6, 0.45)',
+        cardBorder: isManagedActive ? '2px solid rgba(245, 158, 11, 0.7)' : '1px solid rgba(28, 28, 28, 0.12)',
+        cardGlow: isManagedActive ? '0 0 24px rgba(245, 158, 11, 0.2)' : '0 6px 20px rgba(28, 28, 28, 0.07)',
+        bannerBg: 'rgba(255, 251, 235, 0.92)',
+        bannerBorder: 'rgba(217, 119, 6, 0.38)',
+        bannerText: '#92400e',
+        bannerHeaderColor: '#b45309',
         headerIcon: <AlertTriangle size={16} />,
         headerTitle: isZh ? '服务未配置' : 'Service Not Configured',
       };
@@ -180,15 +180,15 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
     // Dynamic fallback for any other status (e.g. ALLOCATING, READY, IN_USE)
     return {
       badgeText: managedStatus,
-      badgeColor: '#38bdf8',
+      badgeColor: '#0369a1',
       badgeBg: 'rgba(56, 189, 248, 0.15)',
       badgeBorder: 'rgba(56, 189, 248, 0.35)',
-      cardBorder: isManagedActive ? '2px solid rgba(56, 189, 248, 0.7)' : '1px solid rgba(255, 255, 255, 0.1)',
-      cardGlow: isManagedActive ? '0 0 24px rgba(56, 189, 248, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.2)',
+      cardBorder: isManagedActive ? '2px solid rgba(56, 189, 248, 0.7)' : '1px solid rgba(28, 28, 28, 0.12)',
+      cardGlow: isManagedActive ? '0 0 24px rgba(56, 189, 248, 0.2)' : '0 6px 20px rgba(28, 28, 28, 0.07)',
       bannerBg: 'rgba(56, 189, 248, 0.12)',
       bannerBorder: 'rgba(56, 189, 248, 0.35)',
-      bannerText: '#e0f2fe',
-      bannerHeaderColor: '#38bdf8',
+      bannerText: '#075985',
+      bannerHeaderColor: '#0369a1',
       headerIcon: <Info size={16} />,
       headerTitle: managedStatus,
     };
@@ -214,15 +214,15 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
             flexDirection: 'column',
             justifyContent: 'space-between',
             backgroundColor: isUserOwnedActive
-              ? 'rgba(17, 24, 39, 0.85)'
-              : 'rgba(17, 24, 39, 0.65)',
+              ? 'var(--glass-surface-strong)'
+              : 'var(--glass-surface)',
             border: isUserOwnedActive
               ? '2px solid rgba(99, 102, 241, 0.7)'
-              : '1px solid rgba(255, 255, 255, 0.1)',
+              : '1px solid rgba(28, 28, 28, 0.12)',
             borderRadius: 12,
             boxShadow: isUserOwnedActive
               ? '0 0 24px rgba(99, 102, 241, 0.2)'
-              : '0 4px 12px rgba(0, 0, 0, 0.2)',
+              : '0 6px 20px rgba(28, 28, 28, 0.07)',
             transition: 'all 0.2s ease',
             position: 'relative',
             overflow: 'hidden',
@@ -236,7 +236,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                 top: 0,
                 right: 0,
                 backgroundColor: 'var(--primary, #6366f1)',
-                color: '#fff',
+                color: 'var(--text-primary)',
                 fontSize: 11,
                 fontWeight: 700,
                 padding: '4px 14px',
@@ -270,14 +270,14 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#fff' }}>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
                     {isZh ? '【我的观战账号】' : '【My Spectator Account】'}
                   </h3>
                   <span
                     style={{
                       fontSize: 11,
                       fontWeight: 700,
-                      color: '#a5b4fc',
+                      color: '#4338ca',
                       backgroundColor: 'rgba(99, 102, 241, 0.15)',
                       padding: '2px 8px',
                       borderRadius: 4,
@@ -305,7 +305,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                       : userAccountStatus}
                   </span>
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                   {userAccountStatus === 'IDENTITY_PENDING'
                     ? (isZh
                         ? '等待账号识别 (进入观战房间后将自动读取当前账号)'
@@ -322,7 +322,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
               style={{
                 fontSize: 13,
                 lineHeight: 1.6,
-                color: 'var(--text-secondary, #cbd5e1)',
+                color: 'var(--text-secondary)',
                 marginTop: 8,
                 marginBottom: 16,
               }}
@@ -346,8 +346,8 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                 style={{
                   padding: '7px 10px',
                   borderRadius: 6,
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.07)',
+                  backgroundColor: 'var(--glass-surface-subtle)',
+                  border: '1px solid rgba(28, 28, 28, 0.08)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
@@ -355,8 +355,8 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
               >
                 <ShieldCheck size={14} color="#38bdf8" />
                 <div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>{isZh ? '运行平台' : 'Platform'}</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#38bdf8' }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{isZh ? '运行平台' : 'Platform'}</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#0369a1' }}>
                     {userAccountInfo?.platformName || (isZh ? 'TapTap 客户端 (专用观战)' : 'TapTap (Dedicated Spectator)')}
                   </div>
                 </div>
@@ -367,8 +367,8 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                 style={{
                   padding: '7px 10px',
                   borderRadius: 6,
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.07)',
+                  backgroundColor: 'var(--glass-surface-subtle)',
+                  border: '1px solid rgba(28, 28, 28, 0.08)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
@@ -376,7 +376,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
               >
                 <User size={14} color={userVisuals.color} />
                 <div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>{isZh ? '账号状态' : 'Status'}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{isZh ? '账号状态' : 'Status'}</div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: userVisuals.color }}>
                     {userAccountStatus === 'IDENTITY_PENDING'
                       ? (isZh ? '【Runtime 已连接】' : 'IDENTITY_PENDING')
@@ -392,8 +392,8 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                 style={{
                   padding: '7px 10px',
                   borderRadius: 6,
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.07)',
+                  backgroundColor: 'var(--glass-surface-subtle)',
+                  border: '1px solid rgba(28, 28, 28, 0.08)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
@@ -401,7 +401,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
               >
                 <Gamepad2 size={14} color={effectiveGameRunning ? '#22c55e' : '#f59e0b'} />
                 <div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>{isZh ? '游戏状态' : 'Game Status'}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{isZh ? '游戏状态' : 'Game Status'}</div>
                   <div
                     style={{
                       fontSize: 12,
@@ -425,21 +425,21 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                 style={{
                   padding: '7px 10px',
                   borderRadius: 6,
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.07)',
+                  backgroundColor: 'var(--glass-surface-subtle)',
+                  border: '1px solid rgba(28, 28, 28, 0.08)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
                 }}
               >
-                <Radio size={14} color={effectiveConnected ? '#22c55e' : '#94a3b8'} />
+                <Radio size={14} color={effectiveConnected ? '#22c55e' : 'var(--text-secondary)'} />
                 <div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>{isZh ? 'Runtime 状态' : 'Runtime'}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{isZh ? 'Runtime 状态' : 'Runtime'}</div>
                   <div
                     style={{
                       fontSize: 12,
                       fontWeight: 600,
-                      color: effectiveConnected ? '#22c55e' : '#94a3b8',
+                      color: effectiveConnected ? '#22c55e' : 'var(--text-secondary)',
                     }}
                   >
                     {effectiveConnected
@@ -458,8 +458,8 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                 style={{
                   padding: '7px 10px',
                   borderRadius: 6,
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.07)',
+                  backgroundColor: 'var(--glass-surface-subtle)',
+                  border: '1px solid rgba(28, 28, 28, 0.08)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
@@ -468,12 +468,12 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
               >
                 <User size={14} color="#818cf8" />
                 <div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>{isZh ? '当前账号 ID' : 'Player ID'}</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', fontFamily: 'monospace' }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{isZh ? '当前账号 ID' : 'Player ID'}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                     {formatSpectatorPlayerId(effectivePlayerId, effectiveConnected || effectiveGameRunning, isZh)}
                   </div>
                   {userAccountInfo?.lastKnownPlayerId && !effectivePlayerId && (
-                    <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
                       {isZh ? `上次识别账号: ${userAccountInfo.lastKnownPlayerId}` : `Last: ${userAccountInfo.lastKnownPlayerId}`}
                     </div>
                   )}
@@ -489,7 +489,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                   borderRadius: 6,
                   backgroundColor: 'rgba(245, 158, 11, 0.1)',
                   border: '1px solid rgba(245, 158, 11, 0.25)',
-                  color: '#fbbf24',
+                  color: '#b45309',
                   fontSize: 12,
                   display: 'flex',
                   alignItems: 'center',
@@ -513,7 +513,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                   borderRadius: 6,
                   backgroundColor: 'rgba(56, 189, 248, 0.1)',
                   border: '1px solid rgba(56, 189, 248, 0.25)',
-                  color: '#38bdf8',
+                  color: '#0369a1',
                   fontSize: 12,
                   display: 'flex',
                   alignItems: 'center',
@@ -537,7 +537,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                   borderRadius: 6,
                   backgroundColor: 'rgba(34, 197, 94, 0.1)',
                   border: '1px solid rgba(34, 197, 94, 0.25)',
-                  color: '#4ade80',
+                  color: '#15803d',
                   fontSize: 12,
                   display: 'flex',
                   alignItems: 'center',
@@ -604,7 +604,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                   alignItems: 'center',
                   gap: 6,
                   padding: '9px 14px',
-                  color: '#94a3b8',
+                  color: 'var(--text-secondary)',
                   opacity: 0.65,
                   cursor: 'not-allowed',
                 }}
@@ -622,7 +622,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                   alignItems: 'center',
                   gap: 6,
                   padding: '9px 14px',
-                  color: '#38bdf8',
+                  color: '#0369a1',
                 }}
                 title={isZh ? '启动已绑定的专用观战客户端' : 'Launch Dedicated TapTap Spectator Client'}
               >
@@ -643,8 +643,8 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
             flexDirection: 'column',
             justifyContent: 'space-between',
             backgroundColor: isManagedActive
-              ? 'rgba(17, 24, 39, 0.85)'
-              : 'rgba(17, 24, 39, 0.65)',
+              ? 'var(--glass-surface-strong)'
+              : 'var(--glass-surface)',
             border: managedVisuals.cardBorder,
             borderRadius: 12,
             boxShadow: managedVisuals.cardGlow,
@@ -661,7 +661,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                 top: 0,
                 right: 0,
                 backgroundColor: managedVisuals.badgeColor,
-                color: isManagedError ? '#fff' : '#000',
+                color: isManagedError ? '#fff' : '#1c1c1c',
                 fontSize: 11,
                 fontWeight: 700,
                 padding: '4px 14px',
@@ -695,7 +695,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#fff' }}>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
                     {isZh ? '【星枢托管观战账号】' : '【XingShu Managed Account】'}
                   </h3>
                   <span
@@ -726,7 +726,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                     {managedStatus}
                   </span>
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                   {isLocalValidation
                     ? (isZh ? '本机验证 · 使用已绑定平台的官方客户端' : 'Local validation · Bound TapTap official client')
                     : (isZh ? '独立服务托管 · 当前可先在本机验证' : 'Managed service · Local validation available')}
@@ -739,7 +739,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
               style={{
                 fontSize: 13,
                 lineHeight: 1.6,
-                color: 'var(--text-secondary, #cbd5e1)',
+                color: 'var(--text-secondary)',
                 marginTop: 8,
                 marginBottom: 16,
               }}
@@ -763,8 +763,8 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                 style={{
                   padding: '7px 10px',
                   borderRadius: 6,
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.07)',
+                  backgroundColor: 'var(--glass-surface-subtle)',
+                  border: '1px solid rgba(28, 28, 28, 0.08)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
@@ -772,8 +772,8 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
               >
                 <Sparkles size={14} color="#818cf8" />
                 <div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>{isZh ? '服务类别' : 'Service'}</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#818cf8' }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{isZh ? '服务类别' : 'Service'}</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#4338ca' }}>
                     {isLocalValidation ? (isZh ? '本机验证 Worker' : 'Local validation worker') : (isZh ? '独立服务待接入' : 'Managed service pending')}
                   </div>
                 </div>
@@ -784,8 +784,8 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                 style={{
                   padding: '7px 10px',
                   borderRadius: 6,
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.07)',
+                  backgroundColor: 'var(--glass-surface-subtle)',
+                  border: '1px solid rgba(28, 28, 28, 0.08)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
@@ -793,7 +793,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
               >
                 {managedVisuals.headerIcon}
                 <div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>{isZh ? '当前状态' : 'Status'}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{isZh ? '当前状态' : 'Status'}</div>
                   <div style={{ fontSize: 12, fontWeight: 600, color: managedVisuals.badgeColor }}>
                     {managedVisuals.badgeText}
                   </div>
@@ -833,7 +833,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                     fontSize: 11,
                     padding: '1px 6px',
                     borderRadius: 4,
-                    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                    backgroundColor: 'var(--glass-code-bg)',
                     fontFamily: 'monospace',
                   }}
                 >
@@ -878,7 +878,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                   padding: '9px 16px',
                   backgroundColor: '#16a34a',
                   borderColor: '#22c55e',
-                  color: '#fff',
+                  color: 'var(--text-primary)',
                   fontWeight: 600,
                 }}
               >
@@ -898,7 +898,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                   gap: 8,
                   padding: '9px 16px',
                   borderColor: 'rgba(239, 68, 68, 0.4)',
-                  color: '#f87171',
+                  color: '#be123c',
                   fontWeight: 600,
                 }}
               >
@@ -918,7 +918,7 @@ export const SpectatorAccountSelector: React.FC<SpectatorAccountSelectorProps> =
                   gap: 8,
                   padding: '9px 16px',
                   borderColor: 'rgba(245, 158, 11, 0.4)',
-                  color: '#fbbf24',
+                  color: '#b45309',
                   fontWeight: 600,
                 }}
               >

@@ -39,7 +39,7 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def previous_hashes(manifest):
+def previous_hashes(manifest, additional_manifests=()):
     # Only intact candidates for this exact game/resource build are accepted.
     validate_baseline_manifest(manifest)
     found = set()
@@ -48,13 +48,20 @@ def previous_hashes(manifest):
     releases = ROOT / '发布包'
     manifests = set(releases.glob('XingShu_Android_*/candidate.json'))
     manifests.update(releases.glob('XingShu_*/Android/candidate.json'))
+    # Local hotfixes need the same verified upgrade path before they are packaged.
+    explicit = {Path(path).resolve() for path in additional_manifests}
+    manifests.update(explicit)
     for path in sorted(manifests):
         old = json.loads(path.read_text(encoding='utf-8-sig'))
         if any(old.get(key) != manifest.get(key) for key in ('platform', 'package', 'appVersion', 'originalSha256', 'bundleRelativePath')):
+            if path in explicit:
+                raise ValueError('Explicit previous Android manifest belongs to a different game baseline')
             continue
         payload = (path.parent / old['candidate']).resolve()
         if path.parent.resolve() not in payload.parents:
             raise ValueError('Previous Android payload escapes its package')
         if payload.is_file() and sha(payload) == old['candidateSha256']:
             found.add(old['candidateSha256'])
+        elif path in explicit:
+            raise ValueError('Explicit previous Android payload is missing or corrupt')
     return sorted(found - {manifest['candidateSha256'], manifest['originalSha256']})

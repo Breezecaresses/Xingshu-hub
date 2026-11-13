@@ -155,41 +155,41 @@ export const SpectatorStepIndicator: React.FC<SpectatorStepIndicatorProps> = ({
           badgeBg: 'rgba(34, 197, 94, 0.2)',
           badgeColor: '#22c55e',
           badgeBorder: '1px solid rgba(34, 197, 94, 0.4)',
-          textColor: '#f1f5f9',
-          subtextColor: '#4ade80',
+          textColor: 'var(--text-primary)',
+          subtextColor: '#15803d',
           lineColor: '#22c55e',
           panelBorder: 'rgba(34, 197, 94, 0.25)',
         };
       case 'active':
         return {
           badgeBg: 'rgba(99, 102, 241, 0.25)',
-          badgeColor: '#818cf8',
+          badgeColor: '#4338ca',
           badgeBorder: '1px solid rgba(99, 102, 241, 0.6)',
-          textColor: '#ffffff',
-          subtextColor: '#a5b4fc',
+          textColor: 'var(--text-primary)',
+          subtextColor: '#4338ca',
           lineColor: '#6366f1',
           panelBorder: 'rgba(99, 102, 241, 0.4)',
         };
       case 'warning':
         return {
           badgeBg: 'rgba(245, 158, 11, 0.2)',
-          badgeColor: '#fbbf24',
-          badgeBorder: '1px solid rgba(245, 158, 11, 0.5)',
-          textColor: '#fef3c7',
-          subtextColor: '#f59e0b',
-          lineColor: '#f59e0b',
-          panelBorder: 'rgba(245, 158, 11, 0.3)',
+          badgeColor: '#b45309',
+          badgeBorder: '1px solid rgba(217, 119, 6, 0.5)',
+          textColor: '#92400e',
+          subtextColor: '#b45309',
+          lineColor: '#d97706',
+          panelBorder: 'rgba(217, 119, 6, 0.35)',
         };
       case 'pending':
       default:
         return {
-          badgeBg: 'rgba(255, 255, 255, 0.05)',
-          badgeColor: '#64748b',
-          badgeBorder: '1px solid rgba(255, 255, 255, 0.08)',
-          textColor: '#94a3b8',
-          subtextColor: '#64748b',
-          lineColor: 'rgba(255, 255, 255, 0.08)',
-          panelBorder: 'rgba(255, 255, 255, 0.05)',
+          badgeBg: 'var(--glass-surface-subtle)',
+          badgeColor: 'var(--text-muted)',
+          badgeBorder: '1px solid rgba(28, 28, 28, 0.08)',
+          textColor: 'var(--text-secondary)',
+          subtextColor: 'var(--text-muted)',
+          lineColor: 'rgba(28, 28, 28, 0.08)',
+          panelBorder: 'var(--glass-surface-subtle)',
         };
     }
   };
@@ -200,9 +200,9 @@ export const SpectatorStepIndicator: React.FC<SpectatorStepIndicatorProps> = ({
       style={{
         padding: '12px 16px',
         marginBottom: 18,
-        backgroundColor: 'rgba(17, 24, 39, 0.65)',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
+        backgroundColor: 'var(--glass-surface)',
+        backdropFilter: 'blur(18px) saturate(1.38)',
+        border: '1px solid var(--glass-border)',
         borderRadius: 12,
       }}
     >
@@ -299,7 +299,7 @@ export const SpectatorStepIndicator: React.FC<SpectatorStepIndicatorProps> = ({
                 <div
                   style={{
                     marginLeft: 'auto',
-                    color: 'rgba(255, 255, 255, 0.15)',
+                    color: 'rgba(28, 28, 28, 0.12)',
                     fontSize: 12,
                     fontWeight: 300,
                     userSelect: 'none',

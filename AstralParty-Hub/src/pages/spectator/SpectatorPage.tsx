@@ -189,8 +189,8 @@ export const SpectatorPage: React.FC = () => {
         return {
           label: isZh ? '⏱ 等待回合操作' : '⏱ Waiting for Turn',
           className: 'status-pill info',
-          color: '#06b6d4',
-          bg: 'rgba(6, 182, 212, 0.15)',
+          color: '#0369a1',
+          bg: 'rgba(14, 165, 233, 0.14)',
         };
       case 'SESSION_EPOCH_CHANGED':
         return {
@@ -299,7 +299,7 @@ export const SpectatorPage: React.FC = () => {
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: '#fff' }}>
+            <h1 className="aurora-sheen-text" style={{ fontSize: 22, fontWeight: 750, margin: 0 }}>
               {isZh ? '全知观战助手' : 'Omniscient Spectator Assistant'}
             </h1>
             <span
@@ -316,7 +316,7 @@ export const SpectatorPage: React.FC = () => {
               HS4-P1.5
             </span>
           </div>
-          <p style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
             {isZh
               ? '四人全景实时手牌与局势透视 · 双客户端智能路由'
               : 'Real-time 4-player hand card display and tactical insight with multi-client routing'}
@@ -329,16 +329,16 @@ export const SpectatorPage: React.FC = () => {
             style={{
               padding: '6px 12px',
               borderRadius: 6,
-              backgroundColor: spectatorSession ? 'rgba(99, 102, 241, 0.2)' : 'rgba(245, 158, 11, 0.15)',
-              border: spectatorSession ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid rgba(245, 158, 11, 0.3)',
+              backgroundColor: spectatorSession ? 'rgba(238, 242, 255, 0.92)' : 'rgba(255, 255, 255, 0.88)',
+              border: spectatorSession ? '1px solid rgba(99, 102, 241, 0.35)' : '1px solid rgba(217, 119, 6, 0.35)',
               fontSize: 12,
               display: 'flex',
               alignItems: 'center',
               gap: 6,
             }}
           >
-            <span style={{ color: '#94a3b8' }}>{isZh ? '观战执行端：' : 'Spectator Runtime: '}</span>
-            <strong style={{ color: spectatorSession ? '#a5b4fc' : '#fbbf24', fontFamily: 'monospace' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>{isZh ? '观战执行端：' : 'Spectator Runtime: '}</span>
+            <strong style={{ color: spectatorSession ? '#4338ca' : '#b45309', fontFamily: 'monospace' }}>
               {spectatorSession ? `${spectatorPlatformName} · ${effectiveSpectatorId ?? (isZh ? '等待识别' : 'Pending')}` : (isZh ? `${spectatorPlatformName} · 未连接` : `${spectatorPlatformName} · Disconnected`)}
             </strong>
           </div>
@@ -355,8 +355,8 @@ export const SpectatorPage: React.FC = () => {
               gap: 6,
             }}
           >
-            <span style={{ color: '#94a3b8' }}>{isZh ? '主游戏账号：' : 'Main Account: '}</span>
-            <strong style={{ color: mainSession ? '#4ade80' : '#94a3b8', fontFamily: 'monospace' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>{isZh ? '主游戏账号：' : 'Main Account: '}</span>
+            <strong style={{ color: mainSession ? '#15803d' : 'var(--text-secondary)', fontFamily: 'monospace' }}>
               {mainSession ? `Steam CN · ${effectiveMainId ?? (isZh ? '已连接' : 'Connected')}` : (isZh ? 'Steam CN · 未连接' : 'Steam CN · Disconnected')}
             </strong>
           </div>
@@ -444,10 +444,10 @@ export const SpectatorPage: React.FC = () => {
               <AlertTriangle size={22} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#fca5a5' }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#be123c' }}>
                 {roleMismatchWarning || spectatorPrompt || (isZh ? '专用观战账号尚未启动。请启动已绑定的观战客户端并登录观战账号' : 'Dedicated spectator account not running. Please launch TapTap with spectator account')}
               </div>
-              <div style={{ fontSize: 13, color: '#cbd5e1', marginTop: 4, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.5 }}>
                 {isZh
                   ? '安全防范规则：全知观战系统严禁使用主游戏账号直接进入观战房间，以防占用对局席位或干扰排位积分。当前主游戏账号 (Steam CN) 可保持在后台或前台正常运行，无需退出主账号！请直接启动已绑定的观战客户端进入观战房间。'
                   : 'Security Rule: Do NOT use your primary ladder account for spectating. Your primary account (Steam CN) can keep running! Launch TapTap client to spectate.'}
@@ -458,7 +458,7 @@ export const SpectatorPage: React.FC = () => {
             <button
               className="btn btn-secondary"
               onClick={launchSpectatorClient}
-              style={{ fontSize: 12, padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 6, color: '#38bdf8' }}
+              style={{ fontSize: 12, padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 6, color: '#0369a1' }}
             >
               <Play size={14} />
               <span>{isZh ? `启动 ${spectatorPlatformName} 观战客户端` : `Launch ${spectatorPlatformName}`}</span>
@@ -491,8 +491,8 @@ export const SpectatorPage: React.FC = () => {
             padding: '12px 18px',
             backgroundColor:
               accountMode === 'USER_OWNED'
-                ? 'rgba(17, 24, 39, 0.75)'
-                : 'rgba(30, 27, 20, 0.85)',
+                ? 'var(--glass-surface)'
+                : 'rgba(255, 248, 238, 0.92)',
             border:
               accountMode === 'USER_OWNED'
                 ? '1px solid rgba(99, 102, 241, 0.35)'
@@ -522,7 +522,7 @@ export const SpectatorPage: React.FC = () => {
                     accountMode === 'USER_OWNED'
                       ? 'rgba(99, 102, 241, 0.2)'
                       : 'rgba(245, 158, 11, 0.2)',
-                  color: accountMode === 'USER_OWNED' ? '#818cf8' : '#fbbf24',
+                  color: accountMode === 'USER_OWNED' ? '#4338ca' : '#b45309',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -533,7 +533,7 @@ export const SpectatorPage: React.FC = () => {
 
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
                     {accountMode === 'USER_OWNED'
                       ? isZh
                         ? '当前模式: 【我的观战账号】'
@@ -551,7 +551,7 @@ export const SpectatorPage: React.FC = () => {
                         accountMode === 'USER_OWNED'
                           ? 'rgba(99, 102, 241, 0.15)'
                           : 'rgba(245, 158, 11, 0.15)',
-                      color: accountMode === 'USER_OWNED' ? '#a5b4fc' : '#fbbf24',
+                      color: accountMode === 'USER_OWNED' ? '#4338ca' : '#b45309',
                       fontWeight: 600,
                       fontFamily: 'monospace',
                     }}
@@ -566,7 +566,7 @@ export const SpectatorPage: React.FC = () => {
                       padding: '2px 8px',
                       borderRadius: 4,
                       backgroundColor: 'rgba(99, 102, 241, 0.2)',
-                      color: '#a5b4fc',
+                      color: '#4338ca',
                       fontWeight: 600,
                       border: '1px solid rgba(99, 102, 241, 0.4)',
                     }}
@@ -579,7 +579,7 @@ export const SpectatorPage: React.FC = () => {
                       padding: '2px 8px',
                       borderRadius: 4,
                       backgroundColor: 'rgba(34, 197, 94, 0.15)',
-                      color: '#4ade80',
+                      color: '#15803d',
                       fontWeight: 600,
                       border: '1px solid rgba(34, 197, 94, 0.35)',
                     }}
@@ -602,12 +602,12 @@ export const SpectatorPage: React.FC = () => {
                             : 'rgba(148, 163, 184, 0.15)',
                         color:
                           userAccountInfo.status === 'READY' || userAccountInfo.status === 'IDENTITY_PENDING'
-                            ? '#4ade80'
+                            ? '#15803d'
                             : userAccountInfo.status === 'IN_USE'
-                            ? '#c084fc'
+                            ? '#6d28d9'
                             : userAccountInfo.status === 'WAITING_RUNTIME'
-                            ? '#38bdf8'
-                            : '#94a3b8',
+                            ? '#0369a1'
+                            : 'var(--text-secondary)',
                         fontWeight: 600,
                         fontFamily: 'monospace',
                       }}
@@ -628,7 +628,7 @@ export const SpectatorPage: React.FC = () => {
                 <div
                   style={{
                     fontSize: 12,
-                    color: 'var(--text-secondary, #94a3b8)',
+                    color: 'var(--text-secondary)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
@@ -641,12 +641,12 @@ export const SpectatorPage: React.FC = () => {
                       <span>状态: <strong style={{
                         color:
                           userAccountInfo.status === 'READY' || userAccountInfo.status === 'IDENTITY_PENDING'
-                            ? '#4ade80'
+                            ? '#15803d'
                             : userAccountInfo.status === 'IN_USE'
-                            ? '#c084fc'
+                            ? '#6d28d9'
                             : userAccountInfo.status === 'WAITING_RUNTIME'
-                            ? '#38bdf8'
-                            : '#94a3b8'
+                            ? '#0369a1'
+                            : 'var(--text-secondary)'
                       }}>
                         {userAccountInfo.status === 'IDENTITY_PENDING'
                           ? (isZh ? 'Runtime 已连接 (等待账号识别)' : 'Runtime Connected (Identity Pending)')
@@ -658,24 +658,24 @@ export const SpectatorPage: React.FC = () => {
                           ? (isZh ? '等待 Runtime 连接' : 'Waiting Runtime')
                           : (isZh ? '离线' : 'Offline')}
                       </strong></span>
-                      <span>平台: <strong style={{ color: '#38bdf8' }}>{userAccountInfo.platformName || 'Steam 国服'}</strong></span>
+                      <span>平台: <strong style={{ color: '#0369a1' }}>{userAccountInfo.platformName || 'Steam 国服'}</strong></span>
                       <span>
-                        PlayerId: <strong style={{ color: '#fff' }}>{formatSpectatorPlayerId(userAccountInfo.currentSessionPlayerId ?? spectatorPlayerId, userAccountInfo.runtimeConnected, isZh)}</strong>
+                        PlayerId: <strong style={{ color: 'var(--text-primary)' }}>{formatSpectatorPlayerId(userAccountInfo.currentSessionPlayerId ?? spectatorPlayerId, userAccountInfo.runtimeConnected, isZh)}</strong>
                         {userAccountInfo.lastKnownPlayerId && !(userAccountInfo.currentSessionPlayerId ?? spectatorPlayerId) && (
-                          <span style={{ fontSize: 11, color: '#64748b', marginLeft: 4 }}>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 4 }}>
                             ({isZh ? `上次: ${userAccountInfo.lastKnownPlayerId}` : `Last: ${userAccountInfo.lastKnownPlayerId}`})
                           </span>
                         )}
                       </span>
                       <span>
                         Runtime:{' '}
-                        <strong style={{ color: userAccountInfo.runtimeConnected ? '#22c55e' : '#f59e0b' }}>
+                        <strong style={{ color: userAccountInfo.runtimeConnected ? '#15803d' : '#b45309' }}>
                           {userAccountInfo.runtimeConnected ? (isZh ? '已就绪 (TCP: 25890)' : 'Connected') : (isZh ? '等待连接' : 'Disconnected')}
                         </strong>
                       </span>
                     </>
                   ) : (
-                    <span style={{ color: managedAccountInfo.status === 'AVAILABLE' ? '#22c55e' : managedAccountInfo.status === 'ERROR' ? '#ef4444' : '#f59e0b', fontWeight: 600 }}>
+                    <span style={{ color: managedAccountInfo.status === 'AVAILABLE' ? '#15803d' : managedAccountInfo.status === 'ERROR' ? '#be123c' : '#b45309', fontWeight: 600 }}>
                       {managedAccountInfo.status} — {managedAccountInfo.message}
                     </span>
                   )}
@@ -719,7 +719,7 @@ export const SpectatorPage: React.FC = () => {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: 'var(--text-secondary, #94a3b8)',
+                  color: 'var(--text-secondary)',
                   cursor: 'pointer',
                   padding: 4,
                   display: 'flex',
@@ -738,9 +738,9 @@ export const SpectatorPage: React.FC = () => {
               style={{
                 marginTop: 10,
                 paddingTop: 10,
-                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                borderTop: '1px solid rgba(28, 28, 28, 0.08)',
                 fontSize: 12,
-                color: 'var(--text-secondary, #cbd5e1)',
+                color: 'var(--text-secondary)',
                 lineHeight: 1.5,
               }}
             >
@@ -759,7 +759,7 @@ export const SpectatorPage: React.FC = () => {
                     : '💡 Bound to local client. Join any ongoing room via spectate code in Astral Party to stream all 4 players hand cards in real-time.'}
                 </div>
               ) : (
-                <div style={{ color: managedAccountInfo.status === 'ERROR' ? '#fca5a5' : managedAccountInfo.status === 'AVAILABLE' ? '#bbf7d0' : '#fef3c7' }}>
+                <div style={{ color: managedAccountInfo.status === 'ERROR' ? '#be123c' : managedAccountInfo.status === 'AVAILABLE' ? '#166534' : '#92400e' }}>
                   {managedAccountInfo.message}
                 </div>
               )}
@@ -797,16 +797,16 @@ export const SpectatorPage: React.FC = () => {
           justifyContent: 'space-between',
           flexWrap: 'wrap',
           gap: 16,
-          backgroundColor: 'rgba(17, 24, 39, 0.65)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          backgroundColor: 'var(--glass-surface)',
+          backdropFilter: 'blur(18px) saturate(1.38)',
+          border: '1px solid var(--glass-border)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
           {/* Transport Indicator */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Radio size={15} color={isConnected ? '#22c55e' : '#94a3b8'} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: isConnected ? '#fff' : 'var(--text-secondary)' }}>
+            <Radio size={15} color={isConnected ? '#22c55e' : 'var(--text-secondary)'} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: isConnected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
               {isConnected
                 ? isZh
                   ? '已连接 (Loopback TCP: 127.0.0.1:25890)'
@@ -824,7 +824,7 @@ export const SpectatorPage: React.FC = () => {
               style={{
                 fontSize: 12,
                 backgroundColor: 'rgba(56, 189, 248, 0.12)',
-                color: '#38bdf8',
+                color: '#0369a1',
                 padding: '2px 8px',
                 borderRadius: 4,
                 fontWeight: 600,
@@ -836,10 +836,10 @@ export const SpectatorPage: React.FC = () => {
 
           {/* Room ID Tag */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Gamepad2 size={14} color="var(--accent, #a855f7)" />
+            <Gamepad2 size={14} color="var(--accent)" />
             <span style={{ fontSize: 13 }}>
               {isZh ? '房间号: ' : 'Room ID: '}
-              <strong style={{ color: roomState.roomId ? 'var(--accent, #a855f7)' : 'var(--text-muted, #64748b)' }}>
+              <strong style={{ color: roomState.roomId ? 'var(--accent)' : 'var(--text-muted)' }}>
                 {roomState.roomId ? roomState.roomId : isZh ? '未在对局' : 'None'}
               </strong>
             </span>
@@ -850,10 +850,10 @@ export const SpectatorPage: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
               <Clock size={13} />
               <span>
-                Epoch: <strong style={{ color: '#fff' }}>{roomState.epoch}</strong> | Seq:{' '}
-                <strong style={{ color: '#fff' }}>#{roomState.sequenceNumber}</strong>
+                Epoch: <strong style={{ color: 'var(--text-primary)' }}>{roomState.epoch}</strong> | Seq:{' '}
+                <strong style={{ color: 'var(--text-primary)' }}>#{roomState.sequenceNumber}</strong>
                 {!isConnected && (
-                  <span style={{ color: '#f87171', fontWeight: 600, marginLeft: 8 }}>
+                  <span style={{ color: '#be123c', fontWeight: 600, marginLeft: 8 }}>
                     {isZh ? '[最后快照 · 数据已过期]' : '[Last Snapshot · Stale]'}
                   </span>
                 )}
@@ -904,8 +904,8 @@ export const SpectatorPage: React.FC = () => {
                   padding: 16,
                   display: 'flex',
                   flexDirection: 'column',
-                  backgroundColor: 'rgba(17, 24, 39, 0.75)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  backgroundColor: 'var(--glass-surface-strong)',
+                  border: '1px solid var(--glass-border)',
                   borderRadius: 10,
                   minHeight: 280,
                   transition: 'all 0.2s ease',
@@ -919,7 +919,7 @@ export const SpectatorPage: React.FC = () => {
                     alignItems: 'center',
                     marginBottom: 14,
                     paddingBottom: 10,
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderBottom: '1px solid rgba(28, 28, 28, 0.08)',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -940,18 +940,18 @@ export const SpectatorPage: React.FC = () => {
                       {seatIndex}
                     </div>
                     <div>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
                         {player ? (
                           <>
                             {isZh ? `玩家 ${player.playerId}` : `Player ${player.playerId}`}
                           </>
                         ) : (
-                          <span style={{ color: 'var(--text-muted, #64748b)' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>
                             {isZh ? `席位 ${seatIndex} (空)` : `Seat ${seatIndex} (Empty)`}
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-secondary, #94a3b8)' }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
                         {isZh ? `远端对局玩家 · 席位 ${seatIndex}` : `Remote Player · Seat ${seatIndex}`}
                       </div>
                     </div>
@@ -972,16 +972,16 @@ export const SpectatorPage: React.FC = () => {
                             : 'rgba(148, 163, 184, 0.12)',
                         color:
                           !isConnected
-                            ? '#f87171'
+                            ? '#be123c'
                             : player.handSize > 0
-                            ? '#4ade80'
-                            : 'var(--text-muted, #64748b)',
+                            ? '#15803d'
+                            : 'var(--text-muted)',
                         border:
                           !isConnected
                             ? '1px solid rgba(239, 68, 68, 0.35)'
                             : player.handSize > 0
                             ? '1px solid rgba(34, 197, 94, 0.3)'
-                            : '1px solid rgba(255, 255, 255, 0.08)',
+                            : '1px solid rgba(28, 28, 28, 0.08)',
                       }}
                     >
                       {!isConnected
@@ -1011,8 +1011,8 @@ export const SpectatorPage: React.FC = () => {
                           <div
                             key={item.cardId}
                             style={{
-                              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                              backgroundColor: 'var(--glass-surface-subtle)',
+                              border: '1px solid rgba(28, 28, 28, 0.08)',
                               borderRadius: 8,
                               padding: 8,
                               display: 'flex',
@@ -1035,7 +1035,7 @@ export const SpectatorPage: React.FC = () => {
                                   fontWeight: 800,
                                   padding: '1px 6px',
                                   borderRadius: 10,
-                                  boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                                  boxShadow: '0 2px 6px rgba(28,28,28,0.16)',
                                   zIndex: 2,
                                 }}
                               >
@@ -1050,7 +1050,7 @@ export const SpectatorPage: React.FC = () => {
                                 height: 72,
                                 borderRadius: 6,
                                 overflow: 'hidden',
-                                backgroundColor: 'rgba(0, 0, 0, 0.35)',
+                                backgroundColor: 'rgba(28, 28, 28, 0.05)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -1078,7 +1078,7 @@ export const SpectatorPage: React.FC = () => {
                               style={{
                                 fontSize: 13,
                                 fontWeight: 700,
-                                color: '#fff',
+                                color: 'var(--text-primary)',
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -1113,7 +1113,7 @@ export const SpectatorPage: React.FC = () => {
                               </span>
 
                               {item.card.cost !== undefined && item.card.cost !== null && (
-                                <span style={{ color: '#fbbf24', fontWeight: 600 }}>
+                                <span style={{ color: '#b45309', fontWeight: 600 }}>
                                   Cost {item.card.cost}
                                 </span>
                               )}
@@ -1123,7 +1123,7 @@ export const SpectatorPage: React.FC = () => {
                             <div
                               style={{
                                 fontSize: 9,
-                                color: 'rgba(255, 255, 255, 0.3)',
+                                color: 'rgba(28, 28, 28, 0.25)',
                                 marginTop: 4,
                                 textAlign: 'right',
                               }}
@@ -1142,7 +1142,7 @@ export const SpectatorPage: React.FC = () => {
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: 'var(--text-muted, #64748b)',
+                        color: 'var(--text-muted)',
                         gap: 8,
                       }}
                     >
@@ -1159,7 +1159,7 @@ export const SpectatorPage: React.FC = () => {
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: 'var(--text-muted, #64748b)',
+                        color: 'var(--text-muted)',
                         gap: 8,
                       }}
                     >
@@ -1182,8 +1182,8 @@ export const SpectatorPage: React.FC = () => {
             style={{
               padding: '40px 24px',
               textAlign: 'center',
-              backgroundColor: 'rgba(17, 24, 39, 0.65)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              backgroundColor: 'var(--glass-surface)',
+              border: '1px solid var(--glass-border)',
               borderRadius: 12,
             }}
           >
@@ -1202,13 +1202,13 @@ export const SpectatorPage: React.FC = () => {
             >
               <Eye size={26} />
             </div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 8 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
               {isZh ? '等待接入观战对局' : 'Waiting for Spectator Match'}
             </h2>
             <p
               style={{
                 fontSize: 13,
-                color: 'var(--text-secondary, #94a3b8)',
+                color: 'var(--text-secondary)',
                 maxWidth: 540,
                 margin: '0 auto 20px auto',
                 lineHeight: 1.6,
@@ -1226,13 +1226,13 @@ export const SpectatorPage: React.FC = () => {
                 gap: 8,
                 padding: '8px 16px',
                 borderRadius: 6,
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                backgroundColor: 'var(--glass-surface-subtle)',
+                border: '1px solid rgba(28, 28, 28, 0.08)',
                 fontSize: 12,
-                color: 'var(--text-secondary, #94a3b8)',
+                color: 'var(--text-secondary)',
               }}
             >
-              <Sparkles size={14} color="var(--accent, #a855f7)" />
+              <Sparkles size={14} color="var(--accent)" />
               <span>
                 {isZh
                   ? '已就绪：支持 1920×1080 及 1366×768 响应式自适应布局'

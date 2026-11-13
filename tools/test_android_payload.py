@@ -1,5 +1,6 @@
 """Keep cache paths and accepted upgrades bound to their audited Android resources."""
 from pathlib import Path
+import json
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -40,6 +41,29 @@ class AndroidBaselineTests(unittest.TestCase):
                 wrong = {**self.manifest(digest), 'bundleRelativePath': other['bundleRelativePath']}
                 with self.assertRaisesRegex(ValueError, 'does not match'):
                     payload.validate_baseline_manifest(wrong)
+
+    def test_explicit_local_predecessor_requires_intact_payload_and_same_baseline(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(payload, 'ROOT', Path(directory)):
+            root = Path(directory)
+            original = next(digest for digest, row in payload.BASELINES.items() if row['resourceVersion'] == '152')
+            current = {**self.manifest(original), 'platform': 'ANDROID_CN', 'package': 'com.feimo.astralparty', 'appVersion': '3.3.0'}
+            candidate = root / '__data'
+            candidate.write_bytes(b'verified local predecessor')
+            old = {**current, 'candidate': '__data', 'candidateSha256': payload.sha(candidate)}
+            path = root / 'candidate.json'
+            path.write_text(json.dumps(old), encoding='utf8')
+            self.assertIn(old['candidateSha256'], payload.previous_hashes(current, [path]))
+            candidate.write_bytes(b'corrupt')
+            with self.assertRaisesRegex(ValueError, 'missing or corrupt'):
+                payload.previous_hashes(current, [path])
+            old['package'] = 'another.game'
+            path.write_text(json.dumps(old), encoding='utf8')
+            with self.assertRaisesRegex(ValueError, 'different game baseline'):
+                payload.previous_hashes(current, [path])
+            old = {**current, 'candidate': '../escape', 'candidateSha256': 'b' * 64}
+            path.write_text(json.dumps(old), encoding='utf8')
+            with self.assertRaisesRegex(ValueError, 'escapes'):
+                payload.previous_hashes(current, [path])
 
 
 if __name__ == '__main__':

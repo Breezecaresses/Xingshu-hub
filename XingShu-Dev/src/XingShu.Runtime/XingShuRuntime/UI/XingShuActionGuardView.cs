@@ -33,6 +33,8 @@ namespace XingShuRuntime.UI
         // Card 4: 原生快捷通信卡片
         private Toggle _autoThanksToggle;
         private Toggle _autoPraiseToggle;
+        private Toggle _dailyShopToggle;
+        private Text _dailyShopStatus;
 
         // 缓存观测值 (0 GC / 仅状态变化时更新 UI)
         private float _lastSyncTime;
@@ -305,6 +307,52 @@ namespace XingShuRuntime.UI
             sdRt.pivot = new Vector2(0f, 1f);
             sdRt.anchoredPosition = new Vector2(20f, -542f);
             sdRt.sizeDelta = new Vector2(700f, 20f);
+
+            // All automation cards share a scroll surface on phones and smaller windows.
+            GameObject shopCard = XingShuUIFactory.CreateUIObject("Card_DailyStarCoinShop", _root);
+            shopCard.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 150f);
+            Image shopBg = shopCard.AddComponent<Image>();
+            shopBg.sprite = cardBaseSprite;
+            shopBg.type = Image.Type.Sliced;
+            shopBg.color = XingShuUIAssetService.IsFallbackSprite(cardBaseSprite) ? XingShuUITheme.Card : Color.white;
+            Text shopTitle = XingShuUIFactory.CreateText(shopCard, "Title", "每日星币商店", 20, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
+            PlaceShopText(shopTitle, -12f, 28f);
+            Text shopDesc = XingShuUIFactory.CreateText(shopCard, "Description", "每天登录后处理官方随机货架：先领免费商品，再买完剩余星币商品。\n默认关闭，按游戏账号保存；星币不足时保留未购商品，不兑换其他货币。", 13, XingShuUITheme.SecondaryText, TextAnchor.UpperLeft);
+            PlaceShopText(shopDesc, -48f, 42f);
+            _dailyShopStatus = XingShuUIFactory.CreateText(shopCard, "Status", DailyStarCoinShop.Status, 13, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
+            PlaceShopText(_dailyShopStatus, -103f, 34f);
+            _dailyShopToggle = XingShuUIFactory.CreateToggle(shopCard, "DailyShopToggle", "自动购买", DailyStarCoinShop.IsEnabled,
+                value => { if (!_suppressCallbacks) DailyStarCoinShop.SetEnabled(value); });
+            var shopToggleRt = _dailyShopToggle.GetComponent<RectTransform>();
+            shopToggleRt.anchorMin = shopToggleRt.anchorMax = new Vector2(1f, 1f);
+            shopToggleRt.pivot = new Vector2(1f, 1f);
+            shopToggleRt.anchoredPosition = new Vector2(-20f, -12f);
+            shopToggleRt.sizeDelta = new Vector2(165f, 34f);
+            shopCard.transform.SetAsFirstSibling();
+            var cards = new System.Collections.Generic.List<RectTransform>();
+            foreach (Transform child in _root.transform) cards.Add(child.GetComponent<RectTransform>());
+            XingShuUIFactory.CreateVerticalScrollView(_root, "AutomationScroll", out GameObject content);
+            var layout = content.GetComponent<VerticalLayoutGroup>();
+            layout.spacing = 12f;
+            layout.padding = new RectOffset(0, 10, 0, 24);
+            foreach (var card in cards)
+            {
+                float height = card.sizeDelta.y;
+                card.SetParent(content.transform, false);
+                var element = card.gameObject.AddComponent<LayoutElement>();
+                element.preferredHeight = element.minHeight = height;
+                element.flexibleHeight = 0f;
+            }
+        }
+
+        private static void PlaceShopText(Text text, float y, float height)
+        {
+            var rt = text.rectTransform;
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0f, y);
+            rt.sizeDelta = new Vector2(-40f, height);
         }
 
         private void BuildMetricRow(GameObject parent, string label, out Text valueText, float x, float y, float width)
@@ -348,6 +396,12 @@ namespace XingShuRuntime.UI
                 return;
             }
             _lastSyncTime = Time.unscaledTime;
+
+            _suppressCallbacks = true;
+            _dailyShopToggle.isOn = DailyStarCoinShop.IsEnabled;
+            _dailyShopToggle.interactable = DailyStarCoinShop.CanConfigure;
+            if (_dailyShopStatus.text != DailyStarCoinShop.Status) _dailyShopStatus.text = DailyStarCoinShop.Status;
+            _suppressCallbacks = false;
 
             bool enabled = AutoResetActionTimeGUI.IsEnabled;
             bool isBattle = AutoResetActionTimeGUI.IsInBattle;

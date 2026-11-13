@@ -33,7 +33,7 @@ export const Sidebar: React.FC = () => {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <span className="sidebar-brand">{locale === 'zh-CN' ? '星枢 Hub' : 'XingShu Hub'}</span>
+            <span className="sidebar-brand aurora-sheen-text">{locale === 'zh-CN' ? '星枢 Hub' : 'XingShu Hub'}</span>
             <span className="sidebar-tag">XingShu</span>
           </div>
           <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{t('common.platformSubtitle')}</span>

@@ -24,6 +24,7 @@ def main():
     p.add_argument('--gradle',default='gradle')
     p.add_argument('--sdk',type=Path,default=Path(os.environ.get('ANDROID_HOME','C:/Android/sdk')))
     p.add_argument('--out',type=Path,required=True)
+    p.add_argument('--previous-manifest',type=Path,action='append',default=[],help='Additional intact local candidate for this exact game baseline')
     p.add_argument('--build-dir',type=Path,help='Optional empty ASCII-only build directory (Windows AIDL limitation)')
     a=p.parse_args()
     m=json.loads(a.manifest.read_text('utf8'))
@@ -50,7 +51,7 @@ def main():
     shutil.copy2(patch,assets/'candidate.__data'); shutil.copy2(a.vanilla,assets/'vanilla.__data')
     java=generated/'java/app/xingshu/installer/PayloadSpec.java'; java.parent.mkdir(parents=True,exist_ok=True)
     # Accept only verified payloads for this exact resource baseline.
-    known=previous_hashes(m)
+    known=previous_hashes(m,a.previous_manifest)
     if not re.fullmatch('[a-f0-9]{64}',m.get('catalogSha256','')): raise RuntimeError('Missing audited official catalog hash')
     constants={'RELATIVE':m['bundleRelativePath'],'VERSION':m['runtimeVersion'], 'VANILLA':m['originalSha256'],'PATCH':m['candidateSha256'],'CATALOG':m['catalogSha256']}
     java.write_text('package app.xingshu.installer;\nfinal class PayloadSpec {\n'+''.join('static final String '+k+' = '+json.dumps(v)+';\n' for k,v in constants.items())+'static final String[] PREVIOUS = {'+','.join(json.dumps(v) for v in known)+'};\n}\n',encoding='utf8')

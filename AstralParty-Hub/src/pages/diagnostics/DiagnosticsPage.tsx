@@ -209,7 +209,7 @@ export const DiagnosticsPage: React.FC = () => {
                             marginTop: 8,
                             padding: '6px 10px',
                             borderRadius: 4,
-                            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                            backgroundColor: 'var(--glass-surface-subtle)',
                             fontSize: 12,
                             color: 'var(--text-primary)',
                           }}
@@ -411,7 +411,7 @@ export const DiagnosticsPage: React.FC = () => {
                   style={{
                     padding: '16px',
                     textAlign: 'center',
-                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                    backgroundColor: 'var(--glass-surface-subtle)',
                     borderRadius: 6,
                     color: 'var(--text-secondary)',
                     fontSize: 13,
@@ -438,9 +438,9 @@ export const DiagnosticsPage: React.FC = () => {
                       className="code-box"
                       style={{
                         padding: '12px',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(28, 28, 28, 0.08)',
                         borderRadius: 6,
-                        backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                        backgroundColor: 'var(--glass-code-bg)',
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -459,7 +459,7 @@ export const DiagnosticsPage: React.FC = () => {
                         <span style={{ color: 'var(--text-secondary)' }}>Card IDs: </span>
                         <code>[{p.cardIds.join(', ')}]</code>
                       </div>
-                      <div style={{ fontSize: 12, borderTop: '1px dashed rgba(255, 255, 255, 0.1)', paddingTop: 6 }}>
+                      <div style={{ fontSize: 12, borderTop: '1px dashed rgba(28, 28, 28, 0.12)', paddingTop: 6 }}>
                         <span style={{ color: 'var(--text-secondary)' }}>Multiset Cards: </span>
                         {p.cards && p.cards.length > 0 ? (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
@@ -468,7 +468,7 @@ export const DiagnosticsPage: React.FC = () => {
                                 key={c.cardId}
                                 style={{
                                   fontSize: 11,
-                                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                                  backgroundColor: 'var(--glass-surface-subtle)',
                                   padding: '2px 6px',
                                   borderRadius: 4,
                                 }}
@@ -489,7 +489,7 @@ export const DiagnosticsPage: React.FC = () => {
                   style={{
                     padding: '20px',
                     textAlign: 'center',
-                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                    backgroundColor: 'var(--glass-surface-subtle)',
                     borderRadius: 6,
                     color: 'var(--text-secondary)',
                     fontSize: 13,

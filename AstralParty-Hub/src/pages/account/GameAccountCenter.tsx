@@ -240,7 +240,7 @@ export const GameAccountCenter: React.FC = () => {
     <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: 40 }}>
       {spectatorBinding && <div className="panel" style={{ padding: 16, marginBottom: 18 }}>
         <strong>观战客户端启动设置 · {spectatorBinding.platformId}</strong>
-        <p style={{ color: '#94a3b8', fontSize: 13 }}>自动观战使用所绑定的平台。Steam 通过 Steam 启动；其他平台可填写该平台游戏 .exe 的完整路径。</p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>自动观战使用所绑定的平台。Steam 通过 Steam 启动；其他平台可填写该平台游戏 .exe 的完整路径。</p>
         <div style={{ display: 'flex', gap: 8 }}>
           <input aria-label="观战客户端程序路径" value={spectatorExecutable} onChange={e => setSpectatorExecutable(e.target.value)} placeholder="留空使用已检测的平台路径" style={{ flex: 1 }} />
           <button onClick={() => {
@@ -268,7 +268,7 @@ export const GameAccountCenter: React.FC = () => {
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: '#fff' }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
               {isZh ? '游戏账号中心' : 'Game Account Center'}
             </h1>
             <span
@@ -285,7 +285,7 @@ export const GameAccountCenter: React.FC = () => {
               HS4-P1.4
             </span>
           </div>
-          <p style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
             {isZh
               ? '主账号与观战账号独立显式绑定体系，保护主力对局安全'
               : 'Explicit identity separation and role bindings for primary and spectator accounts'}
@@ -319,11 +319,11 @@ export const GameAccountCenter: React.FC = () => {
         }}
       >
         <ShieldCheck size={20} color="#10b981" style={{ flexShrink: 0, marginTop: 2 }} />
-        <div style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.5 }}>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
           <strong style={{ color: '#10b981' }}>
             {isZh ? '账号与登录信息保护' : 'Account and login protection'}
           </strong>
-          <div style={{ marginTop: 2, color: 'var(--text-secondary, #94a3b8)' }}>
+          <div style={{ marginTop: 2, color: 'var(--text-secondary)' }}>
             {isZh
               ? '手机号和短信验证码只用于本次官方 SDK 登录，不写入日志或数据库。授权服务加密保存必要的游戏授权凭据；Hub 仅保存经 Windows 保护的自身登录状态，不接收游戏令牌。主账号与观战账号角色仍需自主绑定。'
               : 'Phone and SMS code are used only for this SDK login, without logging or database storage. The service encrypts required game credentials; Hub stores only its own Windows-protected session. Account roles remain explicit.'}
@@ -337,15 +337,15 @@ export const GameAccountCenter: React.FC = () => {
         style={{
           marginBottom: 24,
           padding: '18px 20px',
-          backgroundColor: 'rgba(26, 32, 44, 0.65)',
+          backgroundColor: 'var(--glass-surface)',
           borderRadius: 10,
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          border: '1px solid rgba(28, 28, 28, 0.08)',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Activity size={18} color="#38bdf8" />
-            <h2 style={{ fontSize: 16, fontWeight: 600, color: '#fff', margin: 0 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
               {isZh ? '【当前会话身份】(CURRENT_SESSION)' : '【Current Session Identity】'}
             </h2>
           </div>
@@ -355,14 +355,14 @@ export const GameAccountCenter: React.FC = () => {
                 width: 8,
                 height: 8,
                 borderRadius: '50%',
-                backgroundColor: connectedCount === 0 ? '#64748b' : connectedCount === 1 ? '#22c55e' : '#38bdf8',
+                backgroundColor: connectedCount === 0 ? '#a8a29e' : connectedCount === 1 ? '#16a34a' : '#0284c7',
                 display: 'inline-block',
               }}
             />
             <span
               style={{
                 fontSize: 12,
-                color: connectedCount === 0 ? '#94a3b8' : connectedCount === 1 ? '#22c55e' : '#38bdf8',
+                color: connectedCount === 0 ? 'var(--text-secondary)' : connectedCount === 1 ? '#22c55e' : '#0369a1',
                 fontWeight: 600,
               }}
             >
@@ -389,9 +389,9 @@ export const GameAccountCenter: React.FC = () => {
                   style={{
                     padding: '6px 12px',
                     borderRadius: 6,
-                    border: isSelected ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
-                    backgroundColor: isSelected ? 'rgba(56, 189, 248, 0.2)' : 'rgba(15, 23, 42, 0.4)',
-                    color: isSelected ? '#38bdf8' : '#94a3b8',
+                    border: isSelected ? '1px solid #38bdf8' : '1px solid rgba(28, 28, 28, 0.12)',
+                    backgroundColor: isSelected ? 'rgba(56, 189, 248, 0.2)' : 'var(--glass-surface-subtle)',
+                    color: isSelected ? '#0369a1' : 'var(--text-secondary)',
                     cursor: 'pointer',
                     fontSize: 12,
                     fontWeight: 600,
@@ -413,23 +413,23 @@ export const GameAccountCenter: React.FC = () => {
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
             gap: 16,
-            backgroundColor: 'rgba(15, 23, 42, 0.5)',
+            backgroundColor: 'var(--glass-surface-subtle)',
             padding: 16,
             borderRadius: 8,
-            border: '1px solid rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(28, 28, 28, 0.08)',
           }}
         >
           <div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
               {isZh ? '实时识别 Player ID' : 'Live Player ID'}
             </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginTop: 4, fontFamily: 'monospace' }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4, fontFamily: 'monospace' }}>
               {currentIdentity.currentSessionPlayerId ? currentIdentity.currentSessionPlayerId : (isZh ? '未识别 / 未进入对局' : 'None / Not in Room')}
             </div>
           </div>
 
           <div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
               {isZh ? '判定解析角色' : 'Resolved Role'}
             </div>
             <div style={{ marginTop: 4 }}>
@@ -440,7 +440,7 @@ export const GameAccountCenter: React.FC = () => {
                     padding: '3px 10px',
                     borderRadius: 4,
                     backgroundColor: 'rgba(34, 197, 94, 0.2)',
-                    color: '#4ade80',
+                    color: '#15803d',
                     fontSize: 13,
                     fontWeight: 600,
                     border: '1px solid rgba(34, 197, 94, 0.4)',
@@ -455,7 +455,7 @@ export const GameAccountCenter: React.FC = () => {
                     padding: '3px 10px',
                     borderRadius: 4,
                     backgroundColor: 'rgba(99, 102, 241, 0.2)',
-                    color: '#818cf8',
+                    color: '#4338ca',
                     fontSize: 13,
                     fontWeight: 600,
                     border: '1px solid rgba(99, 102, 241, 0.4)',
@@ -470,7 +470,7 @@ export const GameAccountCenter: React.FC = () => {
                     padding: '3px 10px',
                     borderRadius: 4,
                     backgroundColor: 'rgba(234, 179, 8, 0.2)',
-                    color: '#facc15',
+                    color: '#a16207',
                     fontSize: 13,
                     fontWeight: 600,
                     border: '1px solid rgba(234, 179, 8, 0.4)',
@@ -485,7 +485,7 @@ export const GameAccountCenter: React.FC = () => {
                     padding: '3px 10px',
                     borderRadius: 4,
                     backgroundColor: 'rgba(56, 189, 248, 0.2)',
-                    color: '#38bdf8',
+                    color: '#0369a1',
                     fontSize: 13,
                     fontWeight: 600,
                     border: '1px solid rgba(56, 189, 248, 0.4)',
@@ -500,7 +500,7 @@ export const GameAccountCenter: React.FC = () => {
                     padding: '3px 10px',
                     borderRadius: 4,
                     backgroundColor: 'rgba(100, 116, 139, 0.2)',
-                    color: '#94a3b8',
+                    color: 'var(--text-secondary)',
                     fontSize: 13,
                     fontWeight: 500,
                   }}
@@ -512,10 +512,10 @@ export const GameAccountCenter: React.FC = () => {
           </div>
 
           <div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
               {isZh ? '目标平台与进程' : 'Platform & Process'}
             </div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: '#e2e8f0', marginTop: 6 }}>
+            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', marginTop: 6 }}>
               {isSelectedConnected
                 ? `${currentPlatform} (PID: ${selectedRuntimeSession?.processId ?? selectedRuntimeSession?.gamePid ?? '—'})`
                 : (currentIdentity.platformId || 'STEAM_CN')}
@@ -539,7 +539,7 @@ export const GameAccountCenter: React.FC = () => {
               gap: 12,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#fef08a' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#92400e' }}>
               <AlertTriangle size={16} color="#eab308" />
               <span>
                 {isZh
@@ -575,10 +575,10 @@ export const GameAccountCenter: React.FC = () => {
           style={{
             padding: 20,
             borderRadius: 10,
-            backgroundColor: 'rgba(26, 32, 44, 0.65)',
+            backgroundColor: 'var(--glass-surface)',
             border: mainBinding
               ? '1px solid rgba(34, 197, 94, 0.35)'
-              : '1px solid rgba(255, 255, 255, 0.08)',
+              : '1px solid rgba(28, 28, 28, 0.08)',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
@@ -587,8 +587,8 @@ export const GameAccountCenter: React.FC = () => {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <User size={18} color="#4ade80" />
-                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#fff' }}>
+                <User size={18} color="#15803d" />
+                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
                   {isZh ? '【主账号】(MAIN)' : '【Main Account】(MAIN)'}
                 </h3>
               </div>
@@ -598,7 +598,7 @@ export const GameAccountCenter: React.FC = () => {
                   padding: '2px 8px',
                   borderRadius: 4,
                   backgroundColor: mainBinding ? 'rgba(34, 197, 94, 0.15)' : 'rgba(100, 116, 139, 0.15)',
-                  color: mainBinding ? '#4ade80' : '#94a3b8',
+                  color: mainBinding ? '#15803d' : 'var(--text-secondary)',
                   fontWeight: 600,
                 }}
               >
@@ -606,7 +606,7 @@ export const GameAccountCenter: React.FC = () => {
               </span>
             </div>
 
-            <p style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', marginBottom: 16 }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
               {isZh
                 ? '用于日常游玩、段位竞技和排位匹配的核心账号。全知观战系统严禁使用主账号直接进入观战以免占用对局。'
                 : 'Primary game account for matchmaking and rank. Protected against accidental spectator session hijacking.'}
@@ -615,10 +615,10 @@ export const GameAccountCenter: React.FC = () => {
             {mainBinding ? (
               <div
                 style={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                  backgroundColor: 'var(--glass-surface-subtle)',
                   borderRadius: 8,
                   padding: 14,
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(28, 28, 28, 0.08)',
                   marginBottom: 16,
                   display: 'flex',
                   flexDirection: 'column',
@@ -626,29 +626,29 @@ export const GameAccountCenter: React.FC = () => {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, color: '#94a3b8' }}>Player ID</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'monospace' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Player ID</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                     {mainBinding.playerId}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, color: '#94a3b8' }}>{isZh ? '账号昵称' : 'Display Name'}</span>
-                  <span style={{ fontSize: 13, color: '#e2e8f0' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{isZh ? '账号昵称' : 'Display Name'}</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>
                     {mainBinding.displayName || (isZh ? '未设置' : 'Not set')}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, color: '#94a3b8' }}>{isZh ? '平台' : 'Platform'}</span>
-                  <span style={{ fontSize: 13, color: '#38bdf8' }}>{mainBinding.platformId}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{isZh ? '平台' : 'Platform'}</span>
+                  <span style={{ fontSize: 13, color: '#0369a1' }}>{mainBinding.platformId}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, color: '#94a3b8' }}>{isZh ? '绑定时间' : 'Bound At'}</span>
-                  <span style={{ fontSize: 12, color: '#94a3b8' }}>{formatTimestamp(mainBinding.boundAt)}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{isZh ? '绑定时间' : 'Bound At'}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{formatTimestamp(mainBinding.boundAt)}</span>
                 </div>
                 {mainBinding.lastSeenAt && (
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>{isZh ? '最后在线' : 'Last Seen'}</span>
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>{formatTimestamp(mainBinding.lastSeenAt)}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{isZh ? '最后在线' : 'Last Seen'}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{formatTimestamp(mainBinding.lastSeenAt)}</span>
                   </div>
                 )}
               </div>
@@ -657,14 +657,14 @@ export const GameAccountCenter: React.FC = () => {
                 style={{
                   padding: '24px 16px',
                   borderRadius: 8,
-                  backgroundColor: 'rgba(15, 23, 42, 0.3)',
-                  border: '1px dashed rgba(255, 255, 255, 0.1)',
+                  backgroundColor: 'var(--glass-surface-subtle)',
+                  border: '1px dashed rgba(28, 28, 28, 0.12)',
                   textAlign: 'center',
                   marginBottom: 16,
                 }}
               >
-                <User size={32} color="#64748b" style={{ margin: '0 auto 8px auto' }} />
-                <div style={{ fontSize: 13, color: '#94a3b8' }}>
+                <User size={32} color="var(--text-muted)" style={{ margin: '0 auto 8px auto' }} />
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                   {isZh ? '当前尚未绑定主账号' : 'No main account bound yet'}
                 </div>
               </div>
@@ -682,7 +682,7 @@ export const GameAccountCenter: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 6,
-                  color: '#f87171',
+                  color: '#be123c',
                   borderColor: 'rgba(239, 68, 68, 0.3)',
                 }}
               >
@@ -708,10 +708,10 @@ export const GameAccountCenter: React.FC = () => {
           style={{
             padding: 20,
             borderRadius: 10,
-            backgroundColor: 'rgba(26, 32, 44, 0.65)',
+            backgroundColor: 'var(--glass-surface)',
             border: spectatorBinding
               ? '1px solid rgba(99, 102, 241, 0.35)'
-              : '1px solid rgba(255, 255, 255, 0.08)',
+              : '1px solid rgba(28, 28, 28, 0.08)',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
@@ -721,7 +721,7 @@ export const GameAccountCenter: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Eye size={18} color="#818cf8" />
-                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#fff' }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
                   {isZh ? '【我的观战账号】(USER_SPECTATOR)' : '【My Spectator Account】'}
                 </h3>
               </div>
@@ -731,7 +731,7 @@ export const GameAccountCenter: React.FC = () => {
                   padding: '2px 8px',
                   borderRadius: 4,
                   backgroundColor: spectatorBinding ? 'rgba(99, 102, 241, 0.15)' : 'rgba(100, 116, 139, 0.15)',
-                  color: spectatorBinding ? '#a5b4fc' : '#94a3b8',
+                  color: spectatorBinding ? '#4338ca' : 'var(--text-secondary)',
                   fontWeight: 600,
                 }}
               >
@@ -739,7 +739,7 @@ export const GameAccountCenter: React.FC = () => {
               </span>
             </div>
 
-            <p style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', marginBottom: 16 }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
               {isZh
                 ? '用户个人持有的专用小号/副机账号，专用于进入官方房间进行手牌透视与战局转播，与主账号彻底解耦。'
                 : 'Dedicated user-owned secondary account solely used for room spectating and live hand streaming.'}
@@ -748,10 +748,10 @@ export const GameAccountCenter: React.FC = () => {
             {spectatorBinding ? (
               <div
                 style={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                  backgroundColor: 'var(--glass-surface-subtle)',
                   borderRadius: 8,
                   padding: 14,
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(28, 28, 28, 0.08)',
                   marginBottom: 16,
                   display: 'flex',
                   flexDirection: 'column',
@@ -759,29 +759,29 @@ export const GameAccountCenter: React.FC = () => {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, color: '#94a3b8' }}>Player ID</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'monospace' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Player ID</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                     {spectatorBinding.playerId}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, color: '#94a3b8' }}>{isZh ? '账号昵称' : 'Display Name'}</span>
-                  <span style={{ fontSize: 13, color: '#e2e8f0' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{isZh ? '账号昵称' : 'Display Name'}</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>
                     {spectatorBinding.displayName || (isZh ? '未设置' : 'Not set')}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, color: '#94a3b8' }}>{isZh ? '平台' : 'Platform'}</span>
-                  <span style={{ fontSize: 13, color: '#38bdf8' }}>{spectatorBinding.platformId}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{isZh ? '平台' : 'Platform'}</span>
+                  <span style={{ fontSize: 13, color: '#0369a1' }}>{spectatorBinding.platformId}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, color: '#94a3b8' }}>{isZh ? '绑定时间' : 'Bound At'}</span>
-                  <span style={{ fontSize: 12, color: '#94a3b8' }}>{formatTimestamp(spectatorBinding.boundAt)}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{isZh ? '绑定时间' : 'Bound At'}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{formatTimestamp(spectatorBinding.boundAt)}</span>
                 </div>
                 {spectatorBinding.lastSeenAt && (
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>{isZh ? '最后在线' : 'Last Seen'}</span>
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>{formatTimestamp(spectatorBinding.lastSeenAt)}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{isZh ? '最后在线' : 'Last Seen'}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{formatTimestamp(spectatorBinding.lastSeenAt)}</span>
                   </div>
                 )}
               </div>
@@ -790,14 +790,14 @@ export const GameAccountCenter: React.FC = () => {
                 style={{
                   padding: '24px 16px',
                   borderRadius: 8,
-                  backgroundColor: 'rgba(15, 23, 42, 0.3)',
-                  border: '1px dashed rgba(255, 255, 255, 0.1)',
+                  backgroundColor: 'var(--glass-surface-subtle)',
+                  border: '1px dashed rgba(28, 28, 28, 0.12)',
                   textAlign: 'center',
                   marginBottom: 16,
                 }}
               >
-                <Eye size={32} color="#64748b" style={{ margin: '0 auto 8px auto' }} />
-                <div style={{ fontSize: 13, color: '#94a3b8' }}>
+                <Eye size={32} color="var(--text-muted)" style={{ margin: '0 auto 8px auto' }} />
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                   {isZh ? '当前尚未绑定专用观战账号' : 'No spectator account bound yet'}
                 </div>
               </div>
@@ -815,7 +815,7 @@ export const GameAccountCenter: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 6,
-                  color: '#f87171',
+                  color: '#be123c',
                   borderColor: 'rgba(239, 68, 68, 0.3)',
                 }}
               >
@@ -842,7 +842,7 @@ export const GameAccountCenter: React.FC = () => {
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            backgroundColor: 'var(--glass-overlay)',
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
@@ -856,14 +856,14 @@ export const GameAccountCenter: React.FC = () => {
             style={{
               width: '100%',
               maxWidth: 480,
-              backgroundColor: '#1e293b',
+              backgroundColor: 'var(--glass-surface-strong)',
               borderRadius: 12,
               padding: 24,
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+              border: '1px solid rgba(28, 28, 28, 0.12)',
+              boxShadow: '0 24px 64px -12px rgba(28, 28, 28, 0.16)',
             }}
           >
-            <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 16px 0', color: '#fff' }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 16px 0', color: 'var(--text-primary)' }}>
               {manualRole === 'MAIN'
                 ? (isZh ? '绑定主账号 (MAIN)' : 'Bind Main Account')
                 : (isZh ? '绑定专用观战账号 (USER_SPECTATOR)' : 'Bind Spectator Account')}
@@ -876,7 +876,7 @@ export const GameAccountCenter: React.FC = () => {
                   borderRadius: 6,
                   backgroundColor: 'rgba(239, 68, 68, 0.15)',
                   border: '1px solid rgba(239, 68, 68, 0.4)',
-                  color: '#fca5a5',
+                  color: '#be123c',
                   fontSize: 12,
                   marginBottom: 14,
                 }}
@@ -887,13 +887,13 @@ export const GameAccountCenter: React.FC = () => {
 
             <form onSubmit={handleSubmitManualBind}>
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
                   {isZh ? '游戏内 Player ID (正整数)' : 'In-game Player ID'}
                 </label>
                 <input
                   type="number"
                   className="input"
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, backgroundColor: 'var(--bg-input)', border: '1px solid #dfdcd5', color: 'var(--text-primary)' }}
                   value={manualPlayerId}
                   onChange={(e) => setManualPlayerId(e.target.value)}
                   placeholder={isZh ? "例如: 1234567" : "e.g. 1234567"}
@@ -902,13 +902,13 @@ export const GameAccountCenter: React.FC = () => {
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
                   {isZh ? '自定义昵称 (可选)' : 'Display Name (Optional)'}
                 </label>
                 <input
                   type="text"
                   className="input"
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, backgroundColor: 'var(--bg-input)', border: '1px solid #dfdcd5', color: 'var(--text-primary)' }}
                   value={manualDisplayName}
                   onChange={(e) => setManualDisplayName(e.target.value)}
                   placeholder="例如: 星空派对大师"
@@ -916,12 +916,12 @@ export const GameAccountCenter: React.FC = () => {
               </div>
 
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
                   {isZh ? '游戏平台' : 'Platform'}
                 </label>
                 <select
                   className="input"
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, backgroundColor: 'var(--bg-input)', border: '1px solid #dfdcd5', color: 'var(--text-primary)' }}
                   value={manualPlatform}
                   onChange={(e) => setManualPlatform(e.target.value)}
                 >

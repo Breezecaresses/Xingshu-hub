@@ -66,6 +66,7 @@ def main():
     parser.add_argument('--source-commit', required=True)
     parser.add_argument('--phone-apk', type=Path, required=True)
     parser.add_argument('--vanilla', type=Path, required=True)
+    parser.add_argument('--previous-manifest', type=Path, action='append', default=[])
     args = parser.parse_args()
     if not re.fullmatch('[a-f0-9]{40}', args.source_commit): raise SystemExit('Expected full source commit')
     if not re.fullmatch(r'[0-9A-Za-z][0-9A-Za-z.\-]{0,79}', args.version): raise SystemExit('Invalid version')
@@ -90,7 +91,7 @@ def main():
         shutil.copy2(args.vanilla, manual / '官方原版.__data')
         manifest.update(candidate=f'{MANUAL}/__data', vanilla=f'{MANUAL}/官方原版.__data',
                         sourceCommit=args.source_commit, releaseVersion=args.version,
-                        supportedPreviousSha256=previous_hashes(manifest))
+                        supportedPreviousSha256=previous_hashes(manifest, args.previous_manifest))
         (package / 'candidate.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf8')
         (manual / '文件校验.json').write_text(json.dumps({**manifest, 'candidate': '__data', 'vanilla': '官方原版.__data'}, ensure_ascii=False, indent=2) + '\n', encoding='utf8')
         shutil.copy2(project_document(ROOT, 'ANDROID_PHONE_INSTALL.md'), package / '手机安装与手动替换.md')

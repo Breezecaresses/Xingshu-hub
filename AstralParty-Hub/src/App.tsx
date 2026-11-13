@@ -4,6 +4,7 @@ import { router } from './app/router';
 import { I18nProvider } from './i18n';
 import { api } from './shared/api/tauri';
 import './App.css';
+import './styles/aurora.css';
 
 export function App() {
   useEffect(() => {

@@ -20,6 +20,7 @@ namespace XingShuRuntime.UI
         private Text _statusText;
         private Toggle _targetingToggle;
         private Text _targetingSummary;
+        private Toggle _defenseHintToggle;
 
         // Card 2: Target & Preview
         private Button _previewBtn;
@@ -99,6 +100,7 @@ namespace XingShuRuntime.UI
 
             // 1. 全局总开关控制 (Switch Card: 96px)
             BuildSwitchCard(contentArea);
+            BuildDefenseHintCard(contentArea);
 
             // 2. 目标与拖动卡预览 (Target & Preview Card: 180px)
             BuildTargetCard(contentArea);
@@ -113,6 +115,28 @@ namespace XingShuRuntime.UI
 
             // 初始状态同步
             UpdateSync(force: true);
+        }
+
+        private void BuildDefenseHintCard(GameObject parent)
+        {
+            GameObject card = CreateCardContainer(parent, "DefenseHintCard", 110f);
+            var title = XingShuUIFactory.CreateText(card, "Title", "防御点数提示", 18, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
+            title.rectTransform.anchorMin = title.rectTransform.anchorMax = new Vector2(0f, 1f);
+            title.rectTransform.pivot = new Vector2(0f, 1f);
+            title.rectTransform.anchoredPosition = new Vector2(20f, -12f);
+            title.rectTransform.sizeDelta = new Vector2(450f, 28f);
+            var desc = XingShuUIFactory.CreateText(card, "Description", "本人防御时显示压至最低伤害、避免击飞所需的总防御和骰点。\n含已同步防御牌；数值未完全揭示时按保守上限估算，不代替操作。", 13, XingShuUITheme.SecondaryText, TextAnchor.UpperLeft);
+            desc.rectTransform.anchorMin = new Vector2(0f, 0f);
+            desc.rectTransform.anchorMax = Vector2.one;
+            desc.rectTransform.offsetMin = new Vector2(20f, 8f);
+            desc.rectTransform.offsetMax = new Vector2(-20f, -52f);
+            _defenseHintToggle = XingShuUIFactory.CreateToggle(card, "EnableDefenseHint", "显示提示", DefensePointHint.IsEnabled,
+                value => { if (!_suppressCallbacks) DefensePointHint.SetEnabled(value); });
+            var rt = _defenseHintToggle.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(1f, 1f);
+            rt.anchoredPosition = new Vector2(-20f, -12f);
+            rt.sizeDelta = new Vector2(160f, 32f);
         }
 
         private GameObject CreateCardContainer(GameObject parent, string name, float height)
@@ -700,6 +724,9 @@ namespace XingShuRuntime.UI
 
         internal void UpdateSync(bool force = false)
         {
+            _suppressCallbacks = true;
+            if (_defenseHintToggle != null) _defenseHintToggle.isOn = DefensePointHint.IsEnabled;
+            _suppressCallbacks = false;
             // This module is independent from the kill-probability switch and status.
             if (_targetingSummary != null && _targetingSummary.text != MonsterTargetRuntime.Summary)
                 _targetingSummary.text = MonsterTargetRuntime.Summary;

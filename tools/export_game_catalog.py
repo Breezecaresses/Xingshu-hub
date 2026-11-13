@@ -24,6 +24,8 @@ TABLES = {
     'Relic', 'STRRelic', 'PVENurturance', 'STRPVENurturance',
     'MapEvent', 'STRMapEvent', 'Monster', 'STRMonster', 'Buff', 'STRBuff',
 }
+SOURCE_CATALOG = None
+GAME_DATA = Path('E:/Steam/steamapps/common/Astral Party/8vJXn6CN/AstralParty_CN_Data')
 
 
 def varint(data, pos):
@@ -136,10 +138,15 @@ def extract(config_bundle=None):
 
 
 def main():
+    global SOURCE_CATALOG, GAME_DATA
     sys.stdout.reconfigure(encoding='utf-8')
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config-bundle', type=Path, help='Unmodified official configuration bundle')
+    parser.add_argument('--catalog-json', type=Path, help='Current official remote Addressables catalog')
+    parser.add_argument('--game-data', type=Path, default=GAME_DATA)
+    parser.add_argument('--resource-version', default='')
     args = parser.parse_args()
+    SOURCE_CATALOG, GAME_DATA = args.catalog_json, args.game_data
     tables, source = extract(args.config_bundle)
     # Preview audits also retain referenced Buff text, rather than inventing a
     # complete skill description from an unlabelled parameter vector.
@@ -150,7 +157,7 @@ def main():
     cache = ROOT / 'XingShu-Dev/build/catalog'
     cache.mkdir(parents=True, exist_ok=True)
     (cache / 'tables.json').write_text(json.dumps(tables, ensure_ascii=False, indent=2), 'utf-8')
-    loc = {k: {r['Id']: r.get('Simplified', '') for r in v.get('Locals', [])} for k, v in tables.items() if k.startswith('STR')}
+    loc = {k: {r.get('Id', 0): r.get('Simplified', '') for r in v.get('Locals', [])} for k, v in tables.items() if k.startswith('STR')}
     def text(table, key):
         return loc.get('STR'+table, {}).get(key, '')
     items = {r['Id']: r for r in tables['Item']['Infos']}
@@ -255,6 +262,9 @@ def main():
         alt['animationAvailable'] = alt['video'] in video_assets
     out=dict(version='3.3.0',source='官方游戏原版配置',configSha256=hashlib.sha256(source.read_bytes()).hexdigest(),characters=chars,cards=cards,altArts=altarts,mutators=mutators,chips=chips,favorLevels=tables['Favor']['Levels'],playerLevels=tables['Player']['Levels'],pveLevels=[dict(level=r.get('Id', 0),exp=r.get('Exp', 0)) for r in tables['PVENurturance']['Levelups']],maps=maps,modes=modes,assets=assets,spineAssets=spine_assets)
     out['itemNames']={str(i):text('Item',r.get('NameID')) for i,r in items.items() if text('Item',r.get('NameID'))}
+    if SOURCE_CATALOG:
+        out['resourceVersion'] = args.resource_version
+        out['catalogSha256'] = hashlib.sha256(SOURCE_CATALOG.read_bytes()).hexdigest()
     from audit_preview_characters import apply_previews
     out = apply_previews(out, tables, assets)
     output=ROOT/'AstralParty-Hub/src/shared/gameCatalog.generated.json'
@@ -264,48 +274,94 @@ def main():
 
 @lru_cache(maxsize=1)
 def addressable_catalog():
-    sys.path.insert(0,str(ROOT/'XingShu-Dev/tools'))
-    from build_card_asset_inventory_v2 import parse_catalog
-    aa=Path('E:/steam/steamapps/common/Astral Party/8vJXn6CN/AstralParty_CN_Data/StreamingAssets/aa')
-    keys,entries,buckets=parse_catalog(str(aa/'catalog.bundle'))
-    cat = next(json.loads(o.read().m_Script) for o in UnityPy.load(str(aa/'catalog.bundle')).objects if o.type.name == 'TextAsset')
-    encoded = base64.b64decode(cat['m_EntryDataString'])
-    internal_ids = cat['m_InternalIds']
-    for i, entry in enumerate(entries):
-        internal_index = struct.unpack_from('<i', encoded, 4 + 28*i)[0]
-        entry['internal_id'] = internal_ids[internal_index]
-    return aa, keys, entries, buckets
+    aa = GAME_DATA/'StreamingAssets/aa'
+    catalogs = []
+    if SOURCE_CATALOG:
+        catalogs.append(json.loads(SOURCE_CATALOG.read_text('utf-8-sig')))
+    catalogs.append(next(json.loads(o.read().m_Script) for o in UnityPy.load(str(aa/'catalog.bundle')).objects if o.type.name == 'TextAsset'))
+    return aa, [parse_addressable_catalog(cat) for cat in catalogs]
+
+
+def parse_addressable_catalog(cat):
+    """Resolve dependency buckets in either compact remote JSON or bundled catalog."""
+    kb, bb, eb = [base64.b64decode(cat[k], validate=True) for k in
+                  ('m_KeyDataString', 'm_BucketDataString', 'm_EntryDataString')]
+    count, = struct.unpack_from('<I', eb)
+    if not 0 < count <= 200000 or len(eb) != 4 + count * 28:
+        raise ValueError('Invalid Addressables entry table')
+    entries = []
+    for i in range(count):
+        internal, _, dep, _, _, _, _ = struct.unpack_from('<7i', eb, 4 + 28*i)
+        entries.append((cat['m_InternalIds'][internal], dep))
+    buckets, keys, pos = [], {}, 4
+    bucket_count, = struct.unpack_from('<I', bb)
+    if bucket_count > 200000: raise ValueError('Invalid Addressables bucket count')
+    for _ in range(bucket_count):
+        offset, size = struct.unpack_from('<II', bb, pos)
+        pos += 8
+        if size > count or pos + 4*size > len(bb): raise ValueError('Invalid dependency bucket')
+        indexes = struct.unpack_from('<' + str(size) + 'I', bb, pos)
+        if any(i >= count for i in indexes): raise ValueError('Invalid entry index')
+        pos += 4*size
+        buckets.append(indexes)
+        if kb[offset] in (0, 1):
+            length, = struct.unpack_from('<I', kb, offset + 1)
+            raw = kb[offset+5:offset+5+length]
+            if len(raw) != length: raise ValueError('Invalid catalog key')
+            keys[raw.decode('utf-8' if kb[offset] == 0 else 'utf-16le')] = indexes
+    return keys, entries, buckets
 
 
 @lru_cache(maxsize=None)
 def asset_bundles(key):
-    aa, keys, entries, buckets = addressable_catalog()
-    paths = []
-    for idx in keys.get(key, []):
-        dep = entries[idx]['dep_key_idx']
-        if dep < 0: continue
-        # A dependency key can be an integer hash for several bundles, not a filename.
-        for dep_idx in buckets[dep][1]:
-            basename = entries[dep_idx]['internal_id'].replace('\\', '/').rsplit('/', 1)[-1]
+    aa, catalogs = addressable_catalog()
+    for keys, entries, buckets in catalogs:
+        if key not in keys: continue
+        paths, seen, pending = [], set(), list(keys[key])
+        while pending:
+            index = pending.pop()
+            if index in seen: continue
+            seen.add(index)
+            internal, dependency = entries[index]
+            basename = internal.replace('\\', '/').rsplit('/', 1)[-1]
+            remote = re.fullmatch(r'([0-9a-f]{32})\.bundle', basename)
+            matches = list((GAME_DATA/'com.unity.addressables/AssetBundles').glob('*/'+remote[1]+'/__data')) if remote else []
             bundle = aa/'StandaloneWindows64'/basename
-            if bundle.exists() and bundle not in paths:
-                paths.append(bundle)
-    return tuple(paths)
+            if len(matches) == 1: bundle = matches[0]
+            if bundle.is_file() and bundle not in paths: paths.append(bundle)
+            if dependency >= 0:
+                if dependency >= len(buckets): raise ValueError('Invalid catalog dependency')
+                pending.extend(buckets[dependency])
+        # A current key never silently falls back to a different old bundle.
+        return tuple(paths)
+    return ()
+
+
+@lru_cache(maxsize=None)
+def bundle_digest(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def export_images(wanted):
     dest=ROOT/'AstralParty-Hub/public/catalog'
     dest.mkdir(parents=True,exist_ok=True)
     assets={}
+    manifest_path = ROOT/'XingShu-Dev/build/catalog/image-sources.json'
+    previous = json.loads(manifest_path.read_text('utf-8')) if manifest_path.exists() else {}
+    manifest = {}
     for key in sorted(wanted):
         if not re.fullmatch(r'[A-Za-z0-9_]+',key): continue
         existing=ROOT/'AstralParty-Hub/public/cards'/f'{key}.png'
         target=dest/f'{key}.webp'
-        if existing.exists():
+        bundles = asset_bundles(key)
+        fingerprint = '|'.join(bundle_digest(path) for path in bundles)
+        if fingerprint and previous.get(key) == fingerprint and target.exists():
+            assets[key]=f'/catalog/{key}.webp'; manifest[key] = fingerprint; continue
+        if not SOURCE_CATALOG and existing.exists():
             assets[key]=f'/cards/{key}.png'; continue
-        if target.exists():
+        if not SOURCE_CATALOG and target.exists():
             assets[key]=f'/catalog/{key}.webp'; continue
-        for bundle in asset_bundles(key):
+        for bundle in bundles:
             env=UnityPy.load(str(bundle))
             for obj in env.objects:
                 if obj.type.name not in ('Texture2D','Sprite'): continue
@@ -316,10 +372,13 @@ def export_images(wanted):
                     im.thumbnail((1400,1400))
                     im.save(target,'WEBP',quality=92,method=4)
                     assets[key]=f'/catalog/{key}.webp'
+                    manifest[key] = fingerprint
                 except Exception as exc:
                     print(f'Image unavailable {key}: {type(exc).__name__}')
                 break
             if key in assets: break
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), 'utf-8')
     return assets
 
 

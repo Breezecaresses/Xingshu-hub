@@ -105,7 +105,7 @@ export function LibraryHeader({ title, description, state }: { title: string; de
   if(state.cloud.identity&&!options.has(state.cloudKey))options.set(state.cloudKey,`手机号账号 · ${state.cloud.identity.nick} (${state.cloud.identity.uid}) · 待同步`);
   state.sessions.filter(s => s.livePlayerId).forEach(s => { if (!options.has(sessionKey(s))) options.set(sessionKey(s), `${platformName(s.platformId)} · ${s.livePlayerId} · 待同步`); });
   return <>
-    <header className="library-header"><div><h1>{title}</h1><p>{description}</p></div><div className="library-actions">
+    <header className="library-header"><div><h1 className="aurora-sheen-text">{title}</h1><p>{description}</p></div><div className="library-actions">
       <select aria-label="选择资料账号" value={state.key} onChange={e => state.select(e.target.value)}><option value="">选择账号</option>{[...options].map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
       <button className="btn btn-primary" onClick={() => void state.sync()} disabled={state.busy}>{state.busy ? '同步中…' : '同步游戏数据'}</button>
       <button className="btn btn-secondary" onClick={() => void state.refresh()}>刷新</button>

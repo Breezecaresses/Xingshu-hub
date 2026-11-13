@@ -20,9 +20,14 @@ assert.equal(defaultLibraryKey([spectator,main],[liveMain],accountKey(spectator)
 assert.equal(defaultLibraryKey([main],[],'missing'),accountKey(main));
 assert.equal(plainGameText('[color=#fff]攻击+1[/color]<b>效果</b>'),'攻击+1效果');
 assert.equal(plainGameText('指定{range=3}格内，造成{value=5}点伤害'),'指定3格内，造成5点伤害');
-assert.equal(gameCatalog.characters.length,37);
+assert.equal(gameCatalog.resourceVersion,'152');
+assert.equal(gameCatalog.characters.length,38);
 assert.deepEqual(gameCatalog.characters.filter(isPreviewCharacter).map(c=>c.id),[307,308]);
-assert.equal(gameCatalog.characters.filter(c=>!isPreviewCharacter(c)).length,35);
+assert.equal(gameCatalog.characters.filter(c=>!isPreviewCharacter(c)).length,36);
+const latestCharacter=gameCatalog.characters.find(c=>c.id===130)!;
+assert.equal(latestCharacter.name,'苍鲤');
+assert.ok(gameCatalog.assets[latestCharacter.image]);
+assert.ok(latestCharacter.skills.every(s=>s.name&&s.description));
 for(const character of gameCatalog.characters.filter(isPreviewCharacter)){
   assert.equal(libraryCharacterName(character),`预更新角色 #${character.id}`);
   assert.ok(character.hp>0,'Preserve official provisional values');
@@ -34,7 +39,7 @@ for(const character of gameCatalog.characters.filter(isPreviewCharacter)){
   assert.equal(character.preview?.skinSlots,1);
   assert.equal(character.preview?.emoteSlots,8);
   assert.equal(character.preview?.unavailableAssets.length,9);
-  assert.ok(character.preview?.placeholderReferences.some(r=>r.field==='战斗资源'));
+  assert.ok(character.preview?.placeholderReferences.some(r=>r.field==='角色头像'));
   assert.equal(gameCatalog.itemNames?.[String(character.id)],`预更新角色 #${character.id}`);
   for(const skin of character.skins) assert.equal(gameCatalog.itemNames?.[String(skin.id)],skin.name);
 }
@@ -47,15 +52,16 @@ assert.deepEqual(preview307.pveSkills.map(s=>s.id),[30702,30713,30714,30715]);
 assert.deepEqual(preview308.skills.map(s=>s.id),[30801,30811]);
 assert.deepEqual(preview308.pveSkills.map(s=>s.id),[30802,30812,30813]);
 assert.deepEqual(preview307.skills[0].params,[6,-2,1]);
-assert.deepEqual(preview307.pveSkills[0].params,[6,-3,1,3071202]);
+assert.deepEqual(preview307.pveSkills[0].params,[6,-1,3,1,3071202]);
 assert.deepEqual([preview307.skills[0].cooldown,preview307.pveSkills[0].cooldown],[4,3]);
 assert.deepEqual([preview308.skills[0].cooldown,preview308.pveSkills[0].cooldown],[3,3]);
 assert.ok(preview307.skills.concat(preview307.pveSkills,preview308.skills,preview308.pveSkills).every(s=>!s.name&&!s.description),'Unreleased skill prose must not be fabricated from params');
-const availableBuff=preview308.pveSkills.flatMap(s=>s.buffs||[]).find(b=>b.id===3081104)!;
-assert.equal(availableBuff.description,'费用上限+3，移动速度+2，出牌数+1');
-assert.deepEqual(preview308.pveSkills.find(s=>s.id===30813)?.relatedCharacterIds,[305,306,307,308]);
+assert.equal(preview308.pveSkills.flatMap(s=>s.buffs||[]).find(b=>b.id===3081104),undefined,'Resource 152 removed this provisional skill buff; do not carry forward its old description');
+assert.deepEqual(preview308.pveSkills.find(s=>s.id===30813)?.relatedCharacterIds,[],'Current official skill parameters no longer declare this character chain');
 assert.equal(new Set(gameCatalog.characters.map(c=>c.id)).size,gameCatalog.characters.length);
-assert.equal(gameCatalog.cards.length,73);
+assert.equal(gameCatalog.cards.length,75);
+assert.equal(gameCatalog.cards.find(c=>c.id===21030)?.name,'开花仙人球');
+assert.equal(gameCatalog.cards.find(c=>c.id===21031)?.name,'电流蒲公英');
 for(const card of gameCatalog.cards){
   assert.ok(card.name && card.description,`Card ${card.id}: official text missing`);
   assert.ok(gameCatalog.assets[card.image],`Card ${card.id}: image missing`);
