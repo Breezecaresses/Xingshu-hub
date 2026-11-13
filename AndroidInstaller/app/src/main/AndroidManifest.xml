@@ -6,7 +6,7 @@
         <package android:name="moe.shizuku.privileged.api" />
     </queries>
     <application android:allowBackup="false" android:label="星枢安装助手"
-        android:icon="@drawable/ic_xingshu" android:theme="@android:style/Theme.Material.Light.NoActionBar"
+        android:icon="@mipmap/ic_xingshu" android:roundIcon="@mipmap/ic_xingshu" android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:supportsRtl="true">
         <provider android:name=".UpdateApkProvider" android:authorities="${applicationId}.update"
             android:exported="false" android:grantUriPermissions="true" />

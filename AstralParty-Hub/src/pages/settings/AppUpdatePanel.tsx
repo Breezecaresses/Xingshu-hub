@@ -5,7 +5,7 @@ import { RefreshCw, Download } from 'lucide-react';
 import { PROJECT_SOURCE } from '../../shared/projectSource';
 
 type Release = { version: string; sequence: number; notes: string; desktop: { size: number }; android: { versionCode: number } };
-type Result = { available: boolean; currentVersion: string; canApply: boolean; release: Release | null; releaseUrl: string; downloadSource?: string; message: string };
+type Result = { available: boolean; currentVersion: string; canApply: boolean; release: Release | null; releaseUrl: string; downloadSource?: string; checkWarning?: string; message: string };
 export function AppUpdatePanel() {
   const [version, setVersion] = useState('读取中…');
   const [preview, setPreview] = useState(true);
@@ -51,21 +51,23 @@ export function AppUpdatePanel() {
       <input type="checkbox" checked={preview} disabled={busy} onChange={e => { setPreview(e.target.checked); setResult(null); setPhase('idle'); }} />包含测试版
     </label>
     <p style={{ color: 'var(--text-muted)', lineHeight: 1.8 }}>这里只更新 Hub。手机安装助手请在手机上点“检查助手更新”，新版 APK 需要确认安装。游戏内插件在“星枢包管理器”或手机助手中单独更新。</p>
+    {phase === 'checking' && <p role="status" style={{ marginTop: 14, color: 'var(--text-secondary)' }}>正在检查可用更新并校验签名，网络异常时会在约 30 秒内结束。</p>}
     {result && <div style={{ marginTop: 14, lineHeight: 1.8 }}>
       <p>{result.message}{result.downloadSource ? `（通道：${result.downloadSource}）` : ''}</p>
+      {result.checkWarning && <p role="status" style={{ color: 'var(--warning)' }}>{result.checkWarning}</p>}
       {result.available && result.release && <>
         <p><strong>新版本 {result.release.version}</strong> · {(result.release.desktop.size / 1048576).toFixed(1)} MB</p>
         <p style={{ whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>{result.release.notes}</p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
           {phase === 'ready'
             ? <button className="btn btn-primary" disabled={busy} onClick={() => void act('apply')}>更新并重启 Hub</button>
-            : <button className="btn btn-primary" disabled={busy || !result.canApply} onClick={() => void act('download')}><Download size={14} />{phase === 'downloading' ? '下载和校验中，请稍候…' : '下载更新'}</button>}
+            : <button className="btn btn-primary" disabled={busy || !result.canApply || !!result.checkWarning} onClick={() => void act('download')}><Download size={14} />{phase === 'downloading' ? '下载和校验中，请稍候…' : '下载更新'}</button>}
         </div>
         <p style={{ color: 'var(--text-muted)', marginTop: 10 }}>{result.canApply ? '请等待安装或还原任务完成，再更新并重启。更新时会暂停本包的手机连接服务，保留配对身份；下次连接手机时服务自动启动。更新前会备份本包文件。' : '请完整解压电脑版 ZIP，并从其中的 Hub 文件夹启动后更新。'}</p>
       </>}
     </div>}
     {error && <p role="alert" style={{ marginTop: 12, color: 'var(--danger)' }}>未完成：{error}。可重试或从官方发布页下载。</p>}
-    <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 10 }}>检查与下载会自动优先官方源并回退国内加速镜像，所有更新包仍强制校验签名与 SHA256，无需翻墙也可更新。</p>
+    <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 10 }}>检查与下载共用自动加速通道，后续版本也会自动选择响应较快的官方或国内镜像；所有更新包均强制校验签名与 SHA256。</p>
     <button className="btn btn-secondary btn-sm" style={{ marginTop: 14 }} onClick={() => void openUrl(PROJECT_SOURCE + '/releases')}>打开官方发布页 ↗</button>
   </section>;
 }

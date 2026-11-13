@@ -3,7 +3,7 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use crate::domain::error::{HubError, HubResult};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-use std::{path::{Path, PathBuf}, sync::Mutex as SyncMutex, time::{Duration, Instant}};
+use std::{collections::HashMap, path::{Path, PathBuf}, sync::Mutex as SyncMutex, time::{Duration, Instant}};
 use tauri::{Manager, State};
 use tokio::sync::Mutex;
 
@@ -13,17 +13,30 @@ use cloud_hand_sync::CloudHandSync;
 
 const ORIGIN: &str = "https://124.221.176.134";
 const MAX_RESPONSE: usize = 512 * 1024;
+const QQ_SESSION_TTL: Duration = Duration::from_secs(540);
 
 #[derive(Default)]
 pub struct AccountLogin {
     gate: Mutex<()>,
     pending: Mutex<Option<Pending>>,
+    qq_sessions: Mutex<HashMap<String, ClaimedQqSession>>,
     hand_sync: SyncMutex<CloudHandSync>,
 }
 
 struct Pending { request_id: String, verifier: String, started: Instant }
+#[derive(Clone)]
+struct ClaimedQqSession { cookie_kv: String, csrf: String, claimed_at: Instant }
 fn error(text: &str) -> HubError { HubError::new("ACCOUNT_LOGIN", text, "HUB").with_recoverable(true) }
 fn pkce(verifier: &str) -> String { URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes())) }
+fn qq_link_key(request_id: &str, page_token: &str) -> String {
+    URL_SAFE_NO_PAD.encode(Sha256::digest(format!("{request_id}.{page_token}").as_bytes()))
+}
+fn should_drop_qq_session(status: reqwest::StatusCode, msg: &str) -> bool {
+    matches!(status, reqwest::StatusCode::FORBIDDEN | reqwest::StatusCode::UNAUTHORIZED | reqwest::StatusCode::NOT_FOUND)
+        || msg.contains("过期")
+        || msg.contains("已结束")
+        || msg.contains("已使用")
+}
 
 async fn request(path: &str, body: Option<Value>, token: Option<&str>) -> HubResult<Value> {
     // Destination is fixed in native code; frontend input cannot redirect credentials elsewhere.
@@ -149,7 +162,10 @@ pub async fn poll_cloud_login(app: tauri::AppHandle, state: State<'_, AccountLog
         *pending = None;
         return Ok(json!({"status":"succeeded","account":result["account"]}));
     }
-    if result["status"] == "expired" || result["status"] == "superseded" { *pending = None; }
+    if result["status"] == "expired" || result["status"] == "superseded" || result["status"] == "failed" { *pending = None; }
+    if let Some(msg) = result["message"].as_str().map(str::trim).filter(|s| !s.is_empty() && s.chars().count() <= 160) {
+        return Ok(json!({"status":result["status"],"message":msg}));
+    }
     Ok(json!({"status":result["status"]}))
 }
 #[tauri::command]
@@ -299,23 +315,32 @@ fn parse_qq_login_link(raw_url: &str) -> HubResult<(String, String)> {
     Ok((request_id.to_string(), page_token.to_string()))
 }
 
+fn sort_detected_channels(items: &mut Vec<(u64, Value)>) -> Vec<Value> {
+    items.sort_by(|a, b| b.0.cmp(&a.0));
+    items.drain(..).map(|(_, v)| v).collect()
+}
+
 #[tauri::command]
 pub async fn detect_local_channel_tokens() -> HubResult<Value> {
-    // Only returns safe channel metadata; never returns raw BnSdk accessToken to the UI.
+    // Only returns safe channel metadata, sorted newest first; never returns raw BnSdk accessToken to the UI.
     let detected: Vec<Value> = tokio::task::spawn_blocking(|| {
-        CHANNELS
+        let mut items: Vec<(u64, Value)> = CHANNELS
             .iter()
             .filter_map(|spec| {
                 local_bnsdk_token(spec.app_id).map(|(_, updated_at)| {
-                    json!({
-                        "platform": spec.platform,
-                        "appId": spec.app_id,
-                        "label": spec.label,
-                        "updatedAt": updated_at
-                    })
+                    (
+                        updated_at,
+                        json!({
+                            "platform": spec.platform,
+                            "appId": spec.app_id,
+                            "label": spec.label,
+                            "updatedAt": updated_at
+                        }),
+                    )
                 })
             })
-            .collect()
+            .collect();
+        sort_detected_channels(&mut items)
     })
     .await
     .map_err(|_| error("检测本机渠道日志失败。"))?;
@@ -357,7 +382,12 @@ pub async fn start_channel_cloud_login(
 }
 
 #[tauri::command]
-pub async fn complete_qq_channel_login(login_url: String, platform: String, app_id: String) -> HubResult<Value> {
+pub async fn complete_qq_channel_login(
+    state: State<'_, AccountLogin>,
+    login_url: String,
+    platform: String,
+    app_id: String,
+) -> HubResult<Value> {
     let spec = validate_channel(&platform, &app_id)?;
     let (request_id, page_token) = parse_qq_login_link(&login_url)?;
     let app_id_owned = spec.app_id.to_string();
@@ -373,47 +403,75 @@ pub async fn complete_qq_channel_login(login_url: String, platform: String, app_
         .build()
         .map_err(|_| error("无法初始化安全登录连接。"))?;
 
-    let claim_res = client
-        .post(format!("{ORIGIN}/auth/page/claim"))
-        .header("Origin", ORIGIN)
-        .json(&json!({ "request_id": request_id, "page_token": page_token }))
-        .send()
-        .await
-        .map_err(|_| error("连接星枢授权服务失败，请检查网络。"))?;
-    let cookie_pair = claim_res
-        .headers()
-        .get_all(reqwest::header::SET_COOKIE)
-        .iter()
-        .filter_map(|v| v.to_str().ok())
-        .find_map(|raw| raw.split(';').next().map(str::trim).filter(|kv| kv.starts_with("xingshu_auth=")).map(str::to_string));
-    let claim_ok = claim_res.status().is_success();
-    let claim_json: Value = claim_res.json().await.map_err(|_| error("授权页响应无效。"))?;
-    if !claim_ok {
-        let msg = claim_json["error"].as_str().filter(|s| s.chars().count() <= 160).unwrap_or("授权链接已失效或已过期。");
-        return Err(error(msg));
-    }
-    let Some(cookie_kv) = cookie_pair else {
-        return Err(error("未能建立授权页会话 Cookie。"));
+    let link_key = qq_link_key(&request_id, &page_token);
+    let cached_session = {
+        let mut sessions = state.qq_sessions.lock().await;
+        sessions.retain(|_, s| s.claimed_at.elapsed() < QQ_SESSION_TTL);
+        sessions.get(&link_key).cloned()
     };
-    let Some(csrf) = claim_json["csrf"].as_str().filter(|s| !s.is_empty()) else {
-        return Err(error("授权页缺少 CSRF 令牌。"));
+
+    let (cookie_kv, csrf) = if let Some(cached) = cached_session {
+        (cached.cookie_kv, cached.csrf)
+    } else {
+        let claim_res = client
+            .post(format!("{ORIGIN}/auth/page/claim"))
+            .header("Origin", ORIGIN)
+            .json(&json!({ "request_id": request_id, "page_token": page_token }))
+            .send()
+            .await
+            .map_err(|_| error("连接星枢授权服务失败，请检查网络。"))?;
+        let cookie_pair = claim_res
+            .headers()
+            .get_all(reqwest::header::SET_COOKIE)
+            .iter()
+            .filter_map(|v| v.to_str().ok())
+            .find_map(|raw| raw.split(';').next().map(str::trim).filter(|kv| kv.starts_with("xingshu_auth=")).map(str::to_string));
+        let claim_ok = claim_res.status().is_success();
+        let claim_json: Value = claim_res.json().await.map_err(|_| error("授权页响应无效。"))?;
+        if !claim_ok {
+            let msg = claim_json["error"].as_str().filter(|s| s.chars().count() <= 160).unwrap_or("授权链接已失效或已过期。");
+            return Err(error(msg));
+        }
+        let Some(cookie_kv) = cookie_pair else {
+            return Err(error("未能建立授权页会话 Cookie。"));
+        };
+        let Some(csrf) = claim_json["csrf"].as_str().filter(|s| !s.is_empty()).map(str::to_string) else {
+            return Err(error("授权页缺少 CSRF 令牌。"));
+        };
+        // Keep the claimed page session in RAM so switching ports or retrying after exiting the game
+        // does not hit the single-use /auth/page/claim endpoint a second time.
+        let mut sessions = state.qq_sessions.lock().await;
+        if sessions.len() >= 16 {
+            sessions.clear();
+        }
+        sessions.insert(link_key.clone(), ClaimedQqSession {
+            cookie_kv: cookie_kv.clone(),
+            csrf: csrf.clone(),
+            claimed_at: Instant::now(),
+        });
+        (cookie_kv, csrf)
     };
 
     let ch_res = client
         .post(format!("{ORIGIN}/auth/page/channel"))
         .header("Origin", ORIGIN)
-        .header("X-XingShu-CSRF", csrf)
-        .header(reqwest::header::COOKIE, cookie_kv)
+        .header("X-XingShu-CSRF", &csrf)
+        .header(reqwest::header::COOKIE, &cookie_kv)
         .json(&json!({ "platform": spec.platform, "app_id": spec.app_id, "sdk_token": sdk_token }))
         .send()
         .await
         .map_err(|_| error("提交渠道服授权请求失败。"))?;
-    let ch_ok = ch_res.status().is_success();
+    let ch_status = ch_res.status();
+    let ch_ok = ch_status.is_success();
     let ch_json: Value = ch_res.json().await.map_err(|_| error("渠道登录响应无效。"))?;
     if !ch_ok {
         let msg = ch_json["error"].as_str().filter(|s| s.chars().count() <= 160).unwrap_or("渠道服授权未成功，请确认游戏内已登录并重试。");
+        if should_drop_qq_session(ch_status, msg) {
+            state.qq_sessions.lock().await.remove(&link_key);
+        }
         return Err(error(msg));
     }
+    state.qq_sessions.lock().await.remove(&link_key);
     Ok(json!({ "status": "succeeded", "account": ch_json["account"] }))
 }
 
@@ -452,5 +510,20 @@ mod tests {
         );
         assert!(parse_qq_login_link("https://evil.example/login#req12345678.tok_0123456789abcdef").is_err());
         assert!(parse_qq_login_link("https://124.221.176.134/login#short.t").is_err());
+    }
+    #[test]
+    fn detected_channels_sort_newest_first_and_session_drop_predicate() {
+        let mut items = vec![
+            (100, json!({"appId": "110001958"})),
+            (500, json!({"appId": "110001933"})),
+            (250, json!({"appId": "110001957"})),
+        ];
+        let sorted = sort_detected_channels(&mut items);
+        assert_eq!(sorted[0]["appId"], "110001933");
+        assert_eq!(sorted[1]["appId"], "110001957");
+        assert_eq!(sorted[2]["appId"], "110001958");
+        assert!(!should_drop_qq_session(reqwest::StatusCode::BAD_REQUEST, "请先退出渠道服游戏客户端后重试"));
+        assert!(should_drop_qq_session(reqwest::StatusCode::FORBIDDEN, ""));
+        assert!(should_drop_qq_session(reqwest::StatusCode::BAD_REQUEST, "授权页面已过期，请重新扫码登录"));
     }
 }

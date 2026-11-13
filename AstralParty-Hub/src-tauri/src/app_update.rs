@@ -50,7 +50,7 @@ async fn run(mode: &str, request: Value, seconds: u64) -> HubResult<Value> {
 #[tauri::command]
 pub async fn check_app_update(state: State<'_, AppUpdater>, preview: bool) -> HubResult<Value> {
     let _guard = state.gate.try_lock().map_err(|_| error("已有更新任务正在处理。"))?;
-    run("--check", json!({"current":identity()["sequence"],"preview":preview}), 180).await
+    run("--check", json!({"current":identity()["sequence"],"preview":preview}), 30).await
 }
 #[tauri::command]
 pub async fn prepare_app_update(state: State<'_, AppUpdater>, preview: bool, sequence: i64) -> HubResult<Value> {

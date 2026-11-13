@@ -13,6 +13,17 @@ using System.Windows.Forms;
 
 internal sealed class AndroidPreviewInstaller : Form
 {
+    static readonly Color CanvasColor = Color.FromArgb(252, 251, 248);
+    static readonly Color CardColor = Color.FromArgb(255, 255, 255);
+    static readonly Color SubtleColor = Color.FromArgb(247, 245, 239);
+    static readonly Color LogColor = Color.FromArgb(250, 249, 245);
+    static readonly Color BorderColor = Color.FromArgb(228, 223, 213);
+    static readonly Color InkColor = Color.FromArgb(28, 28, 28);
+    static readonly Color MutedColor = Color.FromArgb(95, 92, 86);
+    static readonly Color AccentSoft = Color.FromArgb(255, 241, 229);
+    static readonly Color AccentBorder = Color.FromArgb(245, 207, 175);
+    static readonly Color AccentInk = Color.FromArgb(184, 75, 8);
+
     readonly TextBox adb = new TextBox(), log = new TextBox();
     readonly ComboBox devices = new ComboBox();
     readonly Button refresh = new Button(), checkBtn = new Button(), install = new Button(), restore = new Button(), exportLogBtn = new Button();
@@ -25,7 +36,13 @@ internal sealed class AndroidPreviewInstaller : Form
         var diag = new AndroidDiagLog();
         string exportLogPath = "";
         try {
-            if (args.Length > 0) {
+            bool standaloneUi = false;
+            var argList = new List<string>();
+            for (int i = 0; i < args.Length; i++) {
+                if (args[i] == "--standalone-ui") { standaloneUi = true; continue; }
+                argList.Add(args[i]);
+            }
+            if (argList.Count > 0) {
                 // GUI executables have no console code page. Write UTF-8 to
                 // redirected pipes without calling SetConsoleOutputCP.
                 Console.SetOut(new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true });
@@ -33,13 +50,13 @@ internal sealed class AndroidPreviewInstaller : Form
                 string action = "";
                 bool replaceConflicts = false;
                 var options = new Dictionary<string, string>();
-                for (int i = 0; i < args.Length; i++) {
-                    string a = args[i];
+                for (int i = 0; i < argList.Count; i++) {
+                    string a = argList[i];
                     if (a == "--verify-package" || a == "--check" || a == "--install" || a == "--restore") { action = a; continue; }
                     if (a == "--replace-conflicts") { replaceConflicts = true; continue; }
                     if (a.StartsWith("--")) {
-                        if (i + 1 >= args.Length) throw new Exception("Missing option value: " + a);
-                        options[a] = args[++i];
+                        if (i + 1 >= argList.Count) throw new Exception("Missing option value: " + a);
+                        options[a] = argList[++i];
                     } else if (action.Length == 0) {
                         action = a;
                     } else {
@@ -56,7 +73,15 @@ internal sealed class AndroidPreviewInstaller : Form
                 if (exportLogPath.Length > 0) File.WriteAllText(exportLogPath, diag.Render(), new UTF8Encoding(true));
                 return 0;
             }
-            Application.EnableVisualStyles(); Application.Run(new AndroidPreviewInstaller()); return 0;
+            if (!standaloneUi) {
+                string parentUnified = Path.GetFullPath(Path.Combine(Home, "..", "星枢安装助手.exe"));
+                string parentRelease = Path.GetFullPath(Path.Combine(Home, "..", "release.json"));
+                if (File.Exists(parentUnified) && File.Exists(parentRelease)) {
+                    Process.Start(new ProcessStartInfo(parentUnified, "--tab-android") { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(parentUnified) });
+                    return 0;
+                }
+            }
+            Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false); Application.Run(new AndroidPreviewInstaller()); return 0;
         } catch (Exception error) {
             diag.SetFailure(error);
             string saved = diag.SaveAutoFailure();
@@ -67,7 +92,7 @@ internal sealed class AndroidPreviewInstaller : Form
                 Console.Error.WriteLine(error.Message);
                 if (saved.Length > 0) Console.Error.WriteLine("失败诊断日志已保存：" + saved);
             } else {
-                MessageBox.Show(error.Message + (saved.Length > 0 ? "\r\n\r\n诊断日志已保存：" + saved : ""), "星枢 · 安卓安装助手", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(error.Message + (saved.Length > 0 ? "\r\n\r\n诊断日志已保存：" + saved : ""), "星枢安装助手 · 安卓端", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             return 1;
         }
@@ -84,28 +109,54 @@ internal sealed class AndroidPreviewInstaller : Form
         foreach (string file in known) if (File.Exists(file)) return file;
         return "";
     }
+    static void StyleAuroraButton(Button b, bool primary, bool accent = false)
+    {
+        b.FlatStyle = FlatStyle.Flat;
+        b.FlatAppearance.BorderSize = 1;
+        b.Cursor = Cursors.Hand;
+        b.Font = new Font("Microsoft YaHei UI", 9.25F, FontStyle.Bold);
+        if (primary) { b.BackColor = InkColor; b.ForeColor = Color.White; b.FlatAppearance.BorderColor = InkColor; }
+        else if (accent) { b.BackColor = AccentSoft; b.ForeColor = AccentInk; b.FlatAppearance.BorderColor = AccentBorder; }
+        else { b.BackColor = SubtleColor; b.ForeColor = InkColor; b.FlatAppearance.BorderColor = Color.FromArgb(209, 203, 190); }
+    }
     AndroidPreviewInstaller()
     {
-        Text = "星枢 · 安卓安装助手"; ClientSize = new Size(680, 508); MinimumSize = new Size(690, 540);
-        BackColor = Color.FromArgb(255, 246, 222); Font = new Font("Microsoft YaHei UI", 9F);
-        var title = new Label { Text = "电脑连接手机 · 安装 / 更新 / 还原", Left = 20, Top = 16, Width = 620, Font = new Font(Font.FontFamily, 13F, FontStyle.Bold) };
-        var help = new Label { Text = "先在官方游戏完成资源更新并进过大厅，正常退出游戏。\n若已安装 APX 等同定位冲突插件，将提示备份删除并替换为星枢；安装失败可导出日志。", Left = 20, Top = 53, Width = 640, Height = 43 };
-        adb.SetBounds(20, 104, 515, 28); adb.Text = FindAdb();
-        var browse = new Button { Text = "选择 ADB", Left = 545, Top = 102, Width = 110, Height = 30 };
-        browse.Click += delegate { using (var picker = new OpenFileDialog { Filter = "ADB|adb.exe", Title = "选择已安装的 Android platform-tools 中的 adb.exe" }) if (picker.ShowDialog() == DialogResult.OK) adb.Text = picker.FileName; };
-        devices.SetBounds(20, 145, 515, 28); devices.DropDownStyle = ComboBoxStyle.DropDownList;
-        refresh.Text = "刷新设备"; refresh.SetBounds(545, 143, 110, 30); refresh.Click += delegate { RefreshDevices(); };
-        install.Text = "安装 / 更新"; install.SetBounds(20, 187, 195, 37); install.BackColor = Color.FromArgb(255, 35, 151); install.ForeColor = Color.White;
-        restore.Text = "还原原版"; restore.SetBounds(225, 187, 140, 37); restore.BackColor = Color.FromArgb(255, 197, 0);
-        checkBtn.Text = "检查/扫描冲突"; checkBtn.SetBounds(375, 187, 140, 37);
-        exportLogBtn.Text = "导出失败日志"; exportLogBtn.SetBounds(525, 187, 130, 37);
+        DoubleBuffered = true;
+        Text = "星枢安装助手 · 安卓端 (ADB)"; ClientSize = new Size(720, 548); MinimumSize = MaximumSize = Size;
+        BackColor = CanvasColor; ForeColor = InkColor; Font = new Font("Microsoft YaHei UI", 9.25F);
+        StartPosition = FormStartPosition.CenterScreen; MaximizeBox = false;
+        var header = new Panel { Left = 0, Top = 0, Width = 720, Height = 78, BackColor = Color.FromArgb(255, 245, 233) };
+        header.Paint += delegate(object s, PaintEventArgs pe) {
+            using (var pen = new Pen(BorderColor, 1f)) pe.Graphics.DrawLine(pen, 0, header.Height - 1, header.Width, header.Height - 1);
+            pe.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            using (var bg = new SolidBrush(InkColor)) pe.Graphics.FillEllipse(bg, 22, 16, 40, 40);
+            var pts = new[] { new PointF(42f, 22f), new PointF(45.5f, 32.5f), new PointF(56f, 36f), new PointF(45.5f, 39.5f), new PointF(42f, 50f), new PointF(38.5f, 39.5f), new PointF(28f, 36f), new PointF(38.5f, 32.5f) };
+            using (var star = new SolidBrush(Color.FromArgb(255, 196, 108))) pe.Graphics.FillPolygon(star, pts);
+        };
+        var title = new Label { Text = "星枢安装助手 · 安卓端", Left = 74, Top = 15, Width = 360, Height = 26, BackColor = Color.Transparent, Font = new Font("Microsoft YaHei UI", 13F, FontStyle.Bold), ForeColor = InkColor };
+        var help = new Label { Text = "先在官方游戏更新资源并进入大厅一次后正常退出；冲突插件将先备份再替换。", Left = 74, Top = 45, Width = 620, Height = 20, BackColor = Color.Transparent, Font = new Font("Microsoft YaHei UI", 8.5F), ForeColor = MutedColor };
+        header.Controls.AddRange(new Control[] { title, help });
+        var card = new Panel { Left = 20, Top = 94, Width = 680, Height = 166, BackColor = CardColor, BorderStyle = BorderStyle.FixedSingle };
+        var adbLbl = new Label { Text = "ADB 路径", Left = 16, Top = 18, Width = 66, Height = 24, ForeColor = MutedColor };
+        adb.SetBounds(86, 15, 464, 26); adb.BorderStyle = BorderStyle.FixedSingle; adb.Text = FindAdb();
+        var browse = new Button { Text = "选择 ADB…", Left = 560, Top = 13, Width = 104, Height = 30 }; StyleAuroraButton(browse, false);
+        browse.Click += delegate { using (var picker = new OpenFileDialog { Filter = "ADB|adb.exe", Title = "选择 adb.exe" }) if (picker.ShowDialog() == DialogResult.OK) adb.Text = picker.FileName; };
+        var devLbl = new Label { Text = "目标手机", Left = 16, Top = 56, Width = 66, Height = 24, ForeColor = MutedColor };
+        devices.SetBounds(86, 53, 464, 28); devices.DropDownStyle = ComboBoxStyle.DropDownList;
+        refresh.Text = "刷新设备"; refresh.SetBounds(560, 52, 104, 30); StyleAuroraButton(refresh, false); refresh.Click += delegate { RefreshDevices(); };
+        install.Text = "安装 / 更新手机端"; install.SetBounds(16, 104, 186, 40); StyleAuroraButton(install, true);
+        restore.Text = "还原官方原版"; restore.SetBounds(212, 104, 140, 40); StyleAuroraButton(restore, false);
+        checkBtn.Text = "检查与冲突扫描"; checkBtn.SetBounds(362, 104, 152, 40); StyleAuroraButton(checkBtn, false);
+        exportLogBtn.Text = "导出失败日志"; exportLogBtn.SetBounds(524, 104, 140, 40); StyleAuroraButton(exportLogBtn, false, true);
+        card.Controls.AddRange(new Control[] { adbLbl, adb, browse, devLbl, devices, refresh, install, restore, checkBtn, exportLogBtn });
         install.Click += delegate { RunInstallWithConflictPrompt(); };
         restore.Click += delegate { RunAction(true, false); };
         checkBtn.Click += delegate { RunCheck(); };
         exportLogBtn.Click += delegate { ExportLog(); };
-        log.SetBounds(20, 238, 635, 248); log.Multiline = true; log.ReadOnly = true; log.ScrollBars = ScrollBars.Vertical;
+        log.SetBounds(20, 274, 680, 254); log.Multiline = true; log.ReadOnly = true; log.ScrollBars = ScrollBars.Vertical;
+        log.BorderStyle = BorderStyle.FixedSingle; log.BackColor = LogColor; log.ForeColor = InkColor;
         log.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top | AnchorStyles.Bottom;
-        Controls.AddRange(new Control[] { title, help, adb, browse, devices, refresh, install, restore, checkBtn, exportLogBtn, log });
+        Controls.AddRange(new Control[] { header, card, log });
         Shown += delegate { RefreshDevices(); };
     }
     void Write(string value) { if (InvokeRequired) { BeginInvoke(new Action<string>(Write), value); return; } log.AppendText(value + Environment.NewLine); }

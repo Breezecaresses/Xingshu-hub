@@ -5,6 +5,7 @@ import { api } from '../../shared/api/tauri';
 import type { DiagnosticReport } from '../../shared/types';
 import { ShieldCheck, AlertTriangle } from 'lucide-react';
 import { useTranslation, LanguageSwitcher } from '../../i18n';
+import { UpdatePromptController } from '../../components/UpdatePromptModal';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 
 export const Layout: React.FC = () => {
@@ -191,6 +192,8 @@ export const Layout: React.FC = () => {
             ) : null}
           </div>
         </header>
+
+        <UpdatePromptController />
 
         <main className="content-area" ref={contentRef}>
           <div className="aurora-route-stage" key={pathname}>

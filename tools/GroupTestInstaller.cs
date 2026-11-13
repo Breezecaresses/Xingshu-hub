@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
@@ -737,11 +738,18 @@ internal static class GroupTest
                 if (args[i] == "--export-log" && i + 1 < args.Length) { exportLogPath = args[++i]; continue; }
                 filtered.Add(args[i]);
             }
+            if (filtered.Count == 1 && filtered[0] == "--tab-android" || (filtered.Count == 2 && filtered[0] == "--tab" && filtered[1] == "android"))
+            {
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(new InstallerWindow(null, null, true));
+                return 0;
+            }
             if (filtered.Count == 3 && filtered[0] == "--ui")
             {
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new InstallerWindow(filtered[1], filtered[2]));
+                Application.Run(new InstallerWindow(filtered[1], filtered[2], false));
                 return 0;
             }
             if (filtered.Count > 0)
@@ -766,7 +774,7 @@ internal static class GroupTest
             }
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new InstallerWindow());
+            Application.Run(new InstallerWindow(null, null, false));
             return 0;
         }
         catch (Exception ex)
@@ -789,31 +797,410 @@ internal static class GroupTest
     }
 }
 
+internal static class AuroraPalette
+{
+    internal static readonly Color Canvas = Color.FromArgb(252, 251, 248);
+    internal static readonly Color Surface = Color.FromArgb(255, 255, 255);
+    internal static readonly Color SurfaceSubtle = Color.FromArgb(247, 245, 239);
+    internal static readonly Color SurfaceLog = Color.FromArgb(250, 249, 245);
+    internal static readonly Color Border = Color.FromArgb(228, 223, 213);
+    internal static readonly Color BorderStrong = Color.FromArgb(209, 203, 190);
+    internal static readonly Color Ink = Color.FromArgb(28, 28, 28);
+    internal static readonly Color InkMuted = Color.FromArgb(95, 92, 86);
+    internal static readonly Color InkSubtle = Color.FromArgb(130, 126, 118);
+    internal static readonly Color AccentSoft = Color.FromArgb(255, 241, 229);
+    internal static readonly Color AccentBorder = Color.FromArgb(245, 207, 175);
+    internal static readonly Color AccentInk = Color.FromArgb(184, 75, 8);
+    internal static readonly Color OkSoft = Color.FromArgb(232, 246, 237);
+    internal static readonly Color OkInk = Color.FromArgb(21, 128, 61);
+    internal static readonly Color ErrSoft = Color.FromArgb(253, 236, 240);
+    internal static readonly Color ErrInk = Color.FromArgb(190, 18, 60);
+
+    internal static System.Drawing.Drawing2D.GraphicsPath RoundedRect(Rectangle bounds, int radius)
+    {
+        var path = new System.Drawing.Drawing2D.GraphicsPath();
+        int d = radius * 2;
+        if (d > bounds.Width) d = bounds.Width;
+        if (d > bounds.Height) d = bounds.Height;
+        path.AddArc(bounds.X, bounds.Y, d, d, 180, 90);
+        path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 90);
+        path.AddArc(bounds.Right - d, bounds.Bottom - d, d, d, 0, 90);
+        path.AddArc(bounds.X, bounds.Bottom - d, d, d, 90, 90);
+        path.CloseFigure();
+        return path;
+    }
+
+    internal static void PaintAuroraHeader(Graphics g, Rectangle bounds)
+    {
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        using (var baseBrush = new System.Drawing.Drawing2D.LinearGradientBrush(
+            bounds, Color.FromArgb(255, 245, 233), Color.FromArgb(252, 251, 248), 90f))
+        {
+            g.FillRectangle(baseBrush, bounds);
+        }
+        using (var warmGlow = new System.Drawing.Drawing2D.GraphicsPath())
+        {
+            warmGlow.AddEllipse(-60, -90, 360, 220);
+            using (var pgb = new System.Drawing.Drawing2D.PathGradientBrush(warmGlow))
+            {
+                pgb.CenterColor = Color.FromArgb(72, 255, 142, 42);
+                pgb.SurroundColors = new[] { Color.FromArgb(0, 255, 142, 42) };
+                g.FillPath(pgb, warmGlow);
+            }
+        }
+        using (var roseGlow = new System.Drawing.Drawing2D.GraphicsPath())
+        {
+            roseGlow.AddEllipse(bounds.Width - 360, -80, 360, 210);
+            using (var pgb = new System.Drawing.Drawing2D.PathGradientBrush(roseGlow))
+            {
+                pgb.CenterColor = Color.FromArgb(52, 255, 95, 162);
+                pgb.SurroundColors = new[] { Color.FromArgb(0, 255, 95, 162) };
+                g.FillPath(pgb, roseGlow);
+            }
+        }
+        using (var pen = new Pen(Border, 1f))
+            g.DrawLine(pen, 0, bounds.Bottom - 1, bounds.Right, bounds.Bottom - 1);
+    }
+
+    internal static Icon CreateStarIcon()
+    {
+        using (var bmp = new Bitmap(32, 32))
+        using (var g = Graphics.FromImage(bmp))
+        {
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.Clear(Color.Transparent);
+            using (var bg = new SolidBrush(Ink))
+                g.FillEllipse(bg, 1, 1, 30, 30);
+            var pts = new[] {
+                new PointF(16f, 5f), new PointF(19.2f, 12.8f), new PointF(27f, 16f), new PointF(19.2f, 19.2f),
+                new PointF(16f, 27f), new PointF(12.8f, 19.2f), new PointF(5f, 16f), new PointF(12.8f, 12.8f)
+            };
+            using (var star = new SolidBrush(Color.FromArgb(255, 196, 108)))
+                g.FillPolygon(star, pts);
+            IntPtr hIcon = bmp.GetHicon();
+            try { return (Icon)Icon.FromHandle(hIcon).Clone(); }
+            finally { DestroyIcon(hIcon); }
+        }
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool DestroyIcon(IntPtr hIcon);
+}
+
+internal sealed class AuroraCardPanel : Panel
+{
+    internal Color CardBack = AuroraPalette.Surface;
+    internal Color CardBorder = AuroraPalette.Border;
+    internal int Radius = 14;
+
+    internal AuroraCardPanel()
+    {
+        DoubleBuffered = true;
+        BackColor = AuroraPalette.Canvas;
+        Padding = new Padding(16);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+        var g = e.Graphics;
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        var rect = new Rectangle(0, 0, Width - 1, Height - 2);
+        using (var shadowPath = AuroraPalette.RoundedRect(new Rectangle(0, 1, Width - 1, Height - 2), Radius))
+        using (var shadowBrush = new SolidBrush(Color.FromArgb(10, 28, 28, 28)))
+            g.FillPath(shadowBrush, shadowPath);
+        using (var path = AuroraPalette.RoundedRect(rect, Radius))
+        using (var fill = new SolidBrush(CardBack))
+        using (var pen = new Pen(CardBorder, 1f))
+        {
+            g.FillPath(fill, path);
+            g.DrawPath(pen, path);
+        }
+    }
+}
+
+internal enum AuroraBtnKind { Primary, Accent, Secondary, DangerSoft }
+
+internal sealed class AuroraButton : Button
+{
+    internal AuroraBtnKind Kind = AuroraBtnKind.Secondary;
+    internal int Radius = 9;
+    private bool hovered, pressed;
+
+    internal AuroraButton()
+    {
+        FlatStyle = FlatStyle.Flat;
+        FlatAppearance.BorderSize = 0;
+        Cursor = Cursors.Hand;
+        Font = new Font("Microsoft YaHei UI", 9.25F, FontStyle.Bold);
+        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
+    }
+
+    protected override void OnMouseEnter(EventArgs e) { hovered = true; Invalidate(); base.OnMouseEnter(e); }
+    protected override void OnMouseLeave(EventArgs e) { hovered = false; pressed = false; Invalidate(); base.OnMouseLeave(e); }
+    protected override void OnMouseDown(MouseEventArgs e) { if (e.Button == MouseButtons.Left) { pressed = true; Invalidate(); } base.OnMouseDown(e); }
+    protected override void OnMouseUp(MouseEventArgs e) { pressed = false; Invalidate(); base.OnMouseUp(e); }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        g.Clear(Parent != null ? Parent.BackColor : AuroraPalette.Surface);
+        Color bg, fg, bd;
+        if (!Enabled)
+        {
+            bg = Color.FromArgb(241, 239, 233);
+            fg = Color.FromArgb(165, 160, 152);
+            bd = Color.FromArgb(228, 224, 216);
+        }
+        else if (Kind == AuroraBtnKind.Primary)
+        {
+            bg = pressed ? Color.FromArgb(55, 52, 48) : (hovered ? Color.FromArgb(46, 44, 40) : AuroraPalette.Ink);
+            fg = Color.White;
+            bd = bg;
+        }
+        else if (Kind == AuroraBtnKind.Accent)
+        {
+            bg = pressed ? Color.FromArgb(250, 221, 196) : (hovered ? Color.FromArgb(255, 232, 212) : AuroraPalette.AccentSoft);
+            fg = AuroraPalette.AccentInk;
+            bd = AuroraPalette.AccentBorder;
+        }
+        else if (Kind == AuroraBtnKind.DangerSoft)
+        {
+            bg = hovered ? Color.FromArgb(252, 225, 232) : AuroraPalette.ErrSoft;
+            fg = AuroraPalette.ErrInk;
+            bd = Color.FromArgb(243, 198, 210);
+        }
+        else
+        {
+            bg = pressed ? Color.FromArgb(234, 229, 218) : (hovered ? Color.FromArgb(239, 235, 226) : AuroraPalette.SurfaceSubtle);
+            fg = AuroraPalette.Ink;
+            bd = AuroraPalette.BorderStrong;
+        }
+        var rect = new Rectangle(0, 0, Width - 1, Height - 1);
+        using (var path = AuroraPalette.RoundedRect(rect, Radius))
+        using (var fill = new SolidBrush(bg))
+        using (var pen = new Pen(bd, 1f))
+        {
+            g.FillPath(fill, path);
+            g.DrawPath(pen, path);
+        }
+        TextRenderer.DrawText(g, Text, Font, rect, fg,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+    }
+}
+
+internal sealed class AuroraPillBadge : Label
+{
+    internal Color FillColor = AuroraPalette.AccentSoft;
+    internal Color EdgeColor = AuroraPalette.AccentBorder;
+    internal Color InkColor = AuroraPalette.AccentInk;
+
+    internal AuroraPillBadge()
+    {
+        AutoSize = false;
+        TextAlign = ContentAlignment.MiddleCenter;
+        Font = new Font("Microsoft YaHei UI", 8.5F, FontStyle.Bold);
+        BackColor = Color.Transparent;
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        var rect = new Rectangle(0, 0, Width - 1, Height - 1);
+        using (var path = AuroraPalette.RoundedRect(rect, Height / 2))
+        using (var fill = new SolidBrush(FillColor))
+        using (var pen = new Pen(EdgeColor, 1f))
+        {
+            g.FillPath(fill, path);
+            g.DrawPath(pen, path);
+        }
+        TextRenderer.DrawText(g, Text, Font, rect, InkColor,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+    }
+}
+
 internal sealed class InstallerWindow : Form
 {
+    private readonly Panel pcPanel = new Panel(), androidPanel = new Panel();
+    private readonly AuroraButton tabPcBtn = new AuroraButton(), tabAndroidBtn = new AuroraButton();
+    private readonly AuroraPillBadge stateBadge = new AuroraPillBadge();
     private readonly ComboBox platforms = new ComboBox();
     private readonly TextBox selection = new TextBox();
     private readonly TextBox status = new TextBox();
+    private readonly AuroraButton pcInstallBtn = new AuroraButton(), pcRestoreBtn = new AuroraButton(), pcCheckBtn = new AuroraButton(), pcHubBtn = new AuroraButton();
+
+    private readonly TextBox adbBox = new TextBox(), wirelessAddrBox = new TextBox(), androidLog = new TextBox();
+    private readonly ComboBox androidDevices = new ComboBox();
+    private readonly AuroraButton andRefreshBtn = new AuroraButton(), andConnectBtn = new AuroraButton(), andInstallBtn = new AuroraButton(), andRestoreBtn = new AuroraButton(), andCheckBtn = new AuroraButton(), andApkBtn = new AuroraButton(), andExportBtn = new AuroraButton();
+    private readonly Label andAvailLabel = new Label();
+    private readonly List<string> andSerials = new List<string>();
+    private string androidRoot, androidManifest, androidWorkerExe, androidApkPath;
+    private bool activeTabAndroid;
     private DiagnosticLog lastDiag = new DiagnosticLog();
 
-    internal InstallerWindow(string initialPlatform = null, string initialPath = null)
+    internal InstallerWindow(string initialPlatform = null, string initialPath = null, bool startAndroidTab = false)
     {
+        DoubleBuffered = true;
         Text = "星枢安装助手 · " + GroupTest.Release.Version;
-        ClientSize = new Size(680, 466);
+        ClientSize = new Size(760, 608);
         MinimumSize = MaximumSize = Size;
-        Font = new Font("Microsoft YaHei UI", 9F);
+        BackColor = AuroraPalette.Canvas;
+        ForeColor = AuroraPalette.Ink;
+        Font = new Font("Microsoft YaHei UI", 9.25F);
         StartPosition = FormStartPosition.CenterScreen;
         MaximizeBox = false;
         AutoScaleMode = AutoScaleMode.Dpi;
-        var intro = new Label { Left = 22, Top = 18, Width = 636, Height = 48,
-            Text = "适配" + String.Join("、", GroupTest.Release.Platforms.Select(GroupTest.CompatibleVersion).Distinct()) + "（Windows）\r\n先退出游戏，再选择对应平台和游戏程序；若存在 APX 等冲突插件，将提示备份删除并替换。" };
-        Controls.Add(intro);
-        platforms.SetBounds(22, 80, 210, 28);
+        try { Icon = AuroraPalette.CreateStarIcon(); } catch { }
+
+        ResolveAndroidBundlePaths();
+
+        // Top Aurora Header Band
+        var header = new Panel { Left = 0, Top = 0, Width = 760, Height = 82, BackColor = AuroraPalette.Canvas };
+        header.Paint += delegate(object s, PaintEventArgs pe)
+        {
+            AuroraPalette.PaintAuroraHeader(pe.Graphics, header.ClientRectangle);
+            using (var bg = new SolidBrush(AuroraPalette.Ink))
+            using (var star = new SolidBrush(Color.FromArgb(255, 196, 108)))
+            {
+                pe.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                pe.Graphics.FillEllipse(bg, 24, 18, 42, 42);
+                var pts = new[] {
+                    new PointF(45f, 25f), new PointF(48.8f, 35.2f), new PointF(59f, 39f), new PointF(48.8f, 42.8f),
+                    new PointF(45f, 53f), new PointF(41.2f, 42.8f), new PointF(31f, 39f), new PointF(41.2f, 35.2f)
+                };
+                pe.Graphics.FillPolygon(star, pts);
+            }
+        };
+
+        var titleLbl = new Label { Text = "星枢安装助手", Left = 78, Top = 16, Width = 134, Height = 28, BackColor = Color.Transparent, Font = new Font("Microsoft YaHei UI", 13.5F, FontStyle.Bold), ForeColor = AuroraPalette.Ink };
+        var verBadge = new AuroraPillBadge { Text = GroupTest.Release.Version, Left = 216, Top = 20, Width = 192, Height = 22 };
+        var subLbl = new Label
+        {
+            Text = "统一安装与维护 · " + String.Join("、", GroupTest.Release.Platforms.Select(GroupTest.CompatibleVersion).Distinct()),
+            Left = 78, Top = 46, Width = 400, Height = 20, BackColor = Color.Transparent,
+            Font = new Font("Microsoft YaHei UI", 8.5F), ForeColor = AuroraPalette.InkMuted
+        };
+
+        // Unified Segmented Mode Switcher
+        var tabTrack = new Panel { Left = 486, Top = 20, Width = 250, Height = 40, BackColor = Color.FromArgb(239, 234, 224) };
+        tabTrack.Paint += delegate(object s, PaintEventArgs pe)
+        {
+            pe.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            using (var path = AuroraPalette.RoundedRect(new Rectangle(0, 0, tabTrack.Width - 1, tabTrack.Height - 1), 11))
+            using (var fill = new SolidBrush(Color.FromArgb(239, 234, 224)))
+            using (var pen = new Pen(AuroraPalette.Border, 1f)) { pe.Graphics.FillPath(fill, path); pe.Graphics.DrawPath(pen, path); }
+        };
+        tabPcBtn.Text = "电脑端安装"; tabPcBtn.SetBounds(4, 4, 118, 32); tabPcBtn.Radius = 8;
+        tabAndroidBtn.Text = "安卓端安装"; tabAndroidBtn.SetBounds(126, 4, 120, 32); tabAndroidBtn.Radius = 8;
+        tabPcBtn.Click += delegate { SwitchTab(false); };
+        tabAndroidBtn.Click += delegate { SwitchTab(true); };
+        tabTrack.Controls.AddRange(new Control[] { tabPcBtn, tabAndroidBtn });
+        header.Controls.AddRange(new Control[] { titleLbl, verBadge, subLbl, tabTrack });
+        Controls.Add(header);
+
+        stateBadge.SetBounds(24, 92, 130, 24);
+        stateBadge.Text = "就绪";
+        stateBadge.FillColor = AuroraPalette.OkSoft;
+        stateBadge.EdgeColor = Color.FromArgb(187, 228, 200);
+        stateBadge.InkColor = AuroraPalette.OkInk;
+        var helpTopBtn = new AuroraButton { Text = "安装说明", Left = 548, Top = 90, Width = 90, Height = 28, Kind = AuroraBtnKind.Secondary };
+        helpTopBtn.Click += delegate {
+            if (activeTabAndroid && !String.IsNullOrEmpty(androidRoot) && File.Exists(Path.Combine(androidRoot, "手机独立安装说明.md")))
+                Process.Start(new ProcessStartInfo(Path.Combine(androidRoot, "手机独立安装说明.md")) { UseShellExecute = true });
+            else
+                RunPc(delegate { Process.Start(new ProcessStartInfo(GroupTest.Within(GroupTest.PackageRoot, "先读我.txt")) { UseShellExecute = true }); return "已打开安装说明文档。"; });
+        };
+        var hubTopBtn = new AuroraButton { Text = "启动星枢 Hub", Left = 646, Top = 90, Width = 92, Height = 28, Kind = AuroraBtnKind.Accent };
+        hubTopBtn.Click += delegate { RunPc(delegate { GroupTest.StartHub(); return "已启动星枢 Hub。请在设置和游戏账号页选择自己的主端、观战端及账号。"; }); };
+        var topHint = new Label { Text = "操作前请正常退出游戏 · 冲突插件会自动备份后再替换", Left = 164, Top = 95, Width = 376, Height = 20, ForeColor = AuroraPalette.InkMuted, Font = new Font("Microsoft YaHei UI", 8.5F) };
+        Controls.AddRange(new Control[] { stateBadge, topHint, helpTopBtn, hubTopBtn });
+
+        pcPanel.SetBounds(24, 126, 712, 464); pcPanel.BackColor = AuroraPalette.Canvas;
+        androidPanel.SetBounds(24, 126, 712, 464); androidPanel.BackColor = AuroraPalette.Canvas;
+        BuildPcTab(initialPlatform, initialPath);
+        BuildAndroidTab();
+        Controls.Add(pcPanel);
+        Controls.Add(androidPanel);
+
+        SwitchTab(startAndroidTab);
+        Shown += delegate { if (startAndroidTab) RefreshAndroidDevices(); };
+    }
+
+    private void ResolveAndroidBundlePaths()
+    {
+        string dir = Path.Combine(GroupTest.PackageRoot, "Android");
+        string manifest = Path.Combine(dir, "candidate.json");
+        string worker = Path.Combine(dir, "星枢安卓安装助手.exe");
+        if (Directory.Exists(dir) && File.Exists(manifest))
+        {
+            androidRoot = dir;
+            androidManifest = manifest;
+            androidWorkerExe = File.Exists(worker) ? worker : "";
+            string apk = Path.Combine(dir, "星枢手机安装助手.apk");
+            androidApkPath = File.Exists(apk) ? apk : "";
+        }
+        else if (File.Exists(Path.Combine(GroupTest.PackageRoot, "candidate.json")))
+        {
+            androidRoot = GroupTest.PackageRoot;
+            androidManifest = Path.Combine(GroupTest.PackageRoot, "candidate.json");
+            string apk = Path.Combine(GroupTest.PackageRoot, "星枢手机安装助手.apk");
+            androidApkPath = File.Exists(apk) ? apk : "";
+        }
+    }
+
+    private void SwitchTab(bool showAndroid)
+    {
+        activeTabAndroid = showAndroid;
+        pcPanel.Visible = !showAndroid;
+        androidPanel.Visible = showAndroid;
+        tabPcBtn.Kind = showAndroid ? AuroraBtnKind.Secondary : AuroraBtnKind.Primary;
+        tabAndroidBtn.Kind = showAndroid ? AuroraBtnKind.Primary : AuroraBtnKind.Secondary;
+        tabPcBtn.Invalidate();
+        tabAndroidBtn.Invalidate();
+        if (showAndroid && androidDevices.Items.Count == 0 && !String.IsNullOrEmpty(androidManifest))
+            RefreshAndroidDevices();
+    }
+
+    private void SetStatusBadge(string text, bool isError, bool isBusy)
+    {
+        if (InvokeRequired) { BeginInvoke(new Action<string, bool, bool>(SetStatusBadge), text, isError, isBusy); return; }
+        stateBadge.Text = text;
+        if (isBusy)
+        {
+            stateBadge.FillColor = AuroraPalette.AccentSoft;
+            stateBadge.EdgeColor = AuroraPalette.AccentBorder;
+            stateBadge.InkColor = AuroraPalette.AccentInk;
+        }
+        else if (isError)
+        {
+            stateBadge.FillColor = AuroraPalette.ErrSoft;
+            stateBadge.EdgeColor = Color.FromArgb(243, 198, 210);
+            stateBadge.InkColor = AuroraPalette.ErrInk;
+        }
+        else
+        {
+            stateBadge.FillColor = AuroraPalette.OkSoft;
+            stateBadge.EdgeColor = Color.FromArgb(187, 228, 200);
+            stateBadge.InkColor = AuroraPalette.OkInk;
+        }
+        stateBadge.Invalidate();
+    }
+
+    private void BuildPcTab(string initialPlatform, string initialPath)
+    {
+        var cfgCard = new AuroraCardPanel { Left = 0, Top = 0, Width = 712, Height = 196 };
+        var stepLbl = new Label { Text = "1. 选择游戏渠道与程序位置", Left = 18, Top = 14, Width = 360, Height = 22, BackColor = AuroraPalette.Surface, Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold), ForeColor = AuroraPalette.Ink };
+        var chLbl = new Label { Text = "游戏平台", Left = 18, Top = 48, Width = 70, Height = 24, BackColor = AuroraPalette.Surface, ForeColor = AuroraPalette.InkMuted };
+        platforms.SetBounds(92, 44, 210, 28);
         platforms.DropDownStyle = ComboBoxStyle.DropDownList;
         platforms.Items.AddRange(GroupTest.Release.Platforms.Cast<object>().ToArray());
         platforms.SelectedIndex = 0;
-        Controls.Add(platforms);
-        selection.SetBounds(22, 124, 504, 28);
+
+        var pathLbl = new Label { Text = "程序路径", Left = 18, Top = 86, Width = 70, Height = 24, BackColor = AuroraPalette.Surface, ForeColor = AuroraPalette.InkMuted };
+        selection.SetBounds(92, 83, 476, 26);
+        selection.BorderStyle = BorderStyle.FixedSingle;
         if (initialPlatform != null)
         {
             var index = Array.FindIndex(GroupTest.Release.Platforms, p => p.Id == initialPlatform);
@@ -821,37 +1208,322 @@ internal sealed class InstallerWindow : Form
             platforms.SelectedIndex = index;
             selection.Text = initialPath ?? "";
         }
-        Controls.Add(selection);
-        var browse = Button("选择游戏…", 538, 122, 120, delegate {
+        var browse = new AuroraButton { Text = "选择游戏…", Left = 578, Top = 80, Width = 114, Height = 30, Kind = AuroraBtnKind.Secondary };
+        browse.Click += delegate {
             var p = (PlatformInfo)platforms.SelectedItem;
             using (var dialog = new OpenFileDialog { Title = "选择 " + p.ExeName, Filter = "游戏程序|" + p.ExeName, CheckFileExists = true })
                 if (dialog.ShowDialog(this) == DialogResult.OK) selection.Text = dialog.FileName;
-        });
-        Controls.Add(browse);
-        Controls.Add(Button("安装 / 更新插件", 22, 172, 175, delegate { InstallWithConflictPrompt(); }));
-        Controls.Add(Button("还原安装前版本", 209, 172, 175, delegate { Act("restore", false); }));
-        Controls.Add(Button("启动星枢 Hub", 396, 172, 162, delegate { Run(delegate { GroupTest.StartHub(); return "已启动星枢 Hub。请在设置和游戏账号页选择自己的主端、观战端及账号。"; }); }));
-        Controls.Add(Button("说明", 570, 172, 88, delegate { Run(delegate {
-            Process.Start(new ProcessStartInfo(GroupTest.Within(GroupTest.PackageRoot, "先读我.txt")) { UseShellExecute = true }); return "已打开安装说明。";
-        }); }));
-        Controls.Add(Button("检查与冲突扫描", 22, 216, 175, delegate { Act("check", false); }));
-        Controls.Add(Button("导出失败日志", 209, 216, 175, delegate { ExportDiagnosticLog(); }));
-        status.SetBounds(22, 266, 636, 180);
+        };
+
+        pcInstallBtn.Text = "安装 / 更新插件"; pcInstallBtn.SetBounds(18, 134, 178, 40); pcInstallBtn.Kind = AuroraBtnKind.Primary;
+        pcInstallBtn.Click += delegate { InstallPcWithConflictPrompt(); };
+        pcCheckBtn.Text = "检查与冲突扫描"; pcCheckBtn.SetBounds(206, 134, 152, 40); pcCheckBtn.Kind = AuroraBtnKind.Secondary;
+        pcCheckBtn.Click += delegate { ActPc("check", false); };
+        pcRestoreBtn.Text = "还原安装前版本"; pcRestoreBtn.SetBounds(368, 134, 152, 40); pcRestoreBtn.Kind = AuroraBtnKind.Secondary;
+        pcRestoreBtn.Click += delegate { ActPc("restore", false); };
+        var exportPcBtn = new AuroraButton { Text = "导出失败日志", Left = 530, Top = 134, Width = 162, Height = 40, Kind = AuroraBtnKind.Secondary };
+        exportPcBtn.Click += delegate { ExportPcDiagnosticLog(); };
+        cfgCard.Controls.AddRange(new Control[] { stepLbl, chLbl, platforms, pathLbl, selection, browse, pcInstallBtn, pcCheckBtn, pcRestoreBtn, exportPcBtn });
+
+        var logCard = new AuroraCardPanel { Left = 0, Top = 208, Width = 712, Height = 252 };
+        var logTitle = new Label { Text = "2. 执行状态与诊断日志", Left = 18, Top = 12, Width = 280, Height = 22, BackColor = AuroraPalette.Surface, Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold), ForeColor = AuroraPalette.Ink };
+        status.SetBounds(18, 42, 674, 192);
         status.Multiline = true;
         status.ReadOnly = true;
+        status.BorderStyle = BorderStyle.FixedSingle;
+        status.BackColor = AuroraPalette.SurfaceLog;
+        status.ForeColor = AuroraPalette.Ink;
         status.ScrollBars = ScrollBars.Vertical;
-        status.Text = "请先点“说明”或“检查与冲突扫描”。安装成功后通过对应渠道的官方启动器进入游戏；若失败可点“导出失败日志”。";
-        Controls.Add(status);
+        status.Text = "请先选择游戏平台与主程序（勿选启动器），建议先点“检查与冲突扫描”。\r\n安装成功后请通过官方启动器进入游戏，可在游戏内直接呼出星枢面板。";
+        logCard.Controls.AddRange(new Control[] { logTitle, status });
+        pcPanel.Controls.AddRange(new Control[] { cfgCard, logCard });
     }
 
-    private static Button Button(string text, int x, int y, int width, EventHandler handler)
+    private void BuildAndroidTab()
     {
-        var button = new Button { Text = text, Left = x, Top = y, Width = width, Height = 36 };
-        button.Click += handler;
-        return button;
+        var devCard = new AuroraCardPanel { Left = 0, Top = 0, Width = 712, Height = 248 };
+        var titleLbl = new Label { Text = "1. 连接手机（USB 调试或局域网无线调试）", Left = 18, Top = 12, Width = 400, Height = 22, BackColor = AuroraPalette.Surface, Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold), ForeColor = AuroraPalette.Ink };
+        andAvailLabel.SetBounds(420, 14, 272, 20);
+        andAvailLabel.BackColor = AuroraPalette.Surface;
+        andAvailLabel.TextAlign = ContentAlignment.MiddleRight;
+        andAvailLabel.Font = new Font("Microsoft YaHei UI", 8.5F);
+        andAvailLabel.ForeColor = String.IsNullOrEmpty(androidManifest) ? AuroraPalette.ErrInk : AuroraPalette.OkInk;
+        andAvailLabel.Text = String.IsNullOrEmpty(androidManifest) ? "未检测到 Android 资源包" : "已就绪：官方安卓 3.3.0 兼容";
+
+        var adbLbl = new Label { Text = "ADB 工具", Left = 18, Top = 46, Width = 70, Height = 24, BackColor = AuroraPalette.Surface, ForeColor = AuroraPalette.InkMuted };
+        adbBox.SetBounds(92, 43, 476, 26); adbBox.BorderStyle = BorderStyle.FixedSingle; adbBox.Text = FindBundledAdb();
+        var adbBrowse = new AuroraButton { Text = "选择 ADB…", Left = 578, Top = 40, Width = 114, Height = 30, Kind = AuroraBtnKind.Secondary };
+        adbBrowse.Click += delegate {
+            using (var picker = new OpenFileDialog { Filter = "ADB|adb.exe", Title = "选择 adb.exe" })
+                if (picker.ShowDialog(this) == DialogResult.OK) adbBox.Text = picker.FileName;
+        };
+
+        var devLbl = new Label { Text = "目标手机", Left = 18, Top = 82, Width = 70, Height = 24, BackColor = AuroraPalette.Surface, ForeColor = AuroraPalette.InkMuted };
+        androidDevices.SetBounds(92, 79, 476, 28); androidDevices.DropDownStyle = ComboBoxStyle.DropDownList;
+        andRefreshBtn.Text = "刷新设备"; andRefreshBtn.SetBounds(578, 78, 114, 30); andRefreshBtn.Kind = AuroraBtnKind.Secondary;
+        andRefreshBtn.Click += delegate { RefreshAndroidDevices(); };
+
+        var wifiLbl = new Label { Text = "无线连接", Left = 18, Top = 118, Width = 70, Height = 24, BackColor = AuroraPalette.Surface, ForeColor = AuroraPalette.InkMuted };
+        wirelessAddrBox.SetBounds(92, 115, 356, 26); wirelessAddrBox.BorderStyle = BorderStyle.FixedSingle;
+        wirelessAddrBox.Text = "";
+        var wifiHint = new Label { Text = "例 192.168.1.8:35001", Left = 456, Top = 118, Width = 116, Height = 22, BackColor = AuroraPalette.Surface, ForeColor = AuroraPalette.InkSubtle, Font = new Font("Microsoft YaHei UI", 8F) };
+        andConnectBtn.Text = "无线连接"; andConnectBtn.SetBounds(578, 114, 114, 30); andConnectBtn.Kind = AuroraBtnKind.Secondary;
+        andConnectBtn.Click += delegate { ConnectWirelessAdb(); };
+
+        andInstallBtn.Text = "安装 / 更新手机端"; andInstallBtn.SetBounds(18, 160, 178, 38); andInstallBtn.Kind = AuroraBtnKind.Primary;
+        andCheckBtn.Text = "检查与冲突扫描"; andCheckBtn.SetBounds(204, 160, 138, 38); andCheckBtn.Kind = AuroraBtnKind.Secondary;
+        andRestoreBtn.Text = "还原官方原版"; andRestoreBtn.SetBounds(350, 160, 128, 38); andRestoreBtn.Kind = AuroraBtnKind.Secondary;
+        andApkBtn.Text = "安装手机助手 APK"; andApkBtn.SetBounds(486, 160, 206, 38); andApkBtn.Kind = AuroraBtnKind.Accent;
+
+        andExportBtn.Text = "导出安卓失败日志"; andExportBtn.SetBounds(18, 206, 148, 30); andExportBtn.Kind = AuroraBtnKind.Secondary;
+        var andGuideLbl = new Label { Text = "提示：手机需先打开官方《吉星派对》进一次大厅再退出；无线首次连接请先配对或使用 USB。", Left = 176, Top = 211, Width = 516, Height = 20, BackColor = AuroraPalette.Surface, ForeColor = AuroraPalette.InkMuted, Font = new Font("Microsoft YaHei UI", 8.5F) };
+
+        andCheckBtn.Click += delegate { RunAndroidWorker("--check", false); };
+        andInstallBtn.Click += delegate { RunAndroidInstallFlow(); };
+        andRestoreBtn.Click += delegate { RunAndroidWorker("--restore", false); };
+        andApkBtn.Click += delegate { InstallPhoneHelperApk(); };
+        andExportBtn.Click += delegate { ExportAndroidLog(); };
+
+        devCard.Controls.AddRange(new Control[] {
+            titleLbl, andAvailLabel, adbLbl, adbBox, adbBrowse,
+            devLbl, androidDevices, andRefreshBtn, wifiLbl, wirelessAddrBox, wifiHint, andConnectBtn,
+            andInstallBtn, andCheckBtn, andRestoreBtn, andApkBtn, andExportBtn, andGuideLbl
+        });
+
+        var andLogCard = new AuroraCardPanel { Left = 0, Top = 258, Width = 712, Height = 202 };
+        var andLogTitle = new Label { Text = "2. 安卓同步与校验日志", Left = 18, Top = 10, Width = 280, Height = 22, BackColor = AuroraPalette.Surface, Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold), ForeColor = AuroraPalette.Ink };
+        androidLog.SetBounds(18, 38, 674, 146);
+        androidLog.Multiline = true; androidLog.ReadOnly = true; androidLog.BorderStyle = BorderStyle.FixedSingle;
+        androidLog.BackColor = AuroraPalette.SurfaceLog; androidLog.ForeColor = AuroraPalette.Ink; androidLog.ScrollBars = ScrollBars.Vertical;
+        androidLog.Text = String.IsNullOrEmpty(androidManifest)
+            ? "未检测到 Android 安装资源目录。请使用完整版发布包，或切换至“电脑端安装”。"
+            : "已识别内置手机安装包。连接手机并允许 USB 调试后点击“刷新设备”，或输入局域网无线调试地址连接。";
+        andLogCard.Controls.AddRange(new Control[] { andLogTitle, androidLog });
+        androidPanel.Controls.AddRange(new Control[] { devCard, andLogCard });
+
+        if (String.IsNullOrEmpty(androidManifest))
+            andInstallBtn.Enabled = andCheckBtn.Enabled = andRestoreBtn.Enabled = andRefreshBtn.Enabled = andConnectBtn.Enabled = andApkBtn.Enabled = false;
     }
 
-    private void InstallWithConflictPrompt()
+    private string FindBundledAdb()
+    {
+        if (!String.IsNullOrEmpty(androidRoot))
+        {
+            string bundled = Path.Combine(androidRoot, "platform-tools", "adb.exe");
+            if (File.Exists(bundled)) return bundled;
+        }
+        string direct = Path.Combine(GroupTest.PackageRoot, "platform-tools", "adb.exe");
+        if (File.Exists(direct)) return direct;
+        foreach (string folder in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';'))
+        {
+            try { string f = Path.Combine(folder.Trim('"'), "adb.exe"); if (File.Exists(f)) return f; } catch { }
+        }
+        return "";
+    }
+
+    private void AppendAndroidLog(string text)
+    {
+        if (InvokeRequired) { BeginInvoke(new Action<string>(AppendAndroidLog), text); return; }
+        androidLog.AppendText((androidLog.TextLength > 0 ? "\r\n" : "") + text);
+    }
+
+    private void SetAndroidBusy(bool busy)
+    {
+        if (InvokeRequired) { BeginInvoke(new Action<bool>(SetAndroidBusy), busy); return; }
+        andInstallBtn.Enabled = andCheckBtn.Enabled = andRestoreBtn.Enabled = andRefreshBtn.Enabled = andConnectBtn.Enabled = !busy && !String.IsNullOrEmpty(androidManifest);
+        andApkBtn.Enabled = !busy && !String.IsNullOrEmpty(androidApkPath);
+        SetStatusBadge(busy ? "处理中" : "就绪", false, busy);
+    }
+
+    private string SelectedAndroidSerial()
+    {
+        int idx = androidDevices.SelectedIndex;
+        if (idx < 0 || idx >= andSerials.Count) return "";
+        return andSerials[idx];
+    }
+
+    private static string RunHiddenProcess(string file, string args, out int code, int timeoutMs = 120000)
+    {
+        var psi = new ProcessStartInfo(file, args)
+        {
+            UseShellExecute = false, CreateNoWindow = true,
+            RedirectStandardOutput = true, RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8
+        };
+        using (var p = Process.Start(psi))
+        {
+            var outTask = p.StandardOutput.ReadToEndAsync();
+            var errTask = p.StandardError.ReadToEndAsync();
+            if (!p.WaitForExit(timeoutMs)) { p.Kill(); code = -1; return "操作超时"; }
+            System.Threading.Tasks.Task.WaitAll(outTask, errTask);
+            code = p.ExitCode;
+            return (outTask.Result + "\r\n" + errTask.Result).Trim();
+        }
+    }
+
+    private static string QuoteArg(string v)
+    {
+        var sb = new StringBuilder("\"");
+        int s = 0;
+        foreach (char c in v)
+        {
+            if (c == '\\') { s++; continue; }
+            sb.Append('\\', c == '"' ? s * 2 + 1 : s);
+            sb.Append(c); s = 0;
+        }
+        sb.Append('\\', s * 2);
+        return sb.Append('"').ToString();
+    }
+
+    private async void RefreshAndroidDevices()
+    {
+        string adb = adbBox.Text.Trim();
+        if (!File.Exists(adb)) { AppendAndroidLog("未找到 adb.exe，请先选择有效的 Android platform-tools 路径。"); return; }
+        SetAndroidBusy(true);
+        try
+        {
+            int code;
+            string outText = await System.Threading.Tasks.Task.Run(delegate { return RunHiddenProcess(adb, "devices -l", out code, 15000); });
+            androidDevices.Items.Clear();
+            andSerials.Clear();
+            foreach (string rawLine in outText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                string line = rawLine.Trim();
+                if (line.StartsWith("*") || line.StartsWith("List ")) continue;
+                var parts = Regex.Split(line, @"\s+");
+                if (parts.Length < 2) continue;
+                string serial = parts[0], st = parts[1];
+                string model = "";
+                foreach (var p in parts) if (p.StartsWith("model:")) model = p.Substring(6).Replace('_', ' ');
+                andSerials.Add(serial);
+                string label = serial + (model.Length > 0 ? " · " + model : "") + " [" + (st == "device" ? "已授权" : st) + "]";
+                androidDevices.Items.Add(label);
+            }
+            if (androidDevices.Items.Count == 1) androidDevices.SelectedIndex = 0;
+            AppendAndroidLog(androidDevices.Items.Count == 0
+                ? "未发现设备。请确认手机开启开发者模式与 USB 调试，或在上方输入无线调试 IP:端口。"
+                : "已刷新设备列表（共 " + androidDevices.Items.Count + " 台）；请在下拉框确认目标手机。");
+        }
+        catch (Exception ex) { AppendAndroidLog("刷新失败：" + ex.Message); SetStatusBadge("设备读取异常", true, false); }
+        finally { SetAndroidBusy(false); }
+    }
+
+    private async void ConnectWirelessAdb()
+    {
+        string adb = adbBox.Text.Trim(), addr = wirelessAddrBox.Text.Trim();
+        if (!File.Exists(adb)) { AppendAndroidLog("请先选择有效的 adb.exe。"); return; }
+        if (!Regex.IsMatch(addr, @"^\d{1,3}(?:\.\d{1,3}){3}:\d{2,5}$"))
+        { AppendAndroidLog("请输入完整的局域网 IP:端口，例如 192.168.1.8:35001。"); return; }
+        SetAndroidBusy(true);
+        try
+        {
+            int code = 0;
+            string res = await System.Threading.Tasks.Task.Run(delegate { return RunHiddenProcess(adb, "connect " + QuoteArg(addr), out code, 20000); });
+            AppendAndroidLog(res);
+            RefreshAndroidDevices();
+        }
+        catch (Exception ex) { AppendAndroidLog("无线连接失败：" + ex.Message); SetStatusBadge("连接失败", true, false); }
+        finally { SetAndroidBusy(false); }
+    }
+
+    private async void RunAndroidWorker(string actionFlag, bool replaceConflicts)
+    {
+        string serial = SelectedAndroidSerial(), adb = adbBox.Text.Trim();
+        if (String.IsNullOrEmpty(serial)) { AppendAndroidLog("请先选择目标手机。"); return; }
+        if (!File.Exists(adb)) { AppendAndroidLog("请先选择 adb.exe。"); return; }
+        if (String.IsNullOrEmpty(androidWorkerExe) || !File.Exists(androidWorkerExe))
+        { AppendAndroidLog("缺少 Android\\星枢安卓安装助手.exe 核心组件。"); return; }
+        SetAndroidBusy(true);
+        try
+        {
+            string logTarget = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "XingShu", "Logs", "android-installer-last.log");
+            Directory.CreateDirectory(Path.GetDirectoryName(logTarget));
+            var argList = new List<string> {
+                actionFlag, "--manifest", QuoteArg(androidManifest), "--adb", QuoteArg(adb),
+                "--serial", QuoteArg(serial), "--export-log", QuoteArg(logTarget)
+            };
+            if (replaceConflicts) argList.Add("--replace-conflicts");
+            int code = 0;
+            string result = await System.Threading.Tasks.Task.Run(delegate { return RunHiddenProcess(androidWorkerExe, String.Join(" ", argList.ToArray()), out code, 180000); });
+            AppendAndroidLog(result.Length > 0 ? result : (code == 0 ? "操作完成。" : "操作未完成。"));
+            SetStatusBadge(code == 0 ? "完成" : "需要注意", code != 0, false);
+        }
+        catch (Exception ex) { AppendAndroidLog("执行异常：" + ex.Message); SetStatusBadge("失败", true, false); }
+        finally { SetAndroidBusy(false); }
+    }
+
+    private async void RunAndroidInstallFlow()
+    {
+        string serial = SelectedAndroidSerial(), adb = adbBox.Text.Trim();
+        if (String.IsNullOrEmpty(serial)) { AppendAndroidLog("请先选择目标手机。"); return; }
+        if (String.IsNullOrEmpty(androidWorkerExe) || !File.Exists(androidWorkerExe)) { AppendAndroidLog("缺少 Android 核心安装组件。"); return; }
+        SetAndroidBusy(true);
+        try
+        {
+            int checkCode = 0;
+            string checkArgs = String.Join(" ", new[] { "--check", "--manifest", QuoteArg(androidManifest), "--adb", QuoteArg(adb), "--serial", QuoteArg(serial) });
+            string checkOut = await System.Threading.Tasks.Task.Run(delegate { return RunHiddenProcess(androidWorkerExe, checkArgs, out checkCode, 90000); });
+            AppendAndroidLog(checkOut);
+            if (checkCode != 0) { SetStatusBadge("检查未通过", true, false); return; }
+            bool replace = false;
+            if (checkOut.IndexOf("CONFLICT_DETECTED=", StringComparison.Ordinal) >= 0)
+            {
+                var choice = MessageBox.Show(this, "检测到手机端已安装 APX 或同定位冲突插件，是否先完整备份旧文件并删除替换为星枢？", "检测到冲突插件", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                if (choice != DialogResult.Yes) { AppendAndroidLog("用户取消安装：保留原有文件未修改。"); SetStatusBadge("已取消", false, false); return; }
+                replace = true;
+            }
+            string logTarget = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "XingShu", "Logs", "android-installer-last.log");
+            Directory.CreateDirectory(Path.GetDirectoryName(logTarget));
+            var argList = new List<string> {
+                "--install", "--manifest", QuoteArg(androidManifest), "--adb", QuoteArg(adb),
+                "--serial", QuoteArg(serial), "--export-log", QuoteArg(logTarget)
+            };
+            if (replace) argList.Add("--replace-conflicts");
+            int instCode = 0;
+            string instOut = await System.Threading.Tasks.Task.Run(delegate { return RunHiddenProcess(androidWorkerExe, String.Join(" ", argList.ToArray()), out instCode, 180000); });
+            AppendAndroidLog(instOut);
+            SetStatusBadge(instCode == 0 ? "安装完成" : "安装未完成", instCode != 0, false);
+        }
+        catch (Exception ex) { AppendAndroidLog("安装异常：" + ex.Message); SetStatusBadge("失败", true, false); }
+        finally { SetAndroidBusy(false); }
+    }
+
+    private async void InstallPhoneHelperApk()
+    {
+        string serial = SelectedAndroidSerial(), adb = adbBox.Text.Trim();
+        if (String.IsNullOrEmpty(serial)) { AppendAndroidLog("请先选择目标手机。"); return; }
+        if (String.IsNullOrEmpty(androidApkPath) || !File.Exists(androidApkPath)) { AppendAndroidLog("当前安装包未包含手机助手 APK。"); return; }
+        SetAndroidBusy(true);
+        try
+        {
+            int code = 0;
+            string outText = await System.Threading.Tasks.Task.Run(delegate {
+                return RunHiddenProcess(adb, "-s " + QuoteArg(serial) + " install -r " + QuoteArg(androidApkPath), out code, 180000);
+            });
+            AppendAndroidLog(outText.Contains("Success") ? "星枢手机安装助手 APK 推送成功！可在手机桌面直接打开进行本机更新。" : outText);
+            SetStatusBadge(outText.Contains("Success") ? "APK 已安装" : "推送未完成", !outText.Contains("Success"), false);
+        }
+        catch (Exception ex) { AppendAndroidLog("APK 安装失败：" + ex.Message); SetStatusBadge("失败", true, false); }
+        finally { SetAndroidBusy(false); }
+    }
+
+    private void ExportAndroidLog()
+    {
+        try
+        {
+            using (var dlg = new SaveFileDialog { Title = "导出安卓安装诊断日志", Filter = "日志文件 (*.log)|*.log|文本文件 (*.txt)|*.txt", FileName = "XingShu-Android-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".log" })
+            {
+                if (dlg.ShowDialog(this) != DialogResult.OK) return;
+                string lastLog = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "XingShu", "Logs", "android-installer-last.log");
+                string content = File.Exists(lastLog) ? File.ReadAllText(lastLog, Encoding.UTF8) + "\r\n\r\n--- 界面输出 ---\r\n" + androidLog.Text : androidLog.Text;
+                File.WriteAllText(dlg.FileName, content, new UTF8Encoding(true));
+                AppendAndroidLog("已导出日志：" + dlg.FileName);
+            }
+        }
+        catch (Exception ex) { MessageBox.Show(this, "导出失败：" + ex.Message, "星枢安装助手", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+    }
+
+    private void InstallPcWithConflictPrompt()
     {
         var platform = (PlatformInfo)platforms.SelectedItem;
         var diag = new DiagnosticLog();
@@ -859,6 +1531,7 @@ internal sealed class InstallerWindow : Form
         try
         {
             UseWaitCursor = true;
+            SetStatusBadge("扫描中", false, true);
             var conflicts = GroupTest.InspectConflicts(platform, selection.Text, diag);
             bool replace = false;
             if (conflicts.HasConflicts)
@@ -871,27 +1544,29 @@ internal sealed class InstallerWindow : Form
                     diag.SetFailure(cancelled);
                     var logFile = diag.SaveAutoFailure();
                     status.Text = cancelled.Message + (String.IsNullOrEmpty(logFile) ? "" : "\r\n自动日志：" + logFile);
+                    SetStatusBadge("已取消", false, false);
                     return;
                 }
                 replace = true;
             }
             status.Text = GroupTest.Perform(platform, selection.Text, "install", replace, diag);
+            SetStatusBadge("安装完成", false, false);
         }
         catch (Exception ex) { HandleFailure(ex, diag); }
         finally { UseWaitCursor = false; }
     }
 
-    private void Act(string action, bool replaceConflicts)
+    private void ActPc(string action, bool replaceConflicts)
     {
         var diag = new DiagnosticLog();
         lastDiag = diag;
-        Run(delegate { return GroupTest.Perform((PlatformInfo)platforms.SelectedItem, selection.Text, action, replaceConflicts, diag); }, diag);
+        RunPc(delegate { return GroupTest.Perform((PlatformInfo)platforms.SelectedItem, selection.Text, action, replaceConflicts, diag); }, diag);
     }
 
-    private void Run(Func<string> action, DiagnosticLog diag = null)
+    private void RunPc(Func<string> action, DiagnosticLog diag = null)
     {
         if (diag != null) lastDiag = diag;
-        try { UseWaitCursor = true; status.Text = action(); }
+        try { UseWaitCursor = true; SetStatusBadge("执行中", false, true); status.Text = action(); SetStatusBadge("完成", false, false); }
         catch (Exception ex) { HandleFailure(ex, diag ?? lastDiag); }
         finally { UseWaitCursor = false; }
     }
@@ -905,9 +1580,10 @@ internal sealed class InstallerWindow : Form
         var saved = diag.SaveAutoFailure();
         status.Text = wrapped.Message + "\r\n\r\n可点击上方“导出失败日志”保存完整诊断报告。" +
             (String.IsNullOrEmpty(saved) ? "" : "\r\n自动备份日志：" + saved);
+        SetStatusBadge("需要注意", true, false);
     }
 
-    private void ExportDiagnosticLog()
+    private void ExportPcDiagnosticLog()
     {
         try
         {

@@ -42,6 +42,13 @@ internal static class CheckShopDefenseRuntime
         Check(DailyStarCoinShopPolicy.Next(new[]{Offer(19,int.MaxValue,1,10000)},int.MaxValue,out shortBalance)==null && shortBalance,"64-bit price calculation");
         Check(DailyStarCoinShopPolicy.Day(new DateTime(2026,11,13,3,59,59))=="20261112", "server 04:00 boundary before");
         Check(DailyStarCoinShopPolicy.Day(new DateTime(2026,11,13,4,0,0))=="20261113", "server 04:00 boundary after");
+        Check(DailyStarCoinShopPolicy.IsLobbyIdleForAutoBuy(true, false, false, false, false, 0L), "idle home lobby allows auto buy");
+        Check(!DailyStarCoinShopPolicy.IsLobbyIdleForAutoBuy(false, false, false, false, false, 0L), "battle/non-home blocks auto buy");
+        Check(!DailyStarCoinShopPolicy.IsLobbyIdleForAutoBuy(true, true, false, false, false, 0L), "reconnecting room blocks auto buy");
+        Check(!DailyStarCoinShopPolicy.IsLobbyIdleForAutoBuy(true, false, true, false, false, 0L), "in-room blocks auto buy");
+        Check(!DailyStarCoinShopPolicy.IsLobbyIdleForAutoBuy(true, false, false, true, false, 0L), "match timer active blocks auto buy");
+        Check(!DailyStarCoinShopPolicy.IsLobbyIdleForAutoBuy(true, false, false, false, true, 0L), "match in-team blocks auto buy");
+        Check(!DailyStarCoinShopPolicy.IsLobbyIdleForAutoBuy(true, false, false, false, false, 42L), "match team id blocks auto buy");
         long outcomes=0;
         for (long attack=0; attack<=100; attack++)
         for (long hp=1; hp<=50; hp++)

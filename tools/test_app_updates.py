@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import time
 import unittest
 import zipfile
 
@@ -24,8 +25,52 @@ class AppUpdates(unittest.TestCase):
         cls.cert = cls.root / 'certificate.txt'
         cls.cert.write_bytes(subprocess.check_output(['java', str(ROOT / 'tools/SignUpdate.java'), str(cls.key), str(cls.secret)]))
         harness = cls.root / 'Harness.cs'
-        harness.write_text('''using System;using System.IO;using System.Collections.Generic;
+        harness.write_text('''using System;using System.IO;using System.Text;using System.Linq;using System.Diagnostics;using System.Threading;using System.Threading.Tasks;using System.Collections.Generic;
+class FakeMetadata {
+ internal Dictionary<string,object> Config; internal int Canceled,Active,MaxActive; internal List<string> Calls=new List<string>(),Downloads=new List<string>();
+ internal async Task Probe(string url,long size,CancellationToken cancellation) { await Fetch(url,65536,cancellation); }
+ internal void Download(string url,string destination,long size,string hash) {
+  string host=new Uri(url).Host;Downloads.Add(host);File.WriteAllText(destination,"partial");
+  if(Config.ContainsKey("failDownloadHost")&&HubUpdater.S(Config,"failDownloadHost")==host)throw new HubUpdater.TransportException("fixture download interrupted",0,null);
+  if(Config.ContainsKey("integrityFailure")&&Convert.ToBoolean(Config["integrityFailure"]))throw new Exception("更新文件 SHA256 校验失败");
+  File.WriteAllText(destination,"complete");
+ }
+ internal async Task<byte[]> Fetch(string url,long limit,CancellationToken cancellation) {
+  Dictionary<string,object> rule=null;
+  lock(Calls)Calls.Add(url);
+  foreach(Dictionary<string,object> r in (System.Collections.IEnumerable)Config["rules"]) {
+   if(url.Contains(HubUpdater.S(r,"match"))&&(!r.ContainsKey("host")||new Uri(url).Host==HubUpdater.S(r,"host"))) { rule=r;break; }
+  }
+  if(rule==null)rule=HubUpdater.Object("{\\"delay\\":5,\\"status\\":503}");
+  bool track=rule.ContainsKey("track")&&Convert.ToBoolean(rule["track"]);
+  if(track)lock(Calls) { Active++;MaxActive=Math.Max(Active,MaxActive); }
+  try {
+   await Task.Delay(Convert.ToInt32(rule["delay"]),rule.ContainsKey("ignoreCancellation")&&Convert.ToBoolean(rule["ignoreCancellation"])?CancellationToken.None:cancellation);
+   if(rule.ContainsKey("status"))throw new HubUpdater.TransportException("fixture network failure",Convert.ToInt32(rule["status"]),null);
+   byte[] bytes=Encoding.UTF8.GetBytes(HubUpdater.S(rule,"body"));
+   if(bytes.Length>limit)throw new Exception("fixture response limit");
+   return bytes;
+  } catch(OperationCanceledException) { Interlocked.Increment(ref Canceled);throw; }
+  finally { if(track)lock(Calls)Active--; }
+ }
+}
 class Harness { static int Main(string[] a) { try {
+ Console.OutputEncoding=new UTF8Encoding(false);
+ if(a[0]=="check") {
+  var fake=new FakeMetadata { Config=HubUpdater.Object(File.ReadAllText(a[1])) };var timer=Stopwatch.StartNew();
+  var result=HubUpdater.Check(HubUpdater.N(fake.Config,"current"),Convert.ToBoolean(fake.Config["preview"]),fake.Fetch,Convert.ToInt32(fake.Config["timeout"]));
+  Console.WriteLine(HubUpdater.Json.Serialize(new { result=result,elapsedMs=timer.ElapsedMilliseconds,canceled=fake.Canceled,maxActive=fake.MaxActive,calls=fake.Calls.ToArray() }));return 0;
+ }
+ if(a[0]=="download") {
+  var fake=new FakeMetadata { Config=HubUpdater.Object(File.ReadAllText(a[1])) };var timer=Stopwatch.StartNew();
+  var urls=((System.Collections.IEnumerable)fake.Config["urls"]).Cast<string>().ToList();
+  string destination=Path.Combine(Path.GetDirectoryName(a[1]),"download.zip");
+  try {
+   string host=HubUpdater.DownloadWithFallback(urls,destination,100000,new String('a',64),fake.Probe,fake.Download);
+   Console.WriteLine(HubUpdater.Json.Serialize(new { host=host,elapsedMs=timer.ElapsedMilliseconds,canceled=fake.Canceled,downloads=fake.Downloads,content=File.ReadAllText(destination) }));return 0;
+  }catch(Exception e){Console.WriteLine(HubUpdater.Json.Serialize(new { error=e.Message,downloads=fake.Downloads }));return 2;}
+ }
+ if(a[0]=="probe-header")HubUpdater.ValidateDownloadProbe(Int32.Parse(a[1]),Int64.Parse(a[2]),a[3]=="-"?null:a[3],Int64.Parse(a[4]));
  if(a[0]=="wire") return (int)typeof(HubUpdater).GetMethod("Main",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static).Invoke(null,new object[]{new[]{"--apply"}});
  else if(a[0]=="verify") HubUpdater.Verify(File.ReadAllText(a[1]),a[2]);
  else if(a[0]=="manifest") { Console.WriteLine(HubUpdater.ManifestName(a[1].Split(','))??"NONE");return 0; }
@@ -218,6 +263,182 @@ class Harness { static int Main(string[] a) { try {
         self.assertIn('https://edgeone.gh-proxy.org/https://github.com/Breezecaresses/Xingshu-hub/releases/download/v0.1.3/a.zip', c1)
         self.assertTrue(c2[0].startswith('https://edgeone.gh-proxy.org/'))
         self.assertEqual(out[3], 'v0.1.3')
+
+    def release_fixtures(self, count=1):
+        releases, rules, manifests = [], [], []
+        for i in range(count):
+            folder, _, m = self.fixture()
+            m.update(version=f'0.0.{i + 1}', tag=f'v0.0.{i + 1}', sequence=i + 1)
+            m['android']['versionCode'] = i + 1
+            body = self.sign(folder, m).read_text()
+            manifests.append(body)
+            releases.append({'tag_name': m['tag'], 'draft': False, 'prerelease': False,
+                             'assets': [{'name': 'xingshu-update.json', 'id': (i + 1) * 10},
+                                        {'name': m['desktop']['asset'], 'id': (i + 1) * 10 + 1}]})
+            rules.append({'match': '/download/' + m['tag'] + '/', 'host': 'edgeone.gh-proxy.org',
+                          'delay': 30, 'body': body, 'track': True})
+        return releases, rules, manifests
+
+    def check_fixture(self, rules, *, current=0, preview=True, timeout=2500, ok=True):
+        import uuid
+        config = self.root / (uuid.uuid4().hex + '.json')
+        config.write_text(json.dumps({'rules': rules, 'current': current, 'preview': preview, 'timeout': timeout}), encoding='utf-8')
+        started = time.monotonic()
+        output = self.run_case('check', config, ok=ok)
+        self.assertLess(time.monotonic() - started, timeout / 1000 + 1.5, output)
+        return json.loads(output) if ok else output
+
+    def test_slow_official_route_does_not_delay_fast_domestic_route(self):
+        releases, manifests, _ = self.release_fixtures()
+        result = self.check_fixture([
+            {'match': '/releases?', 'host': 'api.github.com', 'delay': 5000, 'body': json.dumps(releases)},
+            {'match': '/releases?', 'host': 'edgeone.gh-proxy.org', 'delay': 20, 'body': json.dumps(releases)},
+            *manifests,
+        ])
+        self.assertTrue(result['result']['available'])
+        self.assertIsNone(result['result']['checkWarning'])
+        self.assertEqual(result['result']['release']['sequence'], 1)
+        self.assertIn('edgeone.gh-proxy.org', result['result']['downloadSource'])
+        self.assertGreaterEqual(result['canceled'], 1)
+        self.assertLess(result['elapsedMs'], 1500)
+
+    def test_slow_first_mirror_does_not_block_other_mirrors(self):
+        releases, manifests, _ = self.release_fixtures()
+        manifests[0]['host'] = 'gh-proxy.org'
+        result = self.check_fixture([
+            {'match': '', 'host': 'edgeone.gh-proxy.org', 'delay': 5000, 'status': 503},
+            {'match': '/releases?', 'host': 'gh-proxy.org', 'delay': 20, 'body': json.dumps(releases)},
+            *manifests,
+        ])
+        self.assertIn('gh-proxy.org', result['result']['downloadSource'])
+        self.assertGreaterEqual(result['canceled'], 1)
+        self.assertLess(result['elapsedMs'], 1500)
+
+    def test_manifests_run_in_parallel_and_select_greatest_signed_sequence(self):
+        releases, manifests, _ = self.release_fixtures(6)
+        for rule in manifests:
+            rule['delay'] = 200
+        # API order deliberately disagrees with signed sequence order.
+        releases = [releases[2], releases[5], releases[1], releases[4], releases[0], releases[3]]
+        result = self.check_fixture([
+            {'match': '/releases?', 'host': 'api.github.com', 'delay': 20, 'body': json.dumps(releases)},
+            *manifests,
+        ])
+        self.assertEqual(result['result']['release']['sequence'], 6)
+        self.assertEqual(result['maxActive'], 4)
+        self.assertLess(result['elapsedMs'], 1100)
+
+    def test_overall_deadline_also_bounds_uncooperative_transport(self):
+        output = self.check_fixture([{'match': '', 'delay': 5000, 'body': '[]', 'ignoreCancellation': True}],
+                                    timeout=350, ok=False)
+        self.assertIn('超时', output)
+
+    def test_incomplete_check_never_reports_no_updates(self):
+        releases, manifests, _ = self.release_fixtures(2)
+        result = self.check_fixture([
+            {'match': '/releases?', 'host': 'api.github.com', 'delay': 20, 'body': json.dumps(releases)},
+            manifests[0],
+        ], current=1)
+        self.assertFalse(result['result']['available'])
+        self.assertTrue(result['result']['checkWarning'])
+        self.assertIn('尚未完成', result['result']['message'])
+        self.assertNotIn('没有比当前版本更新', result['result']['message'])
+
+    def test_tampered_fast_manifest_cannot_fall_back_to_older_release(self):
+        releases, manifests, _ = self.release_fixtures(2)
+        envelope = json.loads(manifests[1]['body'])
+        envelope['payload'] = base64.b64encode(b'{}').decode()
+        manifests[1]['body'] = json.dumps(envelope)
+        output = self.check_fixture([
+            {'match': '/releases?', 'host': 'api.github.com', 'delay': 20, 'body': json.dumps(releases)},
+            *manifests,
+        ], ok=False)
+        self.assertIn('签名校验失败', output)
+
+    def test_api_preview_and_draft_filtering_is_preserved(self):
+        releases, manifests, _ = self.release_fixtures(3)
+        releases[1]['prerelease'] = True
+        releases[2]['draft'] = True
+        rules = [{'match': '/releases?', 'host': 'api.github.com', 'delay': 20, 'body': json.dumps(releases)}, *manifests]
+        stable = self.check_fixture(rules, preview=False)
+        self.assertEqual(stable['result']['release']['sequence'], 1)
+        self.assertFalse(any('/v0.0.2/' in u or '/v0.0.3/' in u for u in stable['calls']))
+        preview = self.check_fixture(rules)
+        self.assertEqual(preview['result']['release']['sequence'], 2)
+        self.assertFalse(any('/v0.0.3/' in u for u in preview['calls']))
+
+    def test_atom_fallback_retains_legacy_manifest_compatibility(self):
+        _, manifests, _ = self.release_fixtures()
+        atom = '<feed xmlns="http://www.w3.org/2005/Atom"><entry><link href="https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.0.1"/></entry></feed>'
+        result = self.check_fixture([
+            {'match': '/releases.atom', 'host': 'edgeone.gh-proxy.org', 'delay': 20, 'body': atom},
+            {'match': '/xingshu-desktop-update.json', 'delay': 10, 'status': 404},
+            *manifests,
+        ])
+        self.assertEqual(result['result']['release']['sequence'], 1)
+        self.assertIsNone(result['result']['checkWarning'])
+        self.assertTrue(any('/xingshu-desktop-update.json' in u for u in result['calls']))
+
+    def test_invalid_api_response_does_not_win_over_valid_route(self):
+        releases, manifests, _ = self.release_fixtures()
+        result = self.check_fixture([
+            {'match': '/releases?', 'host': 'api.github.com', 'delay': 1, 'body': '<html>proxy error</html>'},
+            {'match': '/releases?', 'host': 'edgeone.gh-proxy.org', 'delay': 40, 'body': json.dumps(releases)},
+            *manifests,
+        ])
+        self.assertEqual(result['result']['release']['sequence'], 1)
+
+    def test_invalid_atom_response_never_reports_no_updates(self):
+        output = self.check_fixture([
+            {'match': '/releases.atom', 'delay': 5, 'body': '<html>not a release feed</html>'},
+        ], ok=False)
+        self.assertIn('格式无效', output)
+
+    def download_fixture(self, rules, *, ok=True, **config):
+        import uuid
+        direct = 'https://github.com/Breezecaresses/Xingshu-hub/releases/download/v9.8.7/XingShu_Desktop_9.8.7.zip'
+        folder = self.root / uuid.uuid4().hex
+        folder.mkdir()
+        path = folder / 'download.json'
+        path.write_text(json.dumps({'rules': rules, 'urls': ['https://edgeone.gh-proxy.org/' + direct,
+                        'https://gh-proxy.org/' + direct, direct], **config}), encoding='utf-8')
+        return json.loads(self.run_case('download', path, ok=ok))
+
+    def test_future_release_download_selects_fast_mirror_and_cancels_slow_routes(self):
+        result = self.download_fixture([
+            {'match': '', 'host': 'edgeone.gh-proxy.org', 'delay': 5000, 'body': 'ready'},
+            {'match': '', 'host': 'gh-proxy.org', 'delay': 25, 'body': 'ready'},
+            {'match': '', 'host': 'github.com', 'delay': 5000, 'body': 'ready'},
+        ])
+        self.assertEqual(result['host'], 'gh-proxy.org')
+        self.assertEqual(result['downloads'], ['gh-proxy.org'])
+        self.assertEqual(result['content'], 'complete')
+        self.assertGreaterEqual(result['canceled'], 1)
+        self.assertLess(result['elapsedMs'], 1500)
+
+    def test_interrupted_download_reselects_remaining_sources(self):
+        result = self.download_fixture([
+            {'match': '', 'host': 'edgeone.gh-proxy.org', 'delay': 10, 'body': 'ready'},
+            {'match': '', 'host': 'gh-proxy.org', 'delay': 50, 'body': 'ready'},
+        ], failDownloadHost='edgeone.gh-proxy.org')
+        self.assertEqual(result['downloads'], ['edgeone.gh-proxy.org', 'gh-proxy.org'])
+        self.assertEqual(result['content'], 'complete')
+
+    def test_download_integrity_failure_is_fatal(self):
+        result = self.download_fixture([
+            {'match': '', 'host': 'edgeone.gh-proxy.org', 'delay': 10, 'body': 'ready'},
+            {'match': '', 'host': 'gh-proxy.org', 'delay': 50, 'body': 'ready'},
+        ], integrityFailure=True, ok=False)
+        self.assertIn('SHA256', result['error'])
+        self.assertEqual(result['downloads'], ['edgeone.gh-proxy.org'])
+
+    def test_download_probe_checks_full_size_and_range(self):
+        self.run_case('probe-header', 206, 65536, 'bytes 0-65535/100000', 100000)
+        self.run_case('probe-header', 200, 100000, '-', 100000)  # Range ignored, use the first chunk only.
+        self.run_case('probe-header', 206, 7, 'bytes 0-6/7', 7)
+        self.run_case('probe-header', 206, 65536, 'bytes 0-65535/99999', 100000, ok=False)
+        self.run_case('probe-header', 206, 65536, 'bytes 1-65536/100000', 100000, ok=False)
+        self.run_case('probe-header', 200, 500, '-', 100000, ok=False)
 
 
 if __name__ == '__main__':

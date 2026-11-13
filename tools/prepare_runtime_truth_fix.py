@@ -12,6 +12,7 @@ from UnityPy.files.ObjectReader import ObjectReader
 
 ROOT = Path(__file__).resolve().parents[1]
 LEGACY = json.loads((ROOT / 'tools/legacy_runtime_names.json').read_text('utf8'))
+PWSH = shutil.which('pwsh') or 'powershell.exe'
 OUT = ROOT / 'XingShu-Dev/build/runtime-truth-fix'
 DLL = ROOT / 'XingShu-Dev/build/bin/Release/XingShu.Runtime.dll'
 PROFILES = ROOT / 'AstralParty-Hub/src-tauri/src/xing_shu/platform/platform_profiles.json'
@@ -137,12 +138,12 @@ def main():
         original_runtime = folder / 'AstralParty.Runtime.before.dll'
         patched_runtime = folder / 'AstralParty.Runtime.dll'
         original_runtime.write_bytes(runtime.m_Script.encode('utf8', errors='surrogateescape'))
-        subprocess.run(['pwsh', '-NoProfile', '-File', str(ROOT / 'tools/check_runtime_compatibility.ps1'),
+        subprocess.run([PWSH, '-NoProfile', '-File', str(ROOT / 'tools/check_runtime_compatibility.ps1'),
                         '-RuntimeDll', str(original_runtime), '-HooksDll', str(DLL)], check=True)
         boot_runtime = folder / 'AstralParty.Runtime.bootstrap.dll'
         subprocess.run([str(patcher), str(original_runtime), str(bootstrap), str(boot_runtime),
                         sha(original_runtime.read_bytes()), LEGACY['bootstrapType']], check=True)
-        subprocess.run(['pwsh', '-NoProfile', '-File', str(ROOT / 'tools/patch_thinking_time.ps1'),
+        subprocess.run([PWSH, '-NoProfile', '-File', str(ROOT / 'tools/patch_thinking_time.ps1'),
                         '-InputDll', str(boot_runtime), '-OutputDll', str(patched_runtime),
                         '-HooksDll', str(DLL)], check=True)
         runtime.m_Script = patched_runtime.read_bytes().decode('utf8', errors='surrogateescape')

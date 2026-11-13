@@ -18,7 +18,7 @@ internal sealed class DailyStarCoinShop : MonoBehaviour
     private const string Prefix = "XINGSHU_DAILY_STARCOIN_";
     private long _uid;
     private bool _online, _enabled, _blocked;
-    private string _day = "", _pending = "", _status = "登录游戏后可为此账号开启；默认关闭";
+    private string _day = "", _pending = "", _completedDay = "", _status = "登录游戏后可为此账号开启；默认关闭";
     private float _nextTick, _readyAt, _sentAt;
     private RPCAsyncResult _request;
 
@@ -37,6 +37,7 @@ internal sealed class DailyStarCoinShop : MonoBehaviour
         self._enabled = enabled;
         // An uncertain purchase is never retried just by toggling the switch.
         self._blocked = false;
+        self._completedDay = "";
         XingShuConfigService.SetBool(self.Key("ENABLED"), enabled);
         XingShuConfigService.Save();
         self._status = enabled ? "已开启此账号的每日星币商店；等待大厅和官方货架" : "已关闭；不再发起新购买";
@@ -63,6 +64,7 @@ internal sealed class DailyStarCoinShop : MonoBehaviour
         {
             _online = false;
             _enabled = false;
+            _completedDay = "";
             _request = null; // Persisted pending marker survives a disconnect.
             _status = "等待游戏账号登录";
             return;
@@ -75,6 +77,7 @@ internal sealed class DailyStarCoinShop : MonoBehaviour
             _enabled = XingShuConfigService.GetBool(Key("ENABLED"), false);
             _pending = XingShuConfigService.GetString(Key("PENDING"), "");
             _day = day;
+            _completedDay = "";
             _blocked = false;
             _request = null;
             _readyAt = Time.realtimeSinceStartup + 5f;
@@ -84,19 +87,30 @@ internal sealed class DailyStarCoinShop : MonoBehaviour
         {
             // The native store exposes no freshness timestamp. Never use yesterday's
             // stock after 04:00; a fresh official login must initialize it first.
+            _completedDay = "";
             _status = "商店已跨日，等待下次登录加载今日货架";
             return;
         }
         if (_blocked) return;
+        if (string.IsNullOrEmpty(_pending) && _completedDay == day)
+        { _status = "今日星币货架已处理；等待明日登录"; return; }
         if (Time.realtimeSinceStartup < _readyAt) { _status = "等待官方登录数据就绪"; return; }
-        if (!SimpleSingletonProvider<SceneManager>.hasInstance ||
-            SimpleSingletonProvider<SceneManager>.inst.currentType.Value != SceneType.Home ||
-            (logic.room?.roomController != null && logic.room.roomController.roomStateType != RoomStateType.NONE) ||
-            (logic.match != null && !logic.match.CheckOperateForMatch()) || logic.store == null || logic.bag == null)
+        bool inHomeScene = SimpleSingletonProvider<SceneManager>.hasInstance &&
+            SimpleSingletonProvider<SceneManager>.inst.currentType.Value == SceneType.Home;
+        bool inRoom = logic.room != null && (logic.room.IsInRoom ||
+            (logic.room.roomController != null && logic.room.roomController.roomStateType != RoomStateType.NONE));
+        bool matchTimerActive = logic.match != null && logic.match.CheckTimer();
+        var matchData = logic.match?.matchData;
+        // Read match/room state passively; MatchLogic.CheckOperateForMatch opens a leave-match confirmation dialog.
+        if (!DailyStarCoinShopPolicy.IsLobbyIdleForAutoBuy(inHomeScene, logic.connectRoomId != 0L, inRoom,
+                matchTimerActive, matchData != null && matchData.InTeam, matchData?.TeamId ?? 0L) ||
+            logic.store == null || logic.bag == null)
         { _status = "已开启；回到大厅且未匹配时自动处理"; return; }
         var ui = SimpleSingletonProvider<UIManager>.hasInstance ? SimpleSingletonProvider<UIManager>.inst : null;
         if (ui == null || (!(ui.currentPanel is HomePanel) && !(ui.currentPanel is ProductRecommendationPanel)) ||
-            ShownNativeWindows.Find<PurchaseWindow>(ui) != null)
+            ShownNativeWindows.Find<PurchaseWindow>(ui) != null ||
+            ShownNativeWindows.Find<MessageBoxWindow>(ui) != null ||
+            ShownNativeWindows.Find<MatchInfoWindow>(ui) != null)
         { _status = "等待返回大厅或星币商店页面"; return; }
 
         if (!string.IsNullOrEmpty(_pending))
@@ -145,6 +159,7 @@ internal sealed class DailyStarCoinShop : MonoBehaviour
         var next = DailyStarCoinShopPolicy.Next(offers, logic.bag.GetItemCount(1), out shortBalance);
         if (next == null)
         {
+            if (!shortBalance) _completedDay = day;
             _status = shortBalance ? "星币不足；已领取免费及可购买商品，余额增加后继续" : "今日星币货架已处理；等待明日登录";
             return;
         }

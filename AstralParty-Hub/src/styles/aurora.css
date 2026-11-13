@@ -1229,3 +1229,299 @@ summary:focus-visible {
     transform: none !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   8. Auto-Update Banner & Release Prompt Modal
+   -------------------------------------------------------------------------- */
+.xingshu-update-banner {
+  margin: 10px 24px 0;
+  padding: 9px 14px;
+  border-radius: 14px;
+  background: linear-gradient(95deg, rgba(255, 241, 229, 0.96), rgba(255, 248, 242, 0.96));
+  border: 1px solid var(--accent-border, #f5cfaf);
+  box-shadow: 0 4px 16px rgba(184, 75, 8, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: 20;
+}
+
+.xingshu-update-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.xingshu-update-banner-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid var(--accent-border, #f5cfaf);
+  color: var(--accent-text, #b84b08);
+  flex-shrink: 0;
+}
+
+.xingshu-update-banner-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-text, #b84b08);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.xingshu-update-pill-ready {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #e8f6ed;
+  color: #15803d;
+  border: 1px solid #bbe4c8;
+}
+
+.xingshu-update-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.xingshu-update-banner-cta {
+  appearance: none;
+  border: 1px solid var(--accent-border, #f5cfaf);
+  background: #ffffff;
+  color: var(--text-primary, #1c1c1c);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.xingshu-update-banner-cta:hover {
+  background: #fff9f4;
+  transform: translateY(-1px);
+}
+
+.xingshu-update-banner-close {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--accent-text, #b84b08);
+  padding: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.xingshu-update-banner-close:hover {
+  background: rgba(184, 75, 8, 0.1);
+}
+
+.xingshu-update-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(20, 18, 28, 0.42);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.xingshu-update-modal {
+  width: min(460px, 100%);
+  background: #ffffff;
+  border: 1px solid rgba(28, 28, 28, 0.09);
+  border-radius: 22px;
+  padding: 22px 22px 18px;
+  box-shadow: 0 24px 64px rgba(18, 16, 26, 0.22);
+  color: var(--text-primary, #1c1c1c);
+}
+
+.xingshu-update-modal-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.xingshu-update-modal-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: var(--accent-soft, #fff1e5);
+  border: 1px solid var(--accent-border, #f5cfaf);
+  color: var(--accent-text, #b84b08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.xingshu-update-modal-x {
+  appearance: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: #f5f2eb;
+  color: var(--text-secondary, #5f5c56);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.xingshu-update-modal-x:hover:not(:disabled) {
+  background: #ebe6dc;
+  color: var(--text-primary, #1c1c1c);
+}
+
+.xingshu-update-modal-title {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--text-primary, #1c1c1c);
+}
+
+.xingshu-update-modal-subtitle {
+  margin: 4px 0 14px;
+  font-size: 13px;
+  color: var(--text-secondary, #6e6a63);
+}
+
+.xingshu-update-notes-box {
+  background: #f7f5ef;
+  border: 1px solid #e6e1d7;
+  border-radius: 14px;
+  padding: 14px;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 14px;
+}
+
+.xingshu-update-notes-heading {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary, #1c1c1c);
+  margin-bottom: 8px;
+}
+
+.xingshu-update-notes-body {
+  margin: 0;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-secondary, #494640);
+}
+
+.xingshu-update-progress-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: #efeae0;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.xingshu-update-progress-bar {
+  width: 45%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff7a2f, #f43f5e);
+  animation: xingshu-progress-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes xingshu-progress-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(240%); }
+}
+
+.xingshu-update-warning {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--accent-soft, #fff1e5);
+  color: var(--accent-text, #b84b08);
+  border: 1px solid var(--accent-border, #f5cfaf);
+}
+
+.xingshu-update-error {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #fdecef;
+  color: #be123c;
+  border: 1px solid #f5c2cd;
+}
+
+.xingshu-update-primary-cta {
+  width: 100%;
+  min-height: 46px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(100deg, #ff7a2f, #f43f5e);
+  color: #ffffff;
+  font-size: 14.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 10px 24px rgba(244, 63, 94, 0.24);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+}
+
+.xingshu-update-primary-cta:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(244, 63, 94, 0.30);
+}
+
+.xingshu-update-primary-cta:disabled {
+  opacity: 0.72;
+  cursor: wait;
+}
+
+.xingshu-update-later-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #6e6a63);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.xingshu-update-later-btn:hover:not(:disabled) {
+  color: var(--text-primary, #1c1c1c);
+}
+
+.xingshu-update-footer-note {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-muted, #8a857c);
+}

@@ -51,9 +51,9 @@ def main():
                     "/p:IntermediateOutputPath=" + str(out / "obj") + "/"], check=True)
     hooks_path = bin_dir / "XingShu.Runtime.dll"
     hooks = hooks_path.read_bytes()
-    subprocess.run(["pwsh", "-NoProfile", "-File", str(ROOT / "tools/check_android_runtime.ps1"),
+    subprocess.run([shared.PWSH, "-NoProfile", "-File", str(ROOT / "tools/check_android_runtime.ps1"),
                     "-HooksDll", str(hooks_path)], check=True)
-    subprocess.run(["pwsh", "-NoProfile", "-File", str(ROOT / "tools/check_runtime_compatibility.ps1"),
+    subprocess.run([shared.PWSH, "-NoProfile", "-File", str(ROOT / "tools/check_runtime_compatibility.ps1"),
                     "-RuntimeDll", str(runtime_path), "-HooksDll", str(hooks_path)], check=True)
     # Redirect the shared compiler output; never change the desktop deployment inventory.
     shared.OUT = out / "bootstrap-tool"
@@ -63,10 +63,10 @@ def main():
     patched_path = out / "AstralParty.Runtime.dll"
     subprocess.run([str(patcher), str(runtime_path), str(bootstrap), str(boot_path),
                     shared.sha(runtime_path.read_bytes()), shared.LEGACY['bootstrapType']], check=True)
-    subprocess.run(["pwsh", "-NoProfile", "-File", str(ROOT / "tools/patch_thinking_time.ps1"),
+    subprocess.run([shared.PWSH, "-NoProfile", "-File", str(ROOT / "tools/patch_thinking_time.ps1"),
                     "-InputDll", str(boot_path), "-OutputDll", str(patched_path),
                     "-HooksDll", str(hooks_path)], check=True)
-    subprocess.run(["pwsh", "-NoProfile", "-File", str(ROOT / "tools/verify_thinking_time.ps1"),
+    subprocess.run([shared.PWSH, "-NoProfile", "-File", str(ROOT / "tools/verify_thinking_time.ps1"),
                     "-Before", str(boot_path), "-After", str(patched_path)], check=True)
     runtime.m_Script = patched_path.read_bytes().decode("utf8", errors="surrogateescape")
     runtime.save()

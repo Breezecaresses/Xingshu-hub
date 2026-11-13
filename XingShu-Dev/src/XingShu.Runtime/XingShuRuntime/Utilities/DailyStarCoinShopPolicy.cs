@@ -17,6 +17,11 @@ internal static class DailyStarCoinShopPolicy
 
     internal static string Day(DateTime serverTime) => serverTime.AddHours(-4).ToString("yyyyMMdd");
 
+    internal static bool IsLobbyIdleForAutoBuy(bool inHomeScene, bool hasConnectRoom, bool inRoom,
+        bool matchTimerActive, bool inMatchTeam, long matchTeamId)
+        => inHomeScene && !hasConnectRoom && !inRoom &&
+           !matchTimerActive && !inMatchTeam && matchTeamId == 0L;
+
     internal static Offer Next(IList<Offer> offers, long balance, out bool budgetShort)
     {
         budgetShort = false;

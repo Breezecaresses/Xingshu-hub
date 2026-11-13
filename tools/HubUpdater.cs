@@ -11,8 +11,11 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
+using System.Xml;
 
 internal static class HubUpdater {
     internal const string Repo = "Breezecaresses/Xingshu-hub";
@@ -23,7 +26,8 @@ internal static class HubUpdater {
         "https://ghfast.top/",
     };
     internal static readonly JavaScriptSerializer Json = new JavaScriptSerializer { MaxJsonLength = 2000000 };
-    internal static Dictionary<string,object> Object(string text) { return Json.Deserialize<Dictionary<string,object>>(text); }
+    // Each parallel response gets its own serializer; instance members are not thread safe.
+    internal static Dictionary<string,object> Object(string text) { return new JavaScriptSerializer { MaxJsonLength=2000000 }.Deserialize<Dictionary<string,object>>(text); }
     internal static string S(Dictionary<string,object> o,string k) { return Convert.ToString(o[k]); }
     internal static long N(Dictionary<string,object> o,string k) { return Convert.ToInt64(o[k]); }
     internal static string Hash(string path) { using(var s=File.OpenRead(path)) using(var h=SHA256.Create())return Hex(h.ComputeHash(s)); }
@@ -107,47 +111,86 @@ internal static class HubUpdater {
         string msg=code==403?"更新服务访问受限":code==404?"发布文件不存在":code>0?("更新服务返回 HTTP "+code):ex.Message;
         return new TransportException(msg,code,ex);
     }
-    static byte[] FetchOnce(string url,long limit,int timeoutMs,int rwTimeoutMs) {
+    internal const int CheckTimeoutMs=25000;
+    const int SourceTimeoutMs=8000;
+    static HttpWebRequest UpdateRequest(Uri u,int timeoutMs,int readTimeoutMs) {
+        ValidateEndpoint(u);
+        var request=(HttpWebRequest)WebRequest.Create(u);
+        request.AllowAutoRedirect=false;
+        request.Timeout=timeoutMs; request.ReadWriteTimeout=readTimeoutMs; request.UserAgent="XingShu-Updater/2";
+        // Proxies share a ServicePoint across hosts. Stalled official tunnels must leave room for mirrors.
+        request.ServicePoint.ConnectionLimit=Math.Max(32,request.ServicePoint.ConnectionLimit);
+        if(u.Host=="api.github.com" || u.AbsolutePath.StartsWith("/https://api.github.com/",StringComparison.Ordinal)) {
+            request.Accept=u.AbsolutePath.Contains("/releases/assets/")?"application/octet-stream":"application/vnd.github+json";
+            request.Headers["X-GitHub-Api-Version"]="2022-11-28";
+        } else request.Accept="*/*";
+        return request;
+    }
+    internal delegate Task<byte[]> MetadataFetcher(string url,long limit,CancellationToken cancellation);
+    static async Task<byte[]> FetchOnceAsync(string url,long limit,CancellationToken cancellation) {
         for(int redirects=0;redirects<6;redirects++) {
-            var u=new Uri(url); ValidateEndpoint(u);
-            string host=u.Host.ToLowerInvariant();
-            bool apiAsset=host=="api.github.com" && u.AbsolutePath.Contains("/releases/assets/");
-            var request=(HttpWebRequest)WebRequest.Create(u); request.AllowAutoRedirect=false;
-            request.Timeout=timeoutMs; request.ReadWriteTimeout=rwTimeoutMs; request.UserAgent="XingShu-Updater/1";
-            if(host=="api.github.com") {
-                request.Accept=apiAsset?"application/octet-stream":"application/vnd.github+json";
-                request.Headers["X-GitHub-Api-Version"]="2022-11-28";
-            } else {
-                request.Accept="*/*";
-            }
+            var u=new Uri(url);
+            var request=UpdateRequest(u,SourceTimeoutMs,SourceTimeoutMs);
             try {
-                using(var response=(HttpWebResponse)request.GetResponse()) {
+                cancellation.ThrowIfCancellationRequested();
+                using(cancellation.Register(request.Abort))
+                using(var response=(HttpWebResponse)await request.GetResponseAsync().ConfigureAwait(false)) {
                     if((int)response.StatusCode>=300 && (int)response.StatusCode<400) { url=new Uri(u,response.Headers["Location"]).AbsoluteUri; continue; }
                     if(response.ContentLength>limit)throw new Exception("更新响应超过大小限制");
                     using(var source=response.GetResponseStream())using(var output=new MemoryStream()) {
                         byte[] b=new byte[65536]; int n; long size=0;
-                        while((n=source.Read(b,0,b.Length))>0) { size+=n; if(size>limit)throw new Exception("更新响应超过大小限制"); output.Write(b,0,n); }
+                        while((n=await source.ReadAsync(b,0,b.Length,cancellation).ConfigureAwait(false))>0) { size+=n; if(size>limit)throw new Exception("更新响应超过大小限制"); output.Write(b,0,n); }
                         return output.ToArray();
                     }
                 }
-            } catch(WebException ex) { throw ToTransportException(ex); }
+            } catch(WebException ex) { cancellation.ThrowIfCancellationRequested(); throw ToTransportException(ex); }
               catch(IOException ex) { throw new TransportException(ex.Message,0,ex); }
               catch(SocketException ex) { throw new TransportException(ex.Message,0,ex); }
         }
         throw new TransportException("更新下载重定向次数过多",0,null);
     }
-    static byte[] FetchWithFallback(IList<string> candidates,long limit,int timeoutMs,int rwTimeoutMs,out string usedHost) {
-        TransportException last=null;
-        foreach(string url in candidates) {
+    sealed class MetadataResponse<T> {
+        internal T Value;
+        internal string Host,Text;
+        internal Exception Error;
+    }
+    static async Task<MetadataResponse<T>> TryMetadataAsync<T>(string url,long limit,Func<string,T> parse,MetadataFetcher fetch,CancellationToken cancellation) {
+        try {
+            byte[] data=await fetch(url,limit,cancellation).ConfigureAwait(false);
+            cancellation.ThrowIfCancellationRequested();
+            string text=Encoding.UTF8.GetString(data);
+            return new MetadataResponse<T> { Value=parse(text),Host=new Uri(url).Host,Text=text };
+        } catch(Exception ex) { return new MetadataResponse<T> { Error=ex }; }
+    }
+    static Task<MetadataResponse<T>> FetchFastestAsync<T>(IList<string> candidates,long limit,Func<string,T> parse,MetadataFetcher fetch,CancellationToken budget) {
+        return RaceSourcesAsync(candidates,(url,cancellation) => TryMetadataAsync(url,limit,parse,fetch,cancellation),budget);
+    }
+    static async Task<MetadataResponse<T>> RaceSourcesAsync<T>(IList<string> candidates,Func<string,CancellationToken,Task<MetadataResponse<T>>> attempt,CancellationToken budget) {
+        using(var race=CancellationTokenSource.CreateLinkedTokenSource(budget)) {
+            race.CancelAfter(SourceTimeoutMs);
+            var attempts=candidates.Select(url => attempt(url,race.Token)).ToList();
+            Task expired=Task.Delay(Timeout.Infinite,race.Token);
+            TransportException last=null;
+            bool missing=false;
             try {
-                byte[] data=FetchOnce(url,limit,timeoutMs,rwTimeoutMs);
-                usedHost=new Uri(url).Host;
-                return data;
-            } catch(TransportException ex) {
-                last=ex;
-            }
+                while(attempts.Count>0) {
+                    Task completed=await Task.WhenAny(attempts.Cast<Task>().Concat(new[]{expired})).ConfigureAwait(false);
+                    if(completed==expired)throw new TransportException(missing?"发布文件不存在":"更新通道响应超时，请检查网络后重试。",missing?404:0,null);
+                    var task=(Task<MetadataResponse<T>>)completed;
+                    attempts.Remove(task);
+                    var response=await task.ConfigureAwait(false);
+                    if(response.Error==null)return response;
+                    var transport=response.Error as TransportException;
+                    if(transport!=null) { last=transport; missing|=transport.StatusCode==404; }
+                    else if(response.Error is OperationCanceledException)last=new TransportException("更新通道响应超时，请检查网络后重试。",0,response.Error);
+                    else throw response.Error; // Signature/schema failures must never become an older "no update" result.
+                }
+                // Atom cannot list assets. A missing desktop-only manifest must still try the legacy name,
+                // even when another unreachable route timed out after the authoritative 404.
+                if(missing)throw new TransportException("发布文件不存在",404,last);
+                throw last??new TransportException("无法连接到更新服务",0,null);
+            } finally { race.Cancel(); } // Abort losing HTTP requests, including redirects and stalled reads.
         }
-        throw last??new TransportException("无法连接到更新服务",0,null);
     }
     internal static string AssetUrl(Dictionary<string,object> m,string component) {
         var a=(Dictionary<string,object>)m[component];
@@ -165,96 +208,160 @@ internal static class HubUpdater {
         string h=host.ToLowerInvariant();
         return h=="edgeone.gh-proxy.org" || h=="gh-proxy.org" || h=="ghfast.top";
     }
+    sealed class ReleaseCandidate {
+        internal string Tag,Manifest;
+        internal object[] Assets;
+    }
+    static List<ReleaseCandidate> ParseReleases(string text,bool preview) {
+        try {
+            var releases=new JavaScriptSerializer { MaxJsonLength=2000000 }.Deserialize<object[]>(text);
+            if(releases==null)throw new Exception("发布列表为空");
+            var candidates=new List<ReleaseCandidate>();
+            foreach(Dictionary<string,object> release in releases) {
+                if(Convert.ToBoolean(release["draft"]) || (!preview && Convert.ToBoolean(release["prerelease"])))continue;
+                string tag=S(release,"tag_name");
+                if(!Regex.IsMatch(tag,@"^v[0-9A-Za-z][0-9A-Za-z.\-]{0,79}$"))continue;
+                var assets=(object[])release["assets"];
+                string name=ManifestName(assets.Cast<Dictionary<string,object>>().Select(a => S(a,"name")));
+                if(name!=null && !candidates.Any(c => c.Tag==tag))candidates.Add(new ReleaseCandidate { Tag=tag,Manifest=name,Assets=assets });
+            }
+            return candidates;
+        } catch(Exception ex) { throw new TransportException("更新发布列表格式无效",0,ex); }
+    }
+    static List<ReleaseCandidate> ParseFeed(string text,bool preview) {
+        try {
+            var settings=new XmlReaderSettings { DtdProcessing=DtdProcessing.Prohibit,XmlResolver=null };
+            var feed=new XmlDocument { XmlResolver=null };
+            using(var reader=XmlReader.Create(new StringReader(text),settings))feed.Load(reader);
+            if(feed.DocumentElement==null || feed.DocumentElement.LocalName!="feed" || feed.DocumentElement.NamespaceURI!="http://www.w3.org/2005/Atom")
+                throw new Exception("发布记录格式无效");
+            return ParseAtomTags(text,preview,8).Select(tag => new ReleaseCandidate { Tag=tag }).ToList();
+        } catch(Exception ex) { throw new TransportException("更新发布记录格式无效",0,ex); }
+    }
+    sealed class ReleaseCheck {
+        internal MetadataResponse<Dictionary<string,object>> Response;
+        internal long DesktopAssetId;
+        internal Exception Error;
+    }
+    static async Task<ReleaseCheck> CheckReleaseAsync(ReleaseCandidate candidate,MetadataFetcher fetch,SemaphoreSlim parallel,CancellationToken budget) {
+        bool entered=false;
+        try {
+            await parallel.WaitAsync(budget).ConfigureAwait(false);
+            entered=true;
+            foreach(string name in candidate.Manifest!=null?new[]{candidate.Manifest}:new[]{"xingshu-desktop-update.json","xingshu-update.json"}) {
+                string url=Releases+"/download/"+Uri.EscapeDataString(candidate.Tag)+"/"+name;
+                try {
+                    var response=await FetchFastestAsync(CandidateUrls(url,FindAssetId(candidate.Assets,name),true),300000,
+                        text => Verify(text,candidate.Tag),fetch,budget).ConfigureAwait(false);
+                    return new ReleaseCheck { Response=response,DesktopAssetId=FindAssetId(candidate.Assets,S((Dictionary<string,object>)response.Value["desktop"],"asset")) };
+                } catch(TransportException ex) { if(candidate.Manifest!=null || ex.StatusCode!=404)throw; }
+            }
+            return new ReleaseCheck(); // Atom can include releases without an update manifest.
+        } catch(OperationCanceledException ex) { return new ReleaseCheck { Error=new TransportException("检查更新超时，请检查网络后重试。",0,ex) }; }
+          catch(Exception ex) { return new ReleaseCheck { Error=ex }; }
+        finally { if(entered)parallel.Release(); }
+    }
+    sealed class CheckResult {
+        internal Dictionary<string,object> Result;
+        internal long DesktopAssetId;
+        internal bool Domestic;
+    }
     internal static Dictionary<string,object> Check(long current,bool preview) {
         long bestDesktopAssetId=0;
         bool usedDomesticMirror=false;
         return CheckInternal(current,preview,out bestDesktopAssetId,out usedDomesticMirror);
     }
+    // The injected transport lets regression tests reproduce slow/offline routes without using the network.
+    internal static Dictionary<string,object> Check(long current,bool preview,MetadataFetcher fetch,int timeoutMs) {
+        return CheckAsync(current,preview,fetch,timeoutMs).GetAwaiter().GetResult().Result;
+    }
     static Dictionary<string,object> CheckInternal(long current,bool preview,out long bestDesktopAssetId,out bool usedDomesticMirror) {
-        Dictionary<string,object> best=null; string envelope=null;
-        bestDesktopAssetId=0; usedDomesticMirror=false;
-        string usedHost="";
-        bool apiSucceeded=false;
-        object[] releases=null;
+        var check=CheckAsync(current,preview,FetchOnceAsync,CheckTimeoutMs).GetAwaiter().GetResult();
+        bestDesktopAssetId=check.DesktopAssetId; usedDomesticMirror=check.Domestic;
+        return check.Result;
+    }
+    static async Task<CheckResult> CheckAsync(long current,bool preview,MetadataFetcher fetch,int timeoutMs) {
+      using(var deadline=new CancellationTokenSource(timeoutMs))
+      using(var parallel=new SemaphoreSlim(4)) {
+        MetadataResponse<List<ReleaseCandidate>> discovery=null;
+        string api="https://api.github.com/repos/"+Repo+"/releases?per_page=30";
         try {
-            releases=Json.Deserialize<object[]>(Encoding.UTF8.GetString(FetchOnce("https://api.github.com/repos/"+Repo+"/releases?per_page=30",1800000,12000,15000)));
-            apiSucceeded=true;
-            usedHost="api.github.com";
-        } catch(TransportException) {
-            apiSucceeded=false;
+            // Query the same release list through official and allowlisted domestic routes immediately.
+            var urls=new[]{api}.Concat(DomesticMirrors.Select(m => m+api)).ToList();
+            discovery=await FetchFastestAsync(urls,1800000,text => ParseReleases(text,preview),fetch,deadline.Token).ConfigureAwait(false);
+        } catch(TransportException) {}
+        if(discovery==null) {
+            discovery=await FetchFastestAsync(CandidateUrls("https://github.com/"+Repo+"/releases.atom",0,true),600000,
+                text => ParseFeed(text,preview),fetch,deadline.Token).ConfigureAwait(false);
         }
-        if(apiSucceeded && releases!=null) {
-            foreach(var raw in releases) {
-                var release=(Dictionary<string,object>)raw;
-                if(Convert.ToBoolean(release["draft"]) || (!preview && Convert.ToBoolean(release["prerelease"])))continue;
-                string tag=S(release,"tag_name"); if(!Regex.IsMatch(tag,@"^v[0-9A-Za-z][0-9A-Za-z.\-]{0,79}$"))continue;
-                var assets=((object[])release["assets"]).Cast<Dictionary<string,object>>().ToArray();
-                string manifestName=ManifestName(assets.Select(a => S(a,"name")));
-                if(manifestName==null)continue;
-                long manifestId=FindAssetId(assets,manifestName);
-                string directManifestUrl=Releases+"/download/"+Uri.EscapeDataString(tag)+"/"+manifestName;
-                string fetchHost;
-                try {
-                    byte[] manifestBytes=FetchWithFallback(CandidateUrls(directManifestUrl,manifestId,false),300000,12000,15000,out fetchHost);
-                    if(IsDomesticHost(fetchHost))usedDomesticMirror=true;
-                    string text=Encoding.UTF8.GetString(manifestBytes);
-                    var m=Verify(text,tag); // Fail closed on a tampered published update; never silently fall back.
-                    if(best==null || N(m,"sequence")>N(best,"sequence")) {
-                        best=m; envelope=text;
-                        bestDesktopAssetId=FindAssetId(assets,S((Dictionary<string,object>)m["desktop"],"asset"));
-                        usedHost=fetchHost;
-                    }
-                } catch(TransportException) {
-                    if(best!=null)break;
-                    throw;
-                }
-            }
-        } else {
-            // GitHub API unreachable or rate-limited on domestic networks: discover releases via domestic mirrors + Atom feed.
-            string atomHost;
-            string atomXml=Encoding.UTF8.GetString(FetchWithFallback(CandidateUrls("https://github.com/"+Repo+"/releases.atom",0,true),600000,12000,15000,out atomHost));
-            usedDomesticMirror=IsDomesticHost(atomHost);
-            usedHost=atomHost;
-            var tags=ParseAtomTags(atomXml,preview,8);
-            foreach(string tag in tags) {
-                string fetchedText=null; string fetchHost="";
-                foreach(string manifestName in new[]{"xingshu-desktop-update.json","xingshu-update.json"}) {
-                    string directManifestUrl=Releases+"/download/"+Uri.EscapeDataString(tag)+"/"+manifestName;
-                    try {
-                        fetchedText=Encoding.UTF8.GetString(FetchWithFallback(CandidateUrls(directManifestUrl,0,true),300000,12000,15000,out fetchHost));
-                        break;
-                    } catch(TransportException ex) {
-                        if(ex.StatusCode==404)continue;
-                        if(best!=null) { fetchedText=null; break; }
-                        throw;
-                    }
-                }
-                if(fetchedText==null)continue;
-                if(IsDomesticHost(fetchHost))usedDomesticMirror=true;
-                var m=Verify(fetchedText,tag);
-                if(best==null || N(m,"sequence")>N(best,"sequence")) {
-                    best=m; envelope=fetchedText; bestDesktopAssetId=0; usedHost=fetchHost;
-                }
-            }
-        }
-        string sourceLabel=usedDomesticMirror?("国内加速镜像 ("+usedHost+")"):(!String.IsNullOrEmpty(usedHost)?"官方直连 ("+usedHost+")":"官方更新服务");
-        return new Dictionary<string,object> {
-            {"available",best!=null && N(best,"sequence")>current}, {"currentSequence",current},
-            {"release",best}, {"envelope",envelope}, {"releaseUrl",best==null?Releases:Releases+"/tag/"+Uri.EscapeDataString(S(best,"tag"))},
+        // Fetch independent historical manifests concurrently, still select the greatest SIGNED sequence.
+        // Never assume that API order, Atom order, or a version tag is a trustworthy update sequence.
+        var checks=await Task.WhenAll(discovery.Value.Select(c => CheckReleaseAsync(c,fetch,parallel,deadline.Token))).ConfigureAwait(false);
+        foreach(var check in checks)if(check.Error!=null && !(check.Error is TransportException))throw check.Error;
+        var best=checks.Where(c => c.Response!=null).OrderByDescending(c => N(c.Response.Value,"sequence")).FirstOrDefault();
+        bool incomplete=checks.Any(c => c.Error!=null);
+        if(best==null && incomplete)throw checks.First(c => c.Error!=null).Error;
+        var manifest=best==null?null:best.Response.Value;
+        string usedHost=best==null?discovery.Host:best.Response.Host;
+        bool domestic=IsDomesticHost(usedHost);
+        string sourceLabel=domestic?("国内加速镜像 ("+usedHost+")"):("官方直连 ("+usedHost+")");
+        var result=new Dictionary<string,object> {
+            {"available",manifest!=null && N(manifest,"sequence")>current}, {"currentSequence",current},
+            {"release",manifest}, {"envelope",best==null?null:best.Response.Text}, {"releaseUrl",manifest==null?Releases:Releases+"/tag/"+Uri.EscapeDataString(S(manifest,"tag"))},
             {"downloadSource",sourceLabel},
-            {"message",best==null?"当前发布尚未提供签名更新清单，可打开官方发布页手动下载。":N(best,"sequence")>current?"发现可校验的新版本。":"没有比当前版本更新的可校验发布。"}
+            {"checkWarning",incomplete?"部分发布信息未读取完成，暂不能确认是否还有更新版本，请稍后重试。":null},
+            {"message",manifest==null?"当前发布尚未提供签名更新清单，可打开官方发布页手动下载。":N(manifest,"sequence")>current?"发现可校验的新版本。":incomplete?"已校验部分发布，检查尚未完成。":"没有比当前版本更新的可校验发布。"}
         };
+        return new CheckResult { Result=result,DesktopAssetId=best==null?0:best.DesktopAssetId,Domestic=domestic };
+      }
+    }
+    const int DownloadProbeBytes=65536;
+    internal delegate Task DownloadProber(string url,long size,CancellationToken cancellation);
+    internal delegate void PackageDownloader(string url,string destination,long size,string hash);
+    internal static void ValidateDownloadProbe(int status,long length,string contentRange,long size) {
+        if(status==206) {
+            string expected="bytes 0-"+(Math.Min(size,DownloadProbeBytes)-1)+"/"+size;
+            if(contentRange!=expected || (length>=0 && length!=Math.Min(size,DownloadProbeBytes)))
+                throw new TransportException("下载通道返回的文件范围不符",0,null);
+        } else if(status!=200 || (length>=0 && length!=size)) {
+            throw new TransportException("下载通道返回的文件大小不符",0,null);
+        }
+    }
+    static async Task ProbeDownloadAsync(string url,long size,CancellationToken cancellation) {
+        for(int redirects=0;redirects<6;redirects++) {
+            var u=new Uri(url); var request=UpdateRequest(u,SourceTimeoutMs,SourceTimeoutMs);
+            request.AddRange(0,Math.Min(size,DownloadProbeBytes)-1);
+            try {
+                cancellation.ThrowIfCancellationRequested();
+                using(cancellation.Register(request.Abort))
+                using(var response=(HttpWebResponse)await request.GetResponseAsync().ConfigureAwait(false)) {
+                    if((int)response.StatusCode>=300 && (int)response.StatusCode<400) { url=new Uri(u,response.Headers["Location"]).AbsoluteUri; continue; }
+                    ValidateDownloadProbe((int)response.StatusCode,response.ContentLength,response.Headers["Content-Range"],size);
+                    // Test actual bytes, rather than selecting a fast HEAD response whose body may stall.
+                    using(var source=response.GetResponseStream()) {
+                        byte[] buffer=new byte[(int)Math.Min(size,DownloadProbeBytes)]; int total=0,n;
+                        while(total<buffer.Length && (n=await source.ReadAsync(buffer,total,buffer.Length-total,cancellation).ConfigureAwait(false))>0)total+=n;
+                        if(total!=buffer.Length)throw new TransportException("下载通道未返回完整探测数据",0,null);
+                        request.Abort(); // A server may ignore Range; never drain the rest of a large probe response.
+                    }
+                    return;
+                }
+            } catch(WebException ex) { cancellation.ThrowIfCancellationRequested(); throw ToTransportException(ex); }
+              catch(IOException ex) { throw new TransportException(ex.Message,0,ex); }
+              catch(SocketException ex) { throw new TransportException(ex.Message,0,ex); }
+        }
+        throw new TransportException("更新下载重定向次数过多",0,null);
+    }
+    static async Task<MetadataResponse<string>> TryProbeDownloadAsync(string url,long size,DownloadProber probe,CancellationToken cancellation) {
+        try {
+            await probe(url,size,cancellation).ConfigureAwait(false);
+            cancellation.ThrowIfCancellationRequested();
+            return new MetadataResponse<string> { Value=url,Host=new Uri(url).Host };
+        } catch(Exception ex) { return new MetadataResponse<string> { Error=ex }; }
     }
     static void DownloadOnce(string url,string destination,long size,string hash) {
         for(int redirects=0;redirects<6;redirects++) {
-            var u=new Uri(url); ValidateEndpoint(u);
-            string h=u.Host.ToLowerInvariant();
-            bool apiAsset=h=="api.github.com" && u.AbsolutePath.Contains("/releases/assets/");
-            var req=(HttpWebRequest)WebRequest.Create(u); req.AllowAutoRedirect=false; req.Timeout=20000; req.ReadWriteTimeout=60000; req.UserAgent="XingShu-Updater/1";
-            if(h=="api.github.com") {
-                req.Accept=apiAsset?"application/octet-stream":"application/vnd.github+json";
-                req.Headers["X-GitHub-Api-Version"]="2022-11-28";
-            }
+            var u=new Uri(url); var req=UpdateRequest(u,SourceTimeoutMs,60000);
             try {
                 using(var response=(HttpWebResponse)req.GetResponse()) {
                     if((int)response.StatusCode>=300&&(int)response.StatusCode<400) { url=new Uri(u,response.Headers["Location"]).AbsoluteUri; continue; }
@@ -269,17 +376,24 @@ internal static class HubUpdater {
                     } catch { if(File.Exists(destination))File.Delete(destination); throw; }
                 }
             } catch(WebException ex) { throw ToTransportException(ex); }
+              catch(IOException ex) { throw new TransportException(ex.Message,0,ex); }
               catch(SocketException ex) { throw new TransportException(ex.Message,0,ex); }
         }
         throw new TransportException("更新下载重定向次数过多",0,null);
     }
     static string DownloadWithFallback(IList<string> candidates,string destination,long size,string hash) {
+        return DownloadWithFallback(candidates,destination,size,hash,ProbeDownloadAsync,DownloadOnce);
+    }
+    internal static string DownloadWithFallback(IList<string> candidates,string destination,long size,string hash,DownloadProber probe,PackageDownloader download) {
         TransportException last=null;
-        foreach(string url in candidates) {
+        var remaining=candidates.Distinct(StringComparer.Ordinal).ToList();
+        while(remaining.Count>0) {
+            var source=RaceSourcesAsync(remaining,(url,cancellation) => TryProbeDownloadAsync(url,size,probe,cancellation),CancellationToken.None).GetAwaiter().GetResult();
+            remaining.Remove(source.Value);
             try {
                 if(File.Exists(destination))File.Delete(destination);
-                DownloadOnce(url,destination,size,hash);
-                return new Uri(url).Host;
+                download(source.Value,destination,size,hash);
+                return source.Host;
             } catch(TransportException ex) {
                 last=ex;
             }
@@ -408,11 +522,12 @@ internal static class HubUpdater {
             long desktopAssetId=0; bool usedDomesticMirror=false;
             var result=CheckInternal(current,preview,out desktopAssetId,out usedDomesticMirror);
             if(args.Length>0&&args[0]=="--download") {
+                if(result["checkWarning"]!=null)throw new Exception("更新检查尚未完成，请重新检查后下载");
                 if(!Convert.ToBoolean(result["available"]))throw new Exception("未发现可用更新，请重新检查");
                 var m=(Dictionary<string,object>)result["release"];
                 if(N(m,"sequence")!=N(request,"sequence"))throw new Exception("发布版本已变化，请重新检查后下载");
                 var asset=(Dictionary<string,object>)m["desktop"]; string cache=Cache();
-                string usedDlHost=DownloadWithFallback(CandidateUrls(AssetUrl(m,"desktop"),desktopAssetId,usedDomesticMirror),Path.Combine(cache,"update.zip"),N(asset,"size"),S(asset,"sha256"));
+                string usedDlHost=DownloadWithFallback(CandidateUrls(AssetUrl(m,"desktop"),desktopAssetId,true),Path.Combine(cache,"update.zip"),N(asset,"size"),S(asset,"sha256"));
                 string stage=Path.Combine(cache,"checked"); Directory.CreateDirectory(stage); Extract(Path.Combine(cache,"update.zip"),stage,m);
                 File.WriteAllText(Path.Combine(cache,"plan.json"),Json.Serialize(new { tag=S(m,"tag"),envelope=S(result,"envelope") }),new UTF8Encoding(false));
                 result["cache"]=cache;
