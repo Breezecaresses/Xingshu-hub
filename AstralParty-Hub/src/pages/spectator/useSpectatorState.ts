@@ -192,8 +192,11 @@ export function useSpectatorState() {
   }, [location.search, setAccountMode]);
 
   useEffect(() => {
-    if (accountMode !== 'XINGSHU_MANAGED') {
+    if (accountMode === 'USER_OWNED') {
       autoFollowService.setExecutionMode('USER_OWNED');
+      localManagedSpectatorAccountProvider.releaseCurrent().catch(console.warn);
+    } else if (accountMode !== 'XINGSHU_MANAGED') {
+      autoFollowService.setExecutionMode('PAUSED');
       localManagedSpectatorAccountProvider.releaseCurrent().catch(console.warn);
     } else if (managedProvider.executionMode === 'LOCAL_VALIDATION') {
       autoFollowService.setExecutionMode('LOCAL_MANAGED', async target => {

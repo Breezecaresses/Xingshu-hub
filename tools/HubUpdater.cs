@@ -3,6 +3,7 @@ using System;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Linq;
 using System.Collections.Generic;
@@ -16,6 +17,11 @@ using System.Windows.Forms;
 internal static class HubUpdater {
     internal const string Repo = "Breezecaresses/Xingshu-hub";
     internal const string Releases = "https://github.com/" + Repo + "/releases";
+    internal static readonly string[] DomesticMirrors = new[] {
+        "https://edgeone.gh-proxy.org/",
+        "https://gh-proxy.org/",
+        "https://ghfast.top/",
+    };
     internal static readonly JavaScriptSerializer Json = new JavaScriptSerializer { MaxJsonLength = 2000000 };
     internal static Dictionary<string,object> Object(string text) { return Json.Deserialize<Dictionary<string,object>>(text); }
     internal static string S(Dictionary<string,object> o,string k) { return Convert.ToString(o[k]); }
@@ -23,6 +29,52 @@ internal static class HubUpdater {
     internal static string Hash(string path) { using(var s=File.OpenRead(path)) using(var h=SHA256.Create())return Hex(h.ComputeHash(s)); }
     internal static string Hex(byte[] b) { return BitConverter.ToString(b).Replace("-", "").ToLowerInvariant(); }
     static string Certificate() { using(var s=typeof(HubUpdater).Assembly.GetManifestResourceStream("update-cert"))using(var r=new StreamReader(s))return r.ReadToEnd().Trim(); }
+
+    internal sealed class TransportException : Exception {
+        internal readonly int StatusCode;
+        internal TransportException(string message, int statusCode, Exception inner) : base(message, inner) { StatusCode = statusCode; }
+    }
+
+    internal static bool IsAllowedUpdateHost(string host) {
+        if(String.IsNullOrEmpty(host))return false;
+        string h=host.ToLowerInvariant();
+        return h=="api.github.com" || h=="github.com" || h=="release-assets.githubusercontent.com" || h=="objects.githubusercontent.com"
+            || h=="edgeone.gh-proxy.org" || h=="gh-proxy.org" || h=="ghfast.top";
+    }
+
+    internal static void ValidateEndpoint(Uri u) {
+        if(u.Scheme!="https" || !u.IsDefaultPort || !String.IsNullOrEmpty(u.UserInfo) || !IsAllowedUpdateHost(u.Host))
+            throw new Exception("更新地址不属于受信任的官方或国内加速服务");
+    }
+
+    internal static List<string> CandidateUrls(string directUrl,long assetId,bool preferDomestic) {
+        var list=new List<string>();
+        bool isGitHubRepo=directUrl!=null && directUrl.StartsWith("https://github.com/"+Repo+"/",StringComparison.Ordinal);
+        if(preferDomestic && isGitHubRepo) {
+            foreach(string mirror in DomesticMirrors)list.Add(mirror+directUrl);
+        }
+        if(assetId>0)list.Add("https://api.github.com/repos/"+Repo+"/releases/assets/"+assetId);
+        if(!String.IsNullOrEmpty(directUrl))list.Add(directUrl);
+        if(!preferDomestic && isGitHubRepo) {
+            foreach(string mirror in DomesticMirrors)list.Add(mirror+directUrl);
+        }
+        return list.Distinct(StringComparer.Ordinal).ToList();
+    }
+
+    internal static List<string> ParseAtomTags(string xml,bool preview,int maxCount) {
+        var tags=new List<string>();
+        if(String.IsNullOrEmpty(xml))return tags;
+        foreach(Match match in Regex.Matches(xml,@"/releases/tag/(v[0-9A-Za-z][0-9A-Za-z.\-]{0,79})")) {
+            string tag=match.Groups[1].Value;
+            if(!preview && tag.Contains("-"))continue;
+            if(!tags.Contains(tag,StringComparer.Ordinal)) {
+                tags.Add(tag);
+                if(tags.Count>=maxCount)break;
+            }
+        }
+        return tags;
+    }
+
     internal static Dictionary<string,object> Verify(string envelope,string tag) {
         if(envelope.Length>300000)throw new Exception("更新清单过大");
         var e=Object(envelope); byte[] data=Convert.FromBase64String(S(e,"payload")), signature=Convert.FromBase64String(S(e,"signature"));
@@ -49,70 +101,190 @@ internal static class HubUpdater {
         if(assets.Contains("xingshu-desktop-update.json"))return "xingshu-desktop-update.json";
         return assets.Contains("xingshu-update.json")?"xingshu-update.json":null;
     }
-    static byte[] Fetch(string url,long limit) {
-        // GitHub redirects to its asset CDN. Each redirect is checked before following it.
+    static TransportException ToTransportException(WebException ex) {
+        var resp=ex.Response as HttpWebResponse;
+        int code=resp!=null?(int)resp.StatusCode:0;
+        string msg=code==403?"更新服务访问受限":code==404?"发布文件不存在":code>0?("更新服务返回 HTTP "+code):ex.Message;
+        return new TransportException(msg,code,ex);
+    }
+    static byte[] FetchOnce(string url,long limit,int timeoutMs,int rwTimeoutMs) {
         for(int redirects=0;redirects<6;redirects++) {
-            var u=new Uri(url); string host=u.Host.ToLowerInvariant();
-            if(u.Scheme!="https" || !u.IsDefaultPort || !(host=="api.github.com" || host=="github.com" || host=="release-assets.githubusercontent.com" || host=="objects.githubusercontent.com"))
-                throw new Exception("更新地址不属于官方发布服务");
+            var u=new Uri(url); ValidateEndpoint(u);
+            string host=u.Host.ToLowerInvariant();
+            bool apiAsset=host=="api.github.com" && u.AbsolutePath.Contains("/releases/assets/");
             var request=(HttpWebRequest)WebRequest.Create(u); request.AllowAutoRedirect=false;
-            request.Timeout=30000; request.ReadWriteTimeout=60000; request.UserAgent="XingShu-Updater/1";
-            request.Accept="application/vnd.github+json";
-            using(var response=(HttpWebResponse)request.GetResponse()) {
-                if((int)response.StatusCode>=300 && (int)response.StatusCode<400) { url=new Uri(u,response.Headers["Location"]).AbsoluteUri; continue; }
-                if(response.ContentLength>limit)throw new Exception("更新响应超过大小限制");
-                using(var source=response.GetResponseStream())using(var output=new MemoryStream()) {
-                    byte[] b=new byte[65536]; int n; long size=0;
-                    while((n=source.Read(b,0,b.Length))>0) { size+=n; if(size>limit)throw new Exception("更新响应超过大小限制"); output.Write(b,0,n); }
-                    return output.ToArray();
+            request.Timeout=timeoutMs; request.ReadWriteTimeout=rwTimeoutMs; request.UserAgent="XingShu-Updater/1";
+            if(host=="api.github.com") {
+                request.Accept=apiAsset?"application/octet-stream":"application/vnd.github+json";
+                request.Headers["X-GitHub-Api-Version"]="2022-11-28";
+            } else {
+                request.Accept="*/*";
+            }
+            try {
+                using(var response=(HttpWebResponse)request.GetResponse()) {
+                    if((int)response.StatusCode>=300 && (int)response.StatusCode<400) { url=new Uri(u,response.Headers["Location"]).AbsoluteUri; continue; }
+                    if(response.ContentLength>limit)throw new Exception("更新响应超过大小限制");
+                    using(var source=response.GetResponseStream())using(var output=new MemoryStream()) {
+                        byte[] b=new byte[65536]; int n; long size=0;
+                        while((n=source.Read(b,0,b.Length))>0) { size+=n; if(size>limit)throw new Exception("更新响应超过大小限制"); output.Write(b,0,n); }
+                        return output.ToArray();
+                    }
                 }
+            } catch(WebException ex) { throw ToTransportException(ex); }
+              catch(IOException ex) { throw new TransportException(ex.Message,0,ex); }
+              catch(SocketException ex) { throw new TransportException(ex.Message,0,ex); }
+        }
+        throw new TransportException("更新下载重定向次数过多",0,null);
+    }
+    static byte[] FetchWithFallback(IList<string> candidates,long limit,int timeoutMs,int rwTimeoutMs,out string usedHost) {
+        TransportException last=null;
+        foreach(string url in candidates) {
+            try {
+                byte[] data=FetchOnce(url,limit,timeoutMs,rwTimeoutMs);
+                usedHost=new Uri(url).Host;
+                return data;
+            } catch(TransportException ex) {
+                last=ex;
             }
         }
-        throw new Exception("更新下载重定向次数过多");
+        throw last??new TransportException("无法连接到更新服务",0,null);
     }
     internal static string AssetUrl(Dictionary<string,object> m,string component) {
         var a=(Dictionary<string,object>)m[component];
         return Releases+"/download/"+Uri.EscapeDataString(S(m,"tag"))+"/"+Uri.EscapeDataString(S(a,"asset"));
     }
-    internal static Dictionary<string,object> Check(long current,bool preview) {
-        var releases=Json.Deserialize<object[]>(Encoding.UTF8.GetString(Fetch("https://api.github.com/repos/"+Repo+"/releases?per_page=30",1800000)));
-        Dictionary<string,object> best=null; string envelope=null;
-        foreach(var raw in releases) {
-            var release=(Dictionary<string,object>)raw;
-            if(Convert.ToBoolean(release["draft"]) || (!preview && Convert.ToBoolean(release["prerelease"])))continue;
-            string tag=S(release,"tag_name"); if(!Regex.IsMatch(tag,@"^v[0-9A-Za-z][0-9A-Za-z.\-]{0,79}$"))continue;
-            string manifestName=ManifestName(((object[])release["assets"]).Cast<Dictionary<string,object>>().Select(a => S(a,"name")));
-            if(manifestName==null)continue;
-            string text=Encoding.UTF8.GetString(Fetch(Releases+"/download/"+Uri.EscapeDataString(tag)+"/"+manifestName,300000));
-            var m=Verify(text,tag); // Fail closed on a tampered published update; never silently fall back.
-            if(best==null || N(m,"sequence")>N(best,"sequence")) { best=m; envelope=text; }
+    static long FindAssetId(object[] assets,string name) {
+        if(assets==null || String.IsNullOrEmpty(name))return 0;
+        foreach(Dictionary<string,object> a in assets) {
+            if(String.Equals(S(a,"name"),name,StringComparison.Ordinal))return Math.Max(0,N(a,"id"));
         }
+        return 0;
+    }
+    static bool IsDomesticHost(string host) {
+        if(String.IsNullOrEmpty(host))return false;
+        string h=host.ToLowerInvariant();
+        return h=="edgeone.gh-proxy.org" || h=="gh-proxy.org" || h=="ghfast.top";
+    }
+    internal static Dictionary<string,object> Check(long current,bool preview) {
+        long bestDesktopAssetId=0;
+        bool usedDomesticMirror=false;
+        return CheckInternal(current,preview,out bestDesktopAssetId,out usedDomesticMirror);
+    }
+    static Dictionary<string,object> CheckInternal(long current,bool preview,out long bestDesktopAssetId,out bool usedDomesticMirror) {
+        Dictionary<string,object> best=null; string envelope=null;
+        bestDesktopAssetId=0; usedDomesticMirror=false;
+        string usedHost="";
+        bool apiSucceeded=false;
+        object[] releases=null;
+        try {
+            releases=Json.Deserialize<object[]>(Encoding.UTF8.GetString(FetchOnce("https://api.github.com/repos/"+Repo+"/releases?per_page=30",1800000,12000,15000)));
+            apiSucceeded=true;
+            usedHost="api.github.com";
+        } catch(TransportException) {
+            apiSucceeded=false;
+        }
+        if(apiSucceeded && releases!=null) {
+            foreach(var raw in releases) {
+                var release=(Dictionary<string,object>)raw;
+                if(Convert.ToBoolean(release["draft"]) || (!preview && Convert.ToBoolean(release["prerelease"])))continue;
+                string tag=S(release,"tag_name"); if(!Regex.IsMatch(tag,@"^v[0-9A-Za-z][0-9A-Za-z.\-]{0,79}$"))continue;
+                var assets=((object[])release["assets"]).Cast<Dictionary<string,object>>().ToArray();
+                string manifestName=ManifestName(assets.Select(a => S(a,"name")));
+                if(manifestName==null)continue;
+                long manifestId=FindAssetId(assets,manifestName);
+                string directManifestUrl=Releases+"/download/"+Uri.EscapeDataString(tag)+"/"+manifestName;
+                string fetchHost;
+                try {
+                    byte[] manifestBytes=FetchWithFallback(CandidateUrls(directManifestUrl,manifestId,false),300000,12000,15000,out fetchHost);
+                    if(IsDomesticHost(fetchHost))usedDomesticMirror=true;
+                    string text=Encoding.UTF8.GetString(manifestBytes);
+                    var m=Verify(text,tag); // Fail closed on a tampered published update; never silently fall back.
+                    if(best==null || N(m,"sequence")>N(best,"sequence")) {
+                        best=m; envelope=text;
+                        bestDesktopAssetId=FindAssetId(assets,S((Dictionary<string,object>)m["desktop"],"asset"));
+                        usedHost=fetchHost;
+                    }
+                } catch(TransportException) {
+                    if(best!=null)break;
+                    throw;
+                }
+            }
+        } else {
+            // GitHub API unreachable or rate-limited on domestic networks: discover releases via domestic mirrors + Atom feed.
+            string atomHost;
+            string atomXml=Encoding.UTF8.GetString(FetchWithFallback(CandidateUrls("https://github.com/"+Repo+"/releases.atom",0,true),600000,12000,15000,out atomHost));
+            usedDomesticMirror=IsDomesticHost(atomHost);
+            usedHost=atomHost;
+            var tags=ParseAtomTags(atomXml,preview,8);
+            foreach(string tag in tags) {
+                string fetchedText=null; string fetchHost="";
+                foreach(string manifestName in new[]{"xingshu-desktop-update.json","xingshu-update.json"}) {
+                    string directManifestUrl=Releases+"/download/"+Uri.EscapeDataString(tag)+"/"+manifestName;
+                    try {
+                        fetchedText=Encoding.UTF8.GetString(FetchWithFallback(CandidateUrls(directManifestUrl,0,true),300000,12000,15000,out fetchHost));
+                        break;
+                    } catch(TransportException ex) {
+                        if(ex.StatusCode==404)continue;
+                        if(best!=null) { fetchedText=null; break; }
+                        throw;
+                    }
+                }
+                if(fetchedText==null)continue;
+                if(IsDomesticHost(fetchHost))usedDomesticMirror=true;
+                var m=Verify(fetchedText,tag);
+                if(best==null || N(m,"sequence")>N(best,"sequence")) {
+                    best=m; envelope=fetchedText; bestDesktopAssetId=0; usedHost=fetchHost;
+                }
+            }
+        }
+        string sourceLabel=usedDomesticMirror?("国内加速镜像 ("+usedHost+")"):(!String.IsNullOrEmpty(usedHost)?"官方直连 ("+usedHost+")":"官方更新服务");
         return new Dictionary<string,object> {
             {"available",best!=null && N(best,"sequence")>current}, {"currentSequence",current},
             {"release",best}, {"envelope",envelope}, {"releaseUrl",best==null?Releases:Releases+"/tag/"+Uri.EscapeDataString(S(best,"tag"))},
+            {"downloadSource",sourceLabel},
             {"message",best==null?"当前发布尚未提供签名更新清单，可打开官方发布页手动下载。":N(best,"sequence")>current?"发现可校验的新版本。":"没有比当前版本更新的可校验发布。"}
         };
     }
-    static void Download(string url,string destination,long size,string hash) {
-        // Signed size and hash are checked before the archive is used. Do not retain partial downloads.
+    static void DownloadOnce(string url,string destination,long size,string hash) {
         for(int redirects=0;redirects<6;redirects++) {
-            var u=new Uri(url); string h=u.Host.ToLowerInvariant();
-            if(u.Scheme!="https" || !u.IsDefaultPort || !(h=="github.com"||h=="release-assets.githubusercontent.com"||h=="objects.githubusercontent.com"))throw new Exception("下载地址无效");
-            var req=(HttpWebRequest)WebRequest.Create(u); req.AllowAutoRedirect=false; req.Timeout=30000; req.ReadWriteTimeout=60000; req.UserAgent="XingShu-Updater/1";
-            using(var response=(HttpWebResponse)req.GetResponse()) {
-                if((int)response.StatusCode>=300&&(int)response.StatusCode<400) { url=new Uri(u,response.Headers["Location"]).AbsoluteUri; continue; }
-                if(response.ContentLength>=0&&response.ContentLength!=size)throw new Exception("更新文件大小不符");
-                try {
-                    using(var source=response.GetResponseStream())using(var target=new FileStream(destination,FileMode.CreateNew,FileAccess.Write)) {
-                        byte[] b=new byte[65536]; long total=0; int n;
-                        while((n=source.Read(b,0,b.Length))>0) { total+=n; if(total>size)throw new Exception("更新文件超出声明大小"); target.Write(b,0,n); }
-                        target.Flush(true); if(total!=size)throw new Exception("下载未完成，请重试");
-                    }
-                    if(Hash(destination)!=hash)throw new Exception("更新文件 SHA256 校验失败"); return;
-                } catch { if(File.Exists(destination))File.Delete(destination); throw; }
+            var u=new Uri(url); ValidateEndpoint(u);
+            string h=u.Host.ToLowerInvariant();
+            bool apiAsset=h=="api.github.com" && u.AbsolutePath.Contains("/releases/assets/");
+            var req=(HttpWebRequest)WebRequest.Create(u); req.AllowAutoRedirect=false; req.Timeout=20000; req.ReadWriteTimeout=60000; req.UserAgent="XingShu-Updater/1";
+            if(h=="api.github.com") {
+                req.Accept=apiAsset?"application/octet-stream":"application/vnd.github+json";
+                req.Headers["X-GitHub-Api-Version"]="2022-11-28";
+            }
+            try {
+                using(var response=(HttpWebResponse)req.GetResponse()) {
+                    if((int)response.StatusCode>=300&&(int)response.StatusCode<400) { url=new Uri(u,response.Headers["Location"]).AbsoluteUri; continue; }
+                    if(response.ContentLength>=0&&response.ContentLength!=size)throw new Exception("更新文件大小不符");
+                    try {
+                        using(var source=response.GetResponseStream())using(var target=new FileStream(destination,FileMode.CreateNew,FileAccess.Write)) {
+                            byte[] b=new byte[65536]; long total=0; int n;
+                            while((n=source.Read(b,0,b.Length))>0) { total+=n; if(total>size)throw new Exception("更新文件超出声明大小"); target.Write(b,0,n); }
+                            target.Flush(true); if(total!=size)throw new TransportException("下载未完成，请重试",0,null);
+                        }
+                        if(Hash(destination)!=hash)throw new Exception("更新文件 SHA256 校验失败"); return;
+                    } catch { if(File.Exists(destination))File.Delete(destination); throw; }
+                }
+            } catch(WebException ex) { throw ToTransportException(ex); }
+              catch(SocketException ex) { throw new TransportException(ex.Message,0,ex); }
+        }
+        throw new TransportException("更新下载重定向次数过多",0,null);
+    }
+    static string DownloadWithFallback(IList<string> candidates,string destination,long size,string hash) {
+        TransportException last=null;
+        foreach(string url in candidates) {
+            try {
+                if(File.Exists(destination))File.Delete(destination);
+                DownloadOnce(url,destination,size,hash);
+                return new Uri(url).Host;
+            } catch(TransportException ex) {
+                last=ex;
             }
         }
-        throw new Exception("更新下载重定向次数过多");
+        throw last??new TransportException("下载更新包失败，请重试或前往官方发布页手动下载",0,null);
     }
     internal static string SafeRelative(string value) {
         if(value.IndexOf('\\')>=0 || value.StartsWith("/") || value.Length>220)throw new Exception("更新包路径无效");
@@ -232,16 +404,19 @@ internal static class HubUpdater {
                 }
                 Process.Start(new ProcessStartInfo(original) { WorkingDirectory=Path.GetDirectoryName(original),UseShellExecute=false }); return 0;
             }
-            long current=N(request,"current"); bool preview=Convert.ToBoolean(request["preview"]); var result=Check(current,preview);
+            long current=N(request,"current"); bool preview=Convert.ToBoolean(request["preview"]);
+            long desktopAssetId=0; bool usedDomesticMirror=false;
+            var result=CheckInternal(current,preview,out desktopAssetId,out usedDomesticMirror);
             if(args.Length>0&&args[0]=="--download") {
                 if(!Convert.ToBoolean(result["available"]))throw new Exception("未发现可用更新，请重新检查");
                 var m=(Dictionary<string,object>)result["release"];
                 if(N(m,"sequence")!=N(request,"sequence"))throw new Exception("发布版本已变化，请重新检查后下载");
                 var asset=(Dictionary<string,object>)m["desktop"]; string cache=Cache();
-                Download(AssetUrl(m,"desktop"),Path.Combine(cache,"update.zip"),N(asset,"size"),S(asset,"sha256"));
+                string usedDlHost=DownloadWithFallback(CandidateUrls(AssetUrl(m,"desktop"),desktopAssetId,usedDomesticMirror),Path.Combine(cache,"update.zip"),N(asset,"size"),S(asset,"sha256"));
                 string stage=Path.Combine(cache,"checked"); Directory.CreateDirectory(stage); Extract(Path.Combine(cache,"update.zip"),stage,m);
                 File.WriteAllText(Path.Combine(cache,"plan.json"),Json.Serialize(new { tag=S(m,"tag"),envelope=S(result,"envelope") }),new UTF8Encoding(false));
                 result["cache"]=cache;
+                result["downloadSource"]=IsDomesticHost(usedDlHost)?("国内加速镜像 ("+usedDlHost+")"):("官方源 ("+usedDlHost+")");
             }
             result.Remove("envelope"); Print(result); return 0;
         } catch(Exception e) {

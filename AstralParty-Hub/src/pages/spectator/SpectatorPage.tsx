@@ -30,6 +30,7 @@ import {
   DisplayCardItem,
 } from '../../shared/cardRegistry';
 import { useTranslation } from '../../i18n';
+import { gameAccountService } from '../../services/gameAccountService';
 import type { PlayerHandSummary } from '../../shared/types';
 
 export const SpectatorPage: React.FC = () => {
@@ -129,15 +130,19 @@ export const SpectatorPage: React.FC = () => {
   const mainPlatformName = platformNames[mainSession?.platformId ?? ''] ?? '已绑定平台';
   const effectiveMainId = mainSession?.playerId ?? null;
   const effectiveSpectatorId = spectatorSession?.playerId ?? null;
+  const hasSpectatorBinding = gameAccountService.getBindings().some((b) => b.role === 'USER_SPECTATOR');
+  const localSpectatorActive = Boolean(spectatorSession || hasSpectatorBinding || accountMode === 'USER_OWNED');
 
   // Formats dual-client routing summary text per HS4-P1.5 specification
   const spectatorSummaryText = spectatorSession
     ? `观战执行端：${spectatorPlatformName} · ${effectiveSpectatorId ?? (isZh ? '等待识别' : 'Pending')}`
-    : (isZh ? `观战执行端：${spectatorPlatformName} · 未连接` : `Spectator: ${spectatorPlatformName} · Disconnected`);
+    : localSpectatorActive
+    ? (isZh ? `观战执行端：${spectatorPlatformName} · 未连接` : `Spectator: ${spectatorPlatformName} · Disconnected`)
+    : (isZh ? '本地观战：未启用（可选）' : 'Local Spectator: Off (Optional)');
 
   const mainSummaryText = mainSession
     ? `主游戏账号：${mainPlatformName} · ${effectiveMainId ?? (isZh ? '已连接' : 'Connected')}`
-    : (isZh ? '主游戏账号：Steam CN · 未连接' : 'Main: Steam CN · Disconnected');
+    : (isZh ? '主游戏账号：未连接' : 'Main: Disconnected');
 
   const hasRoleMismatch = isRoleMismatch;
 
@@ -275,8 +280,8 @@ export const SpectatorPage: React.FC = () => {
           <div>
             <strong>{isZh ? '游戏内队友手牌' : 'Teammate hands in game'}</strong>
             <p style={{ margin: '6px 0', color: 'var(--text-secondary)' }}>
-              {isZh ? 'Hub 登录后默认开启。保持 Hub 运行，用同一账号进入允许观战的合作对局，再展开队友头像旁的「手牌」。'
-                : 'Enabled by default after Hub sign-in. Keep Hub running and join a co-op match that allows spectators with the same account, then expand Hands next to a teammate’s avatar.'}
+              {isZh ? 'Hub 登录后默认开启，无需本地观战端。保持 Hub 运行，用当前 Hub 登录账号进入允许观战的合作对局，再展开队友头像旁的「手牌」；多开时自动匹配与当前 Hub 账号 UID 一致的对局。'
+                : 'Enabled by default after Hub sign-in; no local spectator client needed. Join an observable co-op match with the same Hub-signed-in account (multi-open matches by signed-in UID), then expand Hands next to a teammate’s avatar.'}
             </p>
             <span role="status">{cloudHandLabels[cloudHands.status]?.[isZh ? 0 : 1]}</span>
           </div>
@@ -329,18 +334,32 @@ export const SpectatorPage: React.FC = () => {
             style={{
               padding: '6px 12px',
               borderRadius: 6,
-              backgroundColor: spectatorSession ? 'rgba(238, 242, 255, 0.92)' : 'rgba(255, 255, 255, 0.88)',
-              border: spectatorSession ? '1px solid rgba(99, 102, 241, 0.35)' : '1px solid rgba(217, 119, 6, 0.35)',
+              backgroundColor: spectatorSession
+                ? 'rgba(238, 242, 255, 0.92)'
+                : localSpectatorActive
+                ? 'rgba(255, 255, 255, 0.88)'
+                : 'rgba(100, 116, 139, 0.12)',
+              border: spectatorSession
+                ? '1px solid rgba(99, 102, 241, 0.35)'
+                : localSpectatorActive
+                ? '1px solid rgba(217, 119, 6, 0.35)'
+                : '1px solid rgba(100, 116, 139, 0.22)',
               fontSize: 12,
               display: 'flex',
               alignItems: 'center',
               gap: 6,
             }}
           >
-            <span style={{ color: 'var(--text-secondary)' }}>{isZh ? '观战执行端：' : 'Spectator Runtime: '}</span>
-            <strong style={{ color: spectatorSession ? '#4338ca' : '#b45309', fontFamily: 'monospace' }}>
-              {spectatorSession ? `${spectatorPlatformName} · ${effectiveSpectatorId ?? (isZh ? '等待识别' : 'Pending')}` : (isZh ? `${spectatorPlatformName} · 未连接` : `${spectatorPlatformName} · Disconnected`)}
-            </strong>
+            {localSpectatorActive ? (
+              <>
+                <span style={{ color: 'var(--text-secondary)' }}>{isZh ? '观战执行端：' : 'Spectator Runtime: '}</span>
+                <strong style={{ color: spectatorSession ? '#4338ca' : '#b45309', fontFamily: 'monospace' }}>
+                  {spectatorSession ? `${spectatorPlatformName} · ${effectiveSpectatorId ?? (isZh ? '等待识别' : 'Pending')}` : (isZh ? `${spectatorPlatformName} · 未连接` : `${spectatorPlatformName} · Disconnected`)}
+                </strong>
+              </>
+            ) : (
+              <span style={{ color: 'var(--text-secondary)' }}>{isZh ? '本地观战：未启用（可选）' : 'Local Spectator: Off (Optional)'}</span>
+            )}
           </div>
 
           <div
@@ -357,7 +376,7 @@ export const SpectatorPage: React.FC = () => {
           >
             <span style={{ color: 'var(--text-secondary)' }}>{isZh ? '主游戏账号：' : 'Main Account: '}</span>
             <strong style={{ color: mainSession ? '#15803d' : 'var(--text-secondary)', fontFamily: 'monospace' }}>
-              {mainSession ? `Steam CN · ${effectiveMainId ?? (isZh ? '已连接' : 'Connected')}` : (isZh ? 'Steam CN · 未连接' : 'Steam CN · Disconnected')}
+              {mainSession ? `${mainPlatformName} · ${effectiveMainId ?? (isZh ? '已连接' : 'Connected')}` : (isZh ? '未连接' : 'Disconnected')}
             </strong>
           </div>
 

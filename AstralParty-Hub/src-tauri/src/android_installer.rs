@@ -81,6 +81,8 @@ pub struct AndroidAction {
     serial: Option<String>,
     address: Option<String>,
     pairing_code: Option<String>,
+    replace_conflicts: Option<bool>,
+    log_content: Option<String>,
 }
 
 fn error(message: impl Into<String>) -> HubError {
@@ -372,6 +374,18 @@ pub async fn android_installer_action(
             }
             Ok(result)
         }
+        "save-failure-log" => {
+            let content = request.log_content.as_deref().unwrap_or("");
+            if content.trim().is_empty() || content.len() > 512 * 1024 {
+                return Err(error("失败日志内容为空或超出大小限制。"));
+            }
+            let base = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from(".")).join("XingShu").join("Logs");
+            std::fs::create_dir_all(&base).map_err(|e| error(format!("无法创建日志目录：{e}")))?;
+            let ts = chrono::Utc::now().format("%Y%m%d-%H%M%S");
+            let file = base.join(format!("xingshu-android-failure-{ts}.log"));
+            std::fs::write(&file, content).map_err(|e| error(format!("写入日志失败：{e}")))?;
+            return Ok(format!("失败日志已保存：{}", file.display()));
+        }
         "check" | "install" | "restore" | "install-helper" => {
             let serial = validate_serial(request.serial.as_deref())?;
             require_device(&adb, serial).await?;
@@ -396,21 +410,22 @@ pub async fn android_installer_action(
             let candidate = checked_file(&root, &info.files, "candidate.json")?;
             checked_file(&root, &info.files, "__data")?;
             checked_file(&root, &info.files, "vanilla.__data")?;
-            execute(
-                &worker,
-                &[
-                    &format!("--{}", request.action),
-                    "--manifest",
-                    &candidate.to_string_lossy(),
-                    "--adb",
-                    &adb.to_string_lossy(),
-                    "--serial",
-                    serial,
-                ],
-                None,
-                0,
-            )
-            .await
+            let action_flag = format!("--{}", request.action);
+            let candidate_str = candidate.to_string_lossy().into_owned();
+            let adb_str = adb.to_string_lossy().into_owned();
+            let mut worker_args = vec![
+                action_flag.as_str(),
+                "--manifest",
+                candidate_str.as_str(),
+                "--adb",
+                adb_str.as_str(),
+                "--serial",
+                serial,
+            ];
+            if request.action == "install" && request.replace_conflicts.unwrap_or(false) {
+                worker_args.push("--replace-conflicts");
+            }
+            execute(&worker, &worker_args, None, 0).await
         }
         _ => Err(error("不支持的安卓操作。")),
     }

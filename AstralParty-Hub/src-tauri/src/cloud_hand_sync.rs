@@ -87,8 +87,26 @@ pub async fn set_cloud_hand_sync(app: AppHandle, state: State<'_, AccountLogin>,
 async fn poll(app: AppHandle, token: String, generation: u64) {
     let bridge = app.state::<Arc<BridgeServer>>();
     let account = app.state::<AccountLogin>();
+    let mut logged_in_uid: Option<i64> = None;
     loop {
-        let target = bridge.cloud_hand_target();
+        if logged_in_uid.is_none() {
+            match request("/auth/me", None, Some(&token)).await {
+                Ok(value) => {
+                    logged_in_uid = value["account"]["uid"].as_str()
+                        .and_then(|raw| raw.parse::<i64>().ok())
+                        .filter(|&id| id > 0);
+                }
+                Err(err) if err.code == "ACCOUNT_LOGIN_EXPIRED" => {
+                    let mut sync = account.hand_sync.lock().unwrap();
+                    if sync.generation == generation {
+                        sync.status = "signed_out";
+                    }
+                    return;
+                }
+                Err(_) => {}
+            }
+        }
+        let target = bridge.cloud_hand_target_for(logged_in_uid);
         let result = if let Some(target) = &target {
             request("/account/data/live-hands", Some(json!({
                 "roomId": target.room_id.unwrap_or_default().to_string(),

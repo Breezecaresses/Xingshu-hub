@@ -727,7 +727,11 @@ impl BridgeServer {
     }
 
     pub(crate) fn cloud_hand_target(&self) -> Option<RuntimeSession> {
-        let mut candidates = self.get_runtime_sessions().into_iter().filter(|session| {
+        self.cloud_hand_target_for(None)
+    }
+
+    pub(crate) fn cloud_hand_target_for(&self, account_uid: Option<i64>) -> Option<RuntimeSession> {
+        let candidates: Vec<RuntimeSession> = self.get_runtime_sessions().into_iter().filter(|session| {
             matches!(session.platform_id.as_str(), "STEAM_CN" | "TAPTAP" | "BILIBILI" | "WEGAME")
                 && session.connection_state == "CONNECTED" && !session.executable_path.is_empty()
                 && session.runtime_version.strip_prefix("1.0.0-game-ui-r8.")
@@ -739,9 +743,23 @@ impl BridgeServer {
                             uid > 0 && ctx.local_player_id == Some(uid) && ctx.roster_player_ids.contains(&uid)
                         })
                 })
-        });
-        let target = candidates.next()?;
-        candidates.next().is_none().then_some(target)
+        }).collect();
+        if let Some(uid) = account_uid.filter(|&id| id > 0) {
+            let matching: Vec<RuntimeSession> = candidates.iter()
+                .filter(|session| session.live_player_id == Some(uid))
+                .cloned()
+                .collect();
+            if !matching.is_empty() {
+                return matching.into_iter().max_by_key(|session| {
+                    (session.match_context.as_ref().map(|ctx| ctx.sequence).unwrap_or(0), session.room_id.unwrap_or(0))
+                });
+            }
+            if candidates.len() == 1 {
+                return candidates.into_iter().next();
+            }
+            return None;
+        }
+        if candidates.len() == 1 { candidates.into_iter().next() } else { None }
     }
 
     pub(crate) fn send_cloud_hand_mirror(&self, requested: &RuntimeSession, payload: &SpectatorHandPayload) -> bool {
@@ -3127,6 +3145,30 @@ mod tests {
             assert!(server.cloud_hand_target().is_none());
             server.session_manager.remove("cloud_test");
         }
+    }
+
+    #[test]
+    fn cloud_hand_target_for_selects_matching_account_in_multi_open_pve() {
+        let server = BridgeServer::new_test();
+        let make_session = |conn_id: &str, platform: &str, pid: u32, uid: i64, room_id: u64| {
+            let mut session = RuntimeSession::new(conn_id, platform, pid, "game.exe", Some(uid), "1.0.0-game-ui-r8.28", 1, "MAIN");
+            session.room_id = Some(room_id);
+            session.match_context = Some(RuntimeMatchContext {
+                local_player_id: Some(uid),
+                roster_player_ids: vec![uid, 99],
+                match_state: "MAIN_IN_MATCH".into(),
+                match_kind: Some("PVE".into()),
+                sequence: 3,
+                ..Default::default()
+            });
+            session
+        };
+        server.session_manager.insert(make_session("multi_1", "STEAM_CN", 1001, 172852, 501));
+        server.session_manager.insert(make_session("multi_2", "TAPTAP", 1002, 3045259, 502));
+        assert!(server.cloud_hand_target().is_none());
+        assert_eq!(server.cloud_hand_target_for(Some(172852)).and_then(|s| s.live_player_id), Some(172852));
+        assert_eq!(server.cloud_hand_target_for(Some(3045259)).and_then(|s| s.live_player_id), Some(3045259));
+        assert!(server.cloud_hand_target_for(Some(999999)).is_none());
     }
 
     use super::*;

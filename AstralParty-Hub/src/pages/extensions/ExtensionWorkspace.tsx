@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Link } from 'react-router-dom';
-import { FolderOpen, Package, Puzzle, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { FileText, FolderOpen, Package, Puzzle, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { api } from '../../shared/api/tauri';
 import type { GameInstallation } from '../../shared/types';
 import { AndroidInstallPanel } from './AndroidInstallPanel';
@@ -88,6 +88,30 @@ export function ExtensionManager({ view }: { view: 'packages' | 'mods' }) {
     try { await invoke('open_group_installer', { installationId: target.selected.id }); }
     catch (e) { setError(message(e)); } finally { setActionBusy(false); }
   };
+  const exportDesktopLog = () => {
+    const now = new Date().toISOString();
+    const content = [
+      '=== 星枢 Hub · 电脑端扩展/安装诊断日志 ===',
+      `导出时间: ${now}`,
+      `渠道: ${target.channel}`,
+      `安装目录: ${target.selected?.install_path || '未选择'}`,
+      `游戏程序: ${target.selected?.executable_path || '未选择'}`,
+      `当前运行时状态: ${runtime ? `${runtime.version || ''} (${runtime.status})` : '未识别为本版星枢'}`,
+      `安装助手可用: ${current?.installerAvailable ? '是' : '否'}`,
+      '',
+      '--- 错误信息 ---',
+      error || '无直接错误',
+      '',
+      '--- 警告与冲突检测 ---',
+      ...(current?.warnings?.length ? current.warnings : ['无警告']),
+    ].join('\n');
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `XingShu-Desktop-Failure-${now.replace(/[:.]/g, '-')}.log`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 2000);
+  };
   const packages = view === 'packages';
   const runtimeSupported = ['STEAM_CN', 'TAPTAP', 'BILIBILI', 'WEGAME'].includes(target.channel);
   return <div>
@@ -110,6 +134,6 @@ export function ExtensionManager({ view }: { view: 'packages' | 'mods' }) {
       </details>
     </>}
     {!target.selected && <div className="panel extension-empty"><Package size={32} /><h2>先配置此渠道的游戏位置</h2><p>选择或添加实际游戏目录后，即可{packages ? '安装电脑端星枢' : '检查和管理该位置的模组'}。</p></div>}
-    {(!!error || !!current?.warnings.length) && <div className="extension-hint" role="status">{error || current?.warnings.join(' ')}</div>}
+    {(!!error || !!current?.warnings.length) && <div className="extension-hint" role="status"><span>{error || current?.warnings.join(' ')}</span> <button className="btn btn-secondary btn-sm" type="button" onClick={exportDesktopLog}><FileText size={13} />导出失败日志</button></div>}
   </div>;
 }

@@ -141,6 +141,28 @@ pub fn inventory(db: &Database, game: &GameInstallation) -> HubResult<ExtensionI
             } else { out.warnings.push("当前游戏资源与本版运行时指纹不同；不将其视为已安装最新版。请使用群测助手检查。".into()); }
         }
     }
+    let mut apx_markers = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(&root) {
+        for dir_entry in entries.flatten() {
+            let p = dir_entry.path();
+            if p.is_dir() && p.file_name().is_some_and(|n| n.to_string_lossy().ends_with("_Data")) {
+                if p.join("Plugins/x86_64/APXLive2DBridge.dll").is_file() { apx_markers.push("APXLive2DBridge.dll"); }
+                if p.join("dependence/apx_modern_assist_ui.bundle").is_file() { apx_markers.push("apx_modern_assist_ui.bundle"); }
+                if p.join("com.unity.addressables/AssetBundles/be8a6f7fa87357b26096b5a0ada25e0b/b7a6b1b538aa75bef22b9d95f0ff93bf/__data").is_file() {
+                    apx_markers.push("APX 扩展资源包");
+                }
+            }
+        }
+    }
+    if root.join("dependence/apx_modern_assist_ui.bundle").is_file() { apx_markers.push("dependence/apx_modern_assist_ui.bundle"); }
+    if root.join("BepInEx/core").is_dir() { apx_markers.push("BepInEx"); }
+    if root.join("MelonLoader").is_dir() { apx_markers.push("MelonLoader"); }
+    if !apx_markers.is_empty() {
+        out.warnings.push(format!(
+            "检测到同定位冲突插件文件（{}）。建议点击“打开安装助手”，确认后备份删除冲突插件并替换为星枢。",
+            apx_markers.join("、")
+        ));
+    }
     for (directory, category) in [("xingshu/plugins", "xingshu-plugin"), ("BepInEx/plugins", "xingshu-plugin"), ("mods", "mod"), ("resources", "resource-pack"), ("modimg", "resource-pack")] {
         let dir = root.join(directory);
         let files = match std::fs::read_dir(&dir) { Ok(f) => f, Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue, Err(e) => { out.warnings.push(format!("无法读取 {}：{}", dir.display(), e)); continue } };

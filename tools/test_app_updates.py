@@ -29,6 +29,15 @@ class Harness { static int Main(string[] a) { try {
  if(a[0]=="wire") return (int)typeof(HubUpdater).GetMethod("Main",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static).Invoke(null,new object[]{new[]{"--apply"}});
  else if(a[0]=="verify") HubUpdater.Verify(File.ReadAllText(a[1]),a[2]);
  else if(a[0]=="manifest") { Console.WriteLine(HubUpdater.ManifestName(a[1].Split(','))??"NONE");return 0; }
+ else if(a[0]=="hosts") {
+  Console.WriteLine((HubUpdater.IsAllowedUpdateHost("api.github.com")&&HubUpdater.IsAllowedUpdateHost("github.com")&&HubUpdater.IsAllowedUpdateHost("edgeone.gh-proxy.org")&&HubUpdater.IsAllowedUpdateHost("gh-proxy.org")&&HubUpdater.IsAllowedUpdateHost("ghfast.top")&&!HubUpdater.IsAllowedUpdateHost("evil.example"))?"ALLOW_OK":"ALLOW_BAD");
+  var c1=HubUpdater.CandidateUrls("https://github.com/Breezecaresses/Xingshu-hub/releases/download/v0.1.3/a.zip",42,false);
+  var c2=HubUpdater.CandidateUrls("https://github.com/Breezecaresses/Xingshu-hub/releases/download/v0.1.3/a.zip",42,true);
+  Console.WriteLine(String.Join("|",c1));
+  Console.WriteLine(String.Join("|",c2));
+  Console.WriteLine(String.Join(",",HubUpdater.ParseAtomTags("<a href='/Breezecaresses/Xingshu-hub/releases/tag/v0.1.3'/><a href='/Breezecaresses/Xingshu-hub/releases/tag/v0.1.3-test.1'/>",false,8)));
+  return 0;
+ }
  else if(a[0]=="extract") { var m=HubUpdater.Verify(File.ReadAllText(a[3]),a[4]); HubUpdater.Extract(a[1],a[2],m); }
  else if(a[0]=="apply") { var files=HubUpdater.Json.Deserialize<Dictionary<string,string>>(File.ReadAllText(a[3])); HubUpdater.Apply(a[1],a[2],files,a[4],Int32.Parse(a[5])); }
  Console.WriteLine("PASS");return 0;
@@ -199,6 +208,16 @@ class Harness { static int Main(string[] a) { try {
         self.assertEqual(result.returncode, 1)
         error = json.loads(result.stdout.decode('utf-8'))['error']
         self.assertIn('中文目录', error)
+
+    def test_domestic_mirror_allowlist_and_atom_tags(self):
+        out = self.run_case('hosts').splitlines()
+        self.assertEqual(out[0], 'ALLOW_OK')
+        c1 = out[1].split('|')
+        c2 = out[2].split('|')
+        self.assertTrue(c1[0].startswith('https://api.github.com/repos/Breezecaresses/Xingshu-hub/releases/assets/42'))
+        self.assertIn('https://edgeone.gh-proxy.org/https://github.com/Breezecaresses/Xingshu-hub/releases/download/v0.1.3/a.zip', c1)
+        self.assertTrue(c2[0].startswith('https://edgeone.gh-proxy.org/'))
+        self.assertEqual(out[3], 'v0.1.3')
 
 
 if __name__ == '__main__':

@@ -3,19 +3,46 @@ package app.xingshu.installer;
 import java.io.*;
 import java.security.MessageDigest;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.*;
 
 /** Shared hash-pinned cache transaction for local ADB and Shizuku. */
 final class InstallerEngine {
-    private final File target = new File("/sdcard/Android/data/com.feimo.astralparty/files/"+PayloadSpec.RELATIVE);
+    private final File filesRoot = new File("/sdcard/Android/data/com.feimo.astralparty/files");
+    private final File target = new File(filesRoot, PayloadSpec.RELATIVE);
     private final File backups = new File("/data/local/tmp/xingshu-installer/"+PayloadSpec.VANILLA);
-    private final File catalog = new File("/sdcard/Android/data/com.feimo.astralparty/files/com.unity.addressables/catalog_3.3.0.json");
+    private final File catalog = new File(filesRoot, "com.unity.addressables/catalog_3.3.0.json");
     public synchronized String inspect() {
         try {
             checkGame(); String hash=hash(target); probe();
-            String state=hash.equals(PayloadSpec.PATCH)?"本版星枢":hash.equals(PayloadSpec.VANILLA)?"官方原版":known(hash)?"可升级的旧版星枢":
-                CacheConflict.replaceable(target,catalog,PayloadSpec.CATALOG)?"同位置覆盖冲突，可备份整理\n冲突文件SHA256："+hash+"\n可能是其他插件或 MOD；整理后这些修改不再生效，其他位置的模组不会移动。":"未知版本，禁止替换；资源清单与本版不匹配，请先用官方资源修复。";
+            List<File> companions = CacheConflict.findCompanions(filesRoot, target);
+            boolean targetConflict = !known(hash);
+            String state;
+            if (targetConflict || !companions.isEmpty()) {
+                boolean replaceable = CacheConflict.replaceable(target, catalog, PayloadSpec.CATALOG);
+                if (!replaceable) {
+                    String catHash = catalog.isFile() ? CacheConflict.hash(catalog) : "缺失";
+                    state = "未知版本，禁止替换；资源清单或容器与本版不匹配（实测 catalog SHA256=" + catHash + "，target SHA256=" + hash + "），请先用官方资源修复。";
+                } else {
+                    String pluginName = CacheConflict.identifyPlugin(target, companions);
+                    StringBuilder detail = new StringBuilder();
+                    detail.append("同位置覆盖冲突（").append(pluginName).append("），可备份整理并删除替换\n");
+                    detail.append("冲突文件SHA256：").append(hash);
+                    if (!companions.isEmpty()) {
+                        detail.append("\n检测到 ").append(companions.size()).append(" 个关联冲突文件：");
+                        String prefix = filesRoot.getPath() + "/";
+                        for (int i = 0; i < Math.min(companions.size(), 5); i++) {
+                            String p = companions.get(i).getPath();
+                            detail.append("\n  - ").append(p.startsWith(prefix) ? p.substring(prefix.length()) : companions.get(i).getName());
+                        }
+                    }
+                    detail.append("\n清理并替换后原插件将停止生效，其他目录的 MOD 不会移动。");
+                    state = detail.toString();
+                }
+            } else {
+                state = hash.equals(PayloadSpec.PATCH) ? "本版星枢" : hash.equals(PayloadSpec.VANILLA) ? "官方原版" : "可升级的旧版星枢";
+            }
             return "游戏版本匹配，目录可读取并写入。\n当前缓存："+state
                 +"\n"+(running()?"游戏仍在运行，请正常退出后安装。":"游戏已退出，可以安装或还原。");
         } catch(Exception e) { return "检查未通过："+friendly(e); }
@@ -37,9 +64,10 @@ final class InstallerEngine {
             if (running()) throw new IOException("游戏仍在运行，请正常退出后重试，不会中断对局");
             String before=hash(target);
             if (conflictHash!=null && !conflictHash.equals(before)) throw new IOException("冲突文件在确认后发生变化，请重新检查，未修改游戏");
-            boolean conflict=!known(before);
+            List<File> companions = restore ? java.util.Collections.emptyList() : CacheConflict.findCompanions(filesRoot, target);
+            boolean conflict = !known(before) || !companions.isEmpty();
             if (conflict && (restore || conflictHash==null || !CacheConflict.replaceable(target,catalog,PayloadSpec.CATALOG)))
-                throw new IOException("目标是其他覆盖文件或未知资源。请先检查冲突；仅资源清单匹配且确认备份后才能整理安装，未修改文件");
+                throw new IOException("目标是其他覆盖文件、残留冲突插件或未知资源。请先检查冲突；仅资源清单匹配且确认备份删除冲突后才能安装，未修改文件");
             probe();
             if (!backups.isDirectory() && !backups.mkdirs()) throw new IOException("无法创建备份目录");
             original=new File(backups,"vanilla.staging");
@@ -52,21 +80,24 @@ final class InstallerEngine {
             if (!hash(backup).equals(PayloadSpec.VANILLA)) throw new IOException("原版备份校验失败，已停止");
             snapshot=CacheConflict.archive(target,backups,before);
             if (!hash(snapshot).equals(before)) throw new IOException("备份期间缓存发生变化，未安装");
+            if (!companions.isEmpty()) CacheConflict.archiveAndDeleteCompanions(filesRoot, companions, snapshot.getParentFile());
             if (running() || !hash(target).equals(before)) throw new IOException("游戏已启动或缓存已变化，请退出后重试");
             if (!CacheConflict.replaceable(target,catalog,PayloadSpec.CATALOG)) throw new IOException("官方资源清单已变化，请重新检查，未修改游戏");
             File source=restore?original:staged;
             String expected=restore?PayloadSpec.VANILLA:PayloadSpec.PATCH;
-            try {
-                // Overwrite the existing inode to preserve the game's ownership and mode.
-                copy(source,target);
-                if (!hash(target).equals(expected)) throw new IOException("安装后 SHA256 校验失败");
-            } catch(Exception writeError) {
-                copy(snapshot,target);
-                if (!hash(target).equals(before)) throw new IOException("写入和自动恢复均未通过校验，请保留备份并使用官方资源修复");
-                throw new IOException("写入失败，已恢复安装前缓存："+writeError.getMessage());
+            if (!before.equals(expected)) {
+                try {
+                    // Overwrite the existing inode to preserve the game's ownership and mode.
+                    copy(source,target);
+                    if (!hash(target).equals(expected)) throw new IOException("安装后 SHA256 校验失败");
+                } catch(Exception writeError) {
+                    copy(snapshot,target);
+                    if (!hash(target).equals(before)) throw new IOException("写入和自动恢复均未通过校验，请保留备份并使用官方资源修复");
+                    throw new IOException("写入失败，已恢复安装前缓存："+writeError.getMessage());
+                }
             }
             return (restore?"已还原官方原版":"已安装 / 更新星枢 "+PayloadSpec.VERSION)+"，SHA256 校验通过。\n"+
-                (conflict?"同位置覆盖文件已整理备份；原有修改不再生效，其他模组未移动。\n":"")+
+                (conflict?"同位置冲突插件及关联文件（共 "+companions.size()+" 个附加项）已备份删除并替换；其他模组未移动。\n":"")+
                 "安装前文件与记录："+snapshot.getParent()+"\n现在可以正常启动游戏。";
         } catch(Exception e) { return "未完成："+friendly(e); }
         finally { if(staged!=null)staged.delete(); if(original!=null)original.delete(); }
@@ -79,9 +110,11 @@ final class InstallerEngine {
         Matcher v=Pattern.compile("(?m)^\\s*versionName=(\\S+)\\s*$").matcher(dump);
         if (!v.find() || !v.group(1).equals("3.3.0")) throw new IOException("只适配官方游戏 3.3.0，请勿使用于其他版本或分身目录");
         if (!target.isFile()) throw new IOException("未找到此版游戏资源。请在官方游戏完成更新并进入大厅一次，再退出安装");
-        if (!CacheConflict.replaceable(target,catalog,PayloadSpec.CATALOG)) throw new IOException("官方资源清单或容器与本版不匹配，请完成官方资源修复并使用对应版本的助手");
-        File files=new File("/sdcard/Android/data/com.feimo.astralparty/files");
-        if (!target.getCanonicalPath().startsWith(files.getCanonicalPath()+"/com.unity.addressables/AssetBundles/"))
+        if (!CacheConflict.replaceable(target,catalog,PayloadSpec.CATALOG)) {
+            String catHash = catalog.isFile() ? CacheConflict.hash(catalog) : "缺失";
+            throw new IOException("官方资源清单或容器与本版不匹配（catalog=" + catHash + "，targetSize=" + target.length() + "），请完成官方资源修复并使用对应版本的助手");
+        }
+        if (!target.getCanonicalPath().startsWith(filesRoot.getCanonicalPath()+"/com.unity.addressables/AssetBundles/"))
                 throw new IOException("缓存路径校验失败");
     }
     private void probe() throws IOException {

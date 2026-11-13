@@ -55,4 +55,10 @@ public final class ReleaseAssetRoutingTest {
         ReleaseUpdates.preferAsset(0,BROWSER,address -> { calls.add(address); return address; },() -> fail("No API request to fail"));
         assertEquals(1,calls.size()); assertEquals(BROWSER,calls.get(0));
     }
+    @Test public void atomTagParserFiltersPreviewWhenDisabled() {
+        String xml="<entry><link href=\"https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.4-test.1\"/></entry>"
+            +"<entry><link href=\"https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.3\"/></entry>";
+        assertEquals(java.util.Collections.singletonList("v0.1.3"),ReleaseUpdates.parseAtomTags(xml,false,8));
+        assertEquals(java.util.Arrays.asList("v0.1.4-test.1","v0.1.3"),ReleaseUpdates.parseAtomTags(xml,true,8));
+    }
 }

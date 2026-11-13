@@ -38,13 +38,19 @@ async fn request(path: &str, body: Option<Value>, token: Option<&str>) -> HubRes
     if response.status() == reqwest::StatusCode::UNAUTHORIZED {
         return Err(HubError::new("ACCOUNT_LOGIN_EXPIRED", "登录已过期，请重新登录。", "HUB").with_recoverable(true));
     }
-    if !response.status().is_success() { return Err(error("登录请求未完成，请稍后重试或重新发起登录。")); }
+    let ok = response.status().is_success();
     let mut bytes = Vec::new();
     while let Some(chunk) = response.chunk().await.map_err(|_| error("登录响应读取失败。"))? {
         if bytes.len() + chunk.len() > MAX_RESPONSE { return Err(error("登录响应无效。")); }
         bytes.extend_from_slice(&chunk);
     }
-    serde_json::from_slice(&bytes).map_err(|_| error("登录服务返回了无效响应。"))
+    let parsed: Value = serde_json::from_slice(&bytes).map_err(|_| error(if ok { "登录服务返回了无效响应。" } else { "登录请求未完成，请稍后重试或重新发起登录。" }))?;
+    if !ok {
+        let msg = parsed["error"].as_str().map(str::trim).filter(|s| !s.is_empty() && s.chars().count() <= 160)
+            .unwrap_or("登录请求未完成，请稍后重试或重新发起登录。");
+        return Err(error(msg));
+    }
+    Ok(parsed)
 }
 fn data_root(app: &tauri::AppHandle) -> HubResult<PathBuf> {
     let path = app.path().app_data_dir().map_err(|_| error("无法读取 Hub 数据目录。"))?.join("account-login");
@@ -177,6 +183,240 @@ pub async fn get_cloud_match_detail(app: tauri::AppHandle, time: i64, hero_id: i
     request("/account/data/match", Some(json!({"time":time,"heroId":hero_id,"mapId":map_id,"read_replay":read_replay.unwrap_or(false)})), Some(&token)).await
 }
 
+struct ChannelSpec {
+    platform: &'static str,
+    app_id: &'static str,
+    label: &'static str,
+}
+
+const CHANNELS: &[ChannelSpec] = &[
+    ChannelSpec { platform: "TAPTAP", app_id: "110001958", label: "TapTap" },
+    ChannelSpec { platform: "BILIBILI", app_id: "110001957", label: "哔哩哔哩 (B站)" },
+    ChannelSpec { platform: "WEGAME", app_id: "110001949", label: "WeGame" },
+    ChannelSpec { platform: "STEAM_CN", app_id: "110001933", label: "Steam 国服 (110001933)" },
+    ChannelSpec { platform: "STEAM_CN", app_id: "110001959", label: "Steam 国服 (110001959)" },
+];
+
+fn validate_channel(platform: &str, app_id: &str) -> HubResult<&'static ChannelSpec> {
+    CHANNELS
+        .iter()
+        .find(|spec| spec.platform == platform && spec.app_id == app_id)
+        .ok_or_else(|| error("不支持的官方客户端渠道。"))
+}
+
+fn is_token_byte(b: u8) -> bool {
+    b.is_ascii_alphanumeric() || matches!(b, b'_' | b'.' | b'=' | b'-')
+}
+
+/// Extract the latest valid non-`_sh` BnSdk `accessToken` from a single log string.
+pub(crate) fn extract_access_token_from_log_text(raw: &str) -> Option<String> {
+    let bytes = raw.as_bytes();
+    let lower = raw.to_ascii_lowercase();
+    let lbytes = lower.as_bytes();
+    let mut best: Option<String> = None;
+
+    for needle in ["accesstoken", "access_token"] {
+        let mut pos = 0;
+        while let Some(rel) = lower[pos..].find(needle) {
+            let mut idx = pos + rel + needle.len();
+            pos = idx;
+            while idx < lbytes.len() && (lbytes[idx].is_ascii_whitespace() || lbytes[idx] == b'\\' || lbytes[idx] == b'"') {
+                idx += 1;
+            }
+            if idx >= lbytes.len() || lbytes[idx] != b':' {
+                continue;
+            }
+            idx += 1;
+            while idx < lbytes.len() && (lbytes[idx].is_ascii_whitespace() || lbytes[idx] == b'\\') {
+                idx += 1;
+            }
+            if idx >= lbytes.len() || lbytes[idx] != b'"' {
+                continue;
+            }
+            idx += 1;
+            let start = idx;
+            while idx < bytes.len() && is_token_byte(bytes[idx]) {
+                idx += 1;
+            }
+            let len = idx - start;
+            if (40..=4096).contains(&len) {
+                let candidate = &raw[start..idx];
+                if !candidate.ends_with("_sh") {
+                    best = Some(candidate.to_string());
+                }
+            }
+        }
+    }
+    best
+}
+
+fn local_bnsdk_token(app_id: &str) -> Option<(String, u64)> {
+    let home = dirs::home_dir()?;
+    let feimo_dir = home.join("AppData").join("LocalLow").join("feimo");
+    let entries = std::fs::read_dir(&feimo_dir).ok()?;
+    let mut log_files: Vec<(std::time::SystemTime, PathBuf)> = Vec::new();
+    for entry in entries.flatten() {
+        let log_dir = entry.path().join("BnSdk").join(app_id).join("Log");
+        let Ok(logs) = std::fs::read_dir(&log_dir) else { continue };
+        for log in logs.flatten() {
+            let path = log.path();
+            if path.extension().and_then(|s| s.to_str()).map(|s| s.eq_ignore_ascii_case("log")).unwrap_or(false) {
+                if let Ok(meta) = log.metadata() {
+                    if meta.is_file() && meta.len() <= 16 * 1024 * 1024 {
+                        let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+                        log_files.push((mtime, path));
+                    }
+                }
+            }
+        }
+    }
+    log_files.sort_by(|a, b| b.0.cmp(&a.0));
+    for (mtime, path) in log_files.into_iter().take(16) {
+        if let Ok(bytes) = std::fs::read(&path) {
+            let text = String::from_utf8_lossy(&bytes);
+            if let Some(tok) = extract_access_token_from_log_text(&text) {
+                let secs = mtime.duration_since(std::time::SystemTime::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+                return Some((tok, secs));
+            }
+        }
+    }
+    None
+}
+
+fn parse_qq_login_link(raw_url: &str) -> HubResult<(String, String)> {
+    let trimmed = raw_url.trim();
+    let prefix = format!("{ORIGIN}/login#");
+    let Some(fragment) = trimmed.strip_prefix(&prefix) else {
+        return Err(error("仅支持星枢官方授权链接（请复制 Bot 发出的完整登录链接）。"));
+    };
+    let Some((request_id, page_token)) = fragment.split_once('.') else {
+        return Err(error("授权链接格式无效，缺少授权参数。"));
+    };
+    if request_id.len() < 8 || request_id.len() > 128 || page_token.len() < 16 || page_token.len() > 256
+        || !request_id.bytes().all(is_token_byte) || !page_token.bytes().all(is_token_byte) {
+        return Err(error("授权链接参数格式无效。"));
+    }
+    Ok((request_id.to_string(), page_token.to_string()))
+}
+
+#[tauri::command]
+pub async fn detect_local_channel_tokens() -> HubResult<Value> {
+    // Only returns safe channel metadata; never returns raw BnSdk accessToken to the UI.
+    let detected: Vec<Value> = tokio::task::spawn_blocking(|| {
+        CHANNELS
+            .iter()
+            .filter_map(|spec| {
+                local_bnsdk_token(spec.app_id).map(|(_, updated_at)| {
+                    json!({
+                        "platform": spec.platform,
+                        "appId": spec.app_id,
+                        "label": spec.label,
+                        "updatedAt": updated_at
+                    })
+                })
+            })
+            .collect()
+    })
+    .await
+    .map_err(|_| error("检测本机渠道日志失败。"))?;
+    Ok(json!({ "channels": detected }))
+}
+
+#[tauri::command]
+pub async fn start_channel_cloud_login(
+    app: tauri::AppHandle,
+    state: State<'_, AccountLogin>,
+    platform: String,
+    app_id: String,
+) -> HubResult<Value> {
+    let _gate = state.gate.try_lock().map_err(|_| error("登录请求正在处理。"))?;
+    let spec = validate_channel(&platform, &app_id)?;
+    let app_id_owned = spec.app_id.to_string();
+    let (sdk_token, _) = tokio::task::spawn_blocking(move || local_bnsdk_token(&app_id_owned))
+        .await
+        .map_err(|_| error("读取本机渠道票据失败。"))?
+        .ok_or_else(|| error("未找到该渠道有效的本机 BnSdk 登录票据，请先启动该渠道服并进入大厅后再试。"))?;
+
+    let root = data_root(&app)?;
+    let verifier = format!("{}{}", uuid::Uuid::new_v4().simple(), uuid::Uuid::new_v4().simple());
+    let result = request(
+        "/auth/channel/device",
+        Some(json!({
+            "device_id": identity(&root)?,
+            "code_challenge": pkce(&verifier),
+            "platform": spec.platform,
+            "app_id": spec.app_id,
+            "game_sdk_token": sdk_token
+        })),
+        None,
+    )
+    .await?;
+    let request_id = result["request_id"].as_str().ok_or_else(|| error("未生成渠道授权请求。"))?.to_string();
+    *state.pending.lock().await = Some(Pending { request_id, verifier, started: Instant::now() });
+    Ok(json!({ "status": "pending", "expiresIn": result["expires_in"] }))
+}
+
+#[tauri::command]
+pub async fn complete_qq_channel_login(login_url: String, platform: String, app_id: String) -> HubResult<Value> {
+    let spec = validate_channel(&platform, &app_id)?;
+    let (request_id, page_token) = parse_qq_login_link(&login_url)?;
+    let app_id_owned = spec.app_id.to_string();
+    let (sdk_token, _) = tokio::task::spawn_blocking(move || local_bnsdk_token(&app_id_owned))
+        .await
+        .map_err(|_| error("读取本机渠道票据失败。"))?
+        .ok_or_else(|| error("未找到该渠道有效的本机 BnSdk 登录票据，请先启动该渠道服并进入大厅后再试。"))?;
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(25))
+        .connect_timeout(Duration::from_secs(8))
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|_| error("无法初始化安全登录连接。"))?;
+
+    let claim_res = client
+        .post(format!("{ORIGIN}/auth/page/claim"))
+        .header("Origin", ORIGIN)
+        .json(&json!({ "request_id": request_id, "page_token": page_token }))
+        .send()
+        .await
+        .map_err(|_| error("连接星枢授权服务失败，请检查网络。"))?;
+    let cookie_pair = claim_res
+        .headers()
+        .get_all(reqwest::header::SET_COOKIE)
+        .iter()
+        .filter_map(|v| v.to_str().ok())
+        .find_map(|raw| raw.split(';').next().map(str::trim).filter(|kv| kv.starts_with("xingshu_auth=")).map(str::to_string));
+    let claim_ok = claim_res.status().is_success();
+    let claim_json: Value = claim_res.json().await.map_err(|_| error("授权页响应无效。"))?;
+    if !claim_ok {
+        let msg = claim_json["error"].as_str().filter(|s| s.chars().count() <= 160).unwrap_or("授权链接已失效或已过期。");
+        return Err(error(msg));
+    }
+    let Some(cookie_kv) = cookie_pair else {
+        return Err(error("未能建立授权页会话 Cookie。"));
+    };
+    let Some(csrf) = claim_json["csrf"].as_str().filter(|s| !s.is_empty()) else {
+        return Err(error("授权页缺少 CSRF 令牌。"));
+    };
+
+    let ch_res = client
+        .post(format!("{ORIGIN}/auth/page/channel"))
+        .header("Origin", ORIGIN)
+        .header("X-XingShu-CSRF", csrf)
+        .header(reqwest::header::COOKIE, cookie_kv)
+        .json(&json!({ "platform": spec.platform, "app_id": spec.app_id, "sdk_token": sdk_token }))
+        .send()
+        .await
+        .map_err(|_| error("提交渠道服授权请求失败。"))?;
+    let ch_ok = ch_res.status().is_success();
+    let ch_json: Value = ch_res.json().await.map_err(|_| error("渠道登录响应无效。"))?;
+    if !ch_ok {
+        let msg = ch_json["error"].as_str().filter(|s| s.chars().count() <= 160).unwrap_or("渠道服授权未成功，请确认游戏内已登录并重试。");
+        return Err(error(msg));
+    }
+    Ok(json!({ "status": "succeeded", "account": ch_json["account"] }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -192,5 +432,25 @@ mod tests {
         assert_eq!(protect(&encrypted, true).unwrap(), b"test-opaque-hub-session-never-game-token");
         let mut corrupted = encrypted; let n = corrupted.len(); corrupted[n-1] ^= 0xff;
         assert!(protect(&corrupted, true).is_err());
+    }
+    #[test]
+    fn extracts_bnsdk_token_and_rejects_sh_or_short() {
+        let valid = "eyJhbGciOiJIUzI1NiJ9.abcdef0123456789_ABCDEF-0123456789";
+        let log = format!(
+            r#"{{"accessToken":"{}_sh"}} {{"accessToken":"too_short"}} {{\"access_token\":\"{}\"}}"#,
+            valid, valid
+        );
+        assert_eq!(extract_access_token_from_log_text(&log).as_deref(), Some(valid));
+        let only_sh = format!(r#"{{"accessToken":"{}_sh"}}"#, valid);
+        assert_eq!(extract_access_token_from_log_text(&only_sh), None);
+    }
+    #[test]
+    fn qq_login_link_validates_fixed_origin_and_fragment() {
+        assert_eq!(
+            parse_qq_login_link("https://124.221.176.134/login#req12345678.tok_0123456789abcdef").unwrap(),
+            ("req12345678".to_string(), "tok_0123456789abcdef".to_string())
+        );
+        assert!(parse_qq_login_link("https://evil.example/login#req12345678.tok_0123456789abcdef").is_err());
+        assert!(parse_qq_login_link("https://124.221.176.134/login#short.t").is_err());
     }
 }

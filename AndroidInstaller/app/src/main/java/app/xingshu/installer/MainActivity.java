@@ -17,11 +17,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import rikka.shizuku.Shizuku;
 
 public final class MainActivity extends Activity {
+    private static final int REQ_EXPORT_LOG = 1001;
     // Activity recreation must not start another transfer against the same update cache.
     private static final AtomicBoolean UPDATE_TASK_ACTIVE = new AtomicBoolean();
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private TextView status, log;
-    private Button install, restore, connect, inspect, pair, shizuku, updateCheck;
+    private Button install, restore, connect, inspect, pair, shizuku, updateCheck, exportLog;
     private Switch previewUpdates;
     private TextView updateStatus;
     private TextView updateDetails;
@@ -114,6 +115,7 @@ public final class MainActivity extends Activity {
         restore=button(page,"还原官方原版",true, v -> new AlertDialog.Builder(this)
             .setMessage("将恢复此版本的官方程序集缓存，保留账号与设置。请先正常退出游戏。")
             .setNegativeButton("取消",null).setPositiveButton("还原",(d,w) -> execute(true)).show());
+        exportLog=button(page,"导出失败诊断日志",true, v -> exportFailureLog());
         page.addView(text("配对身份仅保存在本助手内，不保存配对码。切换 Wi-Fi 或重启手机后，可能需要重新填写连接端口。安装完成后可关闭无线调试。",14));
         shizuku=button(page,"其他方式：连接已运行的 Shizuku",true, v -> connectShizuku());
         button(page,"打开 Shizuku（可选）",true, v -> {
@@ -247,9 +249,9 @@ public final class MainActivity extends Activity {
                     java.util.regex.Matcher match=java.util.regex.Pattern.compile("冲突文件SHA256：([a-f0-9]{64})").matcher(output);
                     if(!match.find()) { write("无法确认冲突文件，请重新检查。"); return; }
                     final String conflictHash=match.group(1);
-                    new AlertDialog.Builder(this).setTitle("同位置文件已被修改")
-                        .setMessage("已确认官方资源清单与本版匹配，但插件目标文件被其他内容覆盖。\n\n继续会先完整备份该文件并记录路径与 SHA256，校验成功后再安装星枢；原有同位置修改将不再生效。其他目录的 MOD 不会移动。\n\n"+output)
-                        .setNegativeButton("暂不安装",null).setPositiveButton("备份整理并安装",(d,w) -> run(true,false,conflictHash)).show();
+                    new AlertDialog.Builder(this).setTitle("检测到同定位冲突插件")
+                        .setMessage("已确认官方资源清单与本版匹配，但检测到同定位插件或冲突文件（如 APX 插件）。\n\n继续会先完整备份并删除上述原冲突插件及关联文件，再替换为星枢；其他无关目录 MOD 不会移动。\n\n"+output)
+                        .setNegativeButton("暂不安装",null).setPositiveButton("删除冲突并安装星枢",(d,w) -> run(true,false,conflictHash)).show();
                 } else run(true,false,null);
             });
         });
@@ -384,6 +386,44 @@ public final class MainActivity extends Activity {
             Uri uri=Uri.parse("content://"+BuildConfig.APPLICATION_ID+".update/update.apk");
             startActivity(new Intent(Intent.ACTION_VIEW).setDataAndType(uri,"application/vnd.android.package-archive").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
         } catch(Exception e) { write("未能打开系统安装页面："+e.getMessage()); }
+    }
+    private String buildDiagnosticReport() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== 星枢手机安装助手失败与诊断日志 ===\n");
+        sb.append("助手版本: ").append(BuildConfig.VERSION_NAME).append(" (").append(BuildConfig.VERSION_CODE).append(")\n");
+        sb.append("内置插件版本: ").append(PayloadSpec.VERSION).append("\n");
+        sb.append("目标包名: com.feimo.astralparty\n");
+        sb.append("目标资源相对路径: ").append(PayloadSpec.RELATIVE).append("\n");
+        sb.append("期望清单 SHA256: ").append(PayloadSpec.CATALOG).append("\n");
+        sb.append("设备型号: ").append(Build.MANUFACTURER).append(" ").append(Build.MODEL).append("\n");
+        sb.append("Android 版本: ").append(Build.VERSION.RELEASE).append(" (SDK ").append(Build.VERSION.SDK_INT).append(")\n");
+        sb.append("连接模式: ").append(useShizuku ? "Shizuku" : "本机无线调试(LocalADB)").append("\n\n");
+        sb.append("--- 最后一次处理结果 / 失败原因 ---\n");
+        sb.append(lastResult.isEmpty() ? "暂无结果记录\n" : lastResult + "\n");
+        sb.append("\n--- 助手界面完整日志 ---\n");
+        sb.append(log != null ? log.getText().toString() : "");
+        return sb.toString();
+    }
+    private void exportFailureLog() {
+        try {
+            String ts = new java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.ROOT).format(new java.util.Date());
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("text/plain")
+                .putExtra(Intent.EXTRA_TITLE, "xingshu-mobile-failure-" + ts + ".log");
+            startActivityForResult(intent, REQ_EXPORT_LOG);
+        } catch(Exception e) { write("无法打开系统文件保存窗口：" + e.getMessage()); }
+    }
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_EXPORT_LOG && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            try (OutputStream out = getContentResolver().openOutputStream(data.getData())) {
+                if (out == null) throw new IOException("无法写入所选位置");
+                out.write(buildDiagnosticReport().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                out.flush();
+                write("已导出失败诊断日志。");
+            } catch(Exception e) { write("导出失败日志出错：" + e.getMessage()); }
+        }
     }
     @Override protected void onResume() { super.onResume(); if (status!=null)refresh();
         if(waitingInstallPermission) { waitingInstallPermission=false; if(pendingUpdate!=null&&getPackageManager().canRequestPackageInstalls())requestAssistantInstall(); }

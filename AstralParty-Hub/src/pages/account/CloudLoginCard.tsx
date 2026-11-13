@@ -1,12 +1,13 @@
 import {useEffect, useState} from 'react';
 import {invoke} from '@tauri-apps/api/core';
 import {openUrl} from '@tauri-apps/plugin-opener';
-import {LogIn, LogOut, RefreshCw, X, ShieldCheck} from 'lucide-react';
+import {LogIn, LogOut, RefreshCw, X, ShieldCheck, Link2, Sparkles} from 'lucide-react';
 import {Link} from 'react-router-dom';
 
 type Account = {uid: string; nick: string};
 type Grant = {loginUrl: string; qrPng: string; expiresIn: number};
 type LoginState = {status: string; account?: Account};
+type DetectedChannel = {platform: string; appId: string; label: string; updatedAt: number};
 const readable = (error: unknown) => {
   const value = error as {message?: unknown};
   return typeof value?.message === 'string' ? value.message : '登录连接未完成，请稍后重试。';
@@ -15,23 +16,33 @@ const readable = (error: unknown) => {
 export function CloudLoginCard({isZh}: {isZh: boolean}) {
   const [account, setAccount] = useState<Account | null>(null);
   const [grant, setGrant] = useState<Grant | null>(null);
+  const [polling, setPolling] = useState(false);
   const [stage, setStage] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [visible, setVisible] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [channels, setChannels] = useState<DetectedChannel[]>([]);
+  const [qqOpen, setQqOpen] = useState(false);
+  const [qqLink, setQqLink] = useState('');
+  const [qqChannelIdx, setQqChannelIdx] = useState(0);
 
   const refresh = async () => {
     setBusy(true); setNotice('');
     try {
-      const result = await invoke<LoginState>('get_cloud_account');
-      setAccount(result.account ?? null); setLoaded(true);
+      const [result, ch] = await Promise.all([
+        invoke<LoginState>('get_cloud_account'),
+        invoke<{channels: DetectedChannel[]}>('detect_local_channel_tokens').catch(() => ({channels: []})),
+      ]);
+      setAccount(result.account ?? null);
+      setChannels(ch.channels ?? []);
+      setLoaded(true);
     } catch (error) { setNotice(readable(error)); }
     finally { setBusy(false); }
   };
   useEffect(() => { void refresh(); }, []);
   useEffect(() => {
-    if (!grant) return;
+    if (!polling) return;
     let cancelled = false;
     let failures = 0;
     let timer: ReturnType<typeof setTimeout>;
@@ -41,34 +52,61 @@ export function CloudLoginCard({isZh}: {isZh: boolean}) {
         if (cancelled) return;
         failures = 0; setStage(result.status);
         if (result.status === 'succeeded') {
-          setAccount(result.account ?? null); setGrant(null); setVisible(false); setLoaded(true);
+          setAccount(result.account ?? null); setGrant(null); setPolling(false); setVisible(false); setLoaded(true);
           setNotice(isZh ? '登录成功。' : 'Signed in.'); return;
         }
+        if (result.status === 'failed') {
+          setGrant(null); setPolling(false); setNotice(isZh ? '渠道服登录未成功，请确认游戏内已登录进入大厅后再试。' : 'Channel sign in failed.'); return;
+        }
         if (result.status === 'expired' || result.status === 'superseded') {
-          setGrant(null); setNotice(isZh ? '本次登录已过期，请重新发起。' : 'Login expired. Please try again.'); return;
+          setGrant(null); setPolling(false); setNotice(isZh ? '本次登录已过期，请重新发起。' : 'Login expired. Please try again.'); return;
         }
       } catch (error) {
         if (cancelled) return;
         setNotice(readable(error));
-        if (++failures >= 5) { setGrant(null); return; }
+        if (++failures >= 5) { setGrant(null); setPolling(false); return; }
       }
       timer = setTimeout(poll, 2000);
     };
-    timer = setTimeout(poll, 1500);
+    timer = setTimeout(poll, 1200);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [grant, isZh]);
+  }, [polling, isZh]);
 
   const start = async () => {
     setBusy(true); setNotice('');
     try {
       const result = await invoke<Grant>('start_cloud_login');
-      setGrant(result); setStage('pending'); setVisible(true);
+      setGrant(result); setPolling(true); setStage('pending'); setVisible(true);
+    } catch (error) { setNotice(readable(error)); }
+    finally { setBusy(false); }
+  };
+  const startChannel = async (ch: DetectedChannel) => {
+    setBusy(true); setNotice(isZh ? `正在使用本机 ${ch.label} 票据登录…` : `Signing in via ${ch.label}…`);
+    try {
+      await invoke('start_channel_cloud_login', {platform: ch.platform, appId: ch.appId});
+      setGrant(null); setPolling(true); setStage('opened');
+    } catch (error) { setNotice(readable(error)); }
+    finally { setBusy(false); }
+  };
+  const pairQq = async () => {
+    const ch = channels[qqChannelIdx];
+    if (!ch || !qqLink.trim()) {
+      setNotice(isZh ? '请先在本机启动渠道服进入大厅，并粘贴 QQ Bot「趴登录」发出的链接。' : 'Launch a channel client and paste the QQ Bot link first.');
+      return;
+    }
+    setBusy(true); setNotice(isZh ? `正在用本机 ${ch.label} 授权给 QQ Bot…` : `Authorizing QQ Bot via ${ch.label}…`);
+    try {
+      const res = await invoke<{status: string; account?: Account}>('complete_qq_channel_login', {
+        loginUrl: qqLink.trim(), platform: ch.platform, appId: ch.appId,
+      });
+      setQqLink(''); setQqOpen(false);
+      setNotice(isZh ? `已授权给 QQ Bot：${res.account?.nick ?? ''}（UID ${res.account?.uid ?? ''}）` : `Authorized QQ Bot: ${res.account?.nick ?? ''}`);
     } catch (error) { setNotice(readable(error)); }
     finally { setBusy(false); }
   };
   const logout = async () => {
     setBusy(true); setNotice('');
-    try { await invoke('logout_cloud_account'); setAccount(null); setGrant(null); setLoaded(true); }
+    try { await invoke('logout_cloud_account'); setAccount(null); setGrant(null); setPolling(false); setLoaded(true); }
     catch (error) { setNotice(readable(error)); }
     finally { setBusy(false); }
   };
@@ -90,9 +128,43 @@ export function CloudLoginCard({isZh}: {isZh: boolean}) {
         <button className="btn btn-secondary" disabled={busy} onClick={refresh} aria-label={isZh ? '刷新登录状态' : 'Refresh login'}><RefreshCw size={15}/></button>
       </div>
       <p style={{fontSize: 12, lineHeight: 1.7, color: 'var(--text-secondary)', margin: '14px 0 0'}}>
-        {isZh ? '登录只确认账号身份。登录后可到玩家资料或对战记录主动同步；相同 UID 的本机资料会与云端衔接。登录前请退出同账号游戏，下方角色绑定仍由你管理。' :
-          'Login confirms identity only. Close the game for this account first. Local account roles below remain manually assigned.'}
+        {isZh ? '登录只确认账号身份；若该账号正在游戏中，校验票据会顶下该游戏客户端一次，登录后重开游戏即可。日常手牌与战绩同步不会再顶号，多开时请用与主对局相同的账号登录，下方角色绑定仍由你管理。' :
+          'Login confirms identity (an active game on the same account will be signed out once during verification; reopen afterwards). Routine hand sync does not kick active sessions.'}
       </p>
+      {channels.length > 0 && (
+        <div style={{marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 10}}>
+          <div style={{display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap'}}>
+            <span style={{fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 5}}>
+              <Sparkles size={13} style={{color: 'var(--primary, #818cf8)'}}/>
+              {isZh ? '检测到本机渠道服日志票据：' : 'Local channel tickets detected:'}
+            </span>
+            {!account && channels.map(ch => (
+              <button key={`${ch.platform}:${ch.appId}`} className="btn btn-secondary" disabled={busy || polling}
+                onClick={() => startChannel(ch)} style={{padding: '5px 11px', fontSize: 12}}>
+                {isZh ? `用 ${ch.label} 一键登录` : `Sign in via ${ch.label}`}
+              </button>
+            ))}
+            <button className="btn btn-secondary" disabled={busy} onClick={() => setQqOpen(v => !v)}
+              style={{padding: '5px 11px', fontSize: 12}}>
+              <Link2 size={13}/>{isZh ? '一键授权给 QQ Bot（粘贴趴登录链接）' : 'Pair QQ Bot link'}
+            </button>
+          </div>
+          {qqOpen && (
+            <div style={{display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap'}}>
+              <select value={qqChannelIdx} onChange={e => setQqChannelIdx(Number(e.target.value))}
+                style={{padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-subtle)', color: 'var(--text-primary)', fontSize: 12}}>
+                {channels.map((ch, idx) => <option key={`${ch.platform}:${ch.appId}`} value={idx}>{ch.label}</option>)}
+              </select>
+              <input value={qqLink} onChange={e => setQqLink(e.target.value)}
+                placeholder={isZh ? '粘贴 QQ Bot「趴登录」发出的 https://124.221.176.134/login#... 链接' : 'Paste https://124.221.176.134/login#...'}
+                style={{flex: 1, minWidth: 240, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-subtle)', color: 'var(--text-primary)', fontSize: 12}}/>
+              <button className="btn btn-primary" disabled={busy || !qqLink.trim()} onClick={pairQq} style={{padding: '7px 14px', fontSize: 12}}>
+                {isZh ? '授权 QQ Bot' : 'Authorize QQ'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       {notice && <p role="status" style={{margin: '10px 0 0', fontSize: 13, color: account ? '#34d399' : 'var(--text-secondary)'}}>{notice}</p>}
       {!loaded && busy && <span role="status" style={{fontSize: 12}}>{isZh ? '正在读取登录状态…' : 'Loading account…'}</span>}
     </section>

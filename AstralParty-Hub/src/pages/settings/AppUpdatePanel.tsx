@@ -5,7 +5,7 @@ import { RefreshCw, Download } from 'lucide-react';
 import { PROJECT_SOURCE } from '../../shared/projectSource';
 
 type Release = { version: string; sequence: number; notes: string; desktop: { size: number }; android: { versionCode: number } };
-type Result = { available: boolean; currentVersion: string; canApply: boolean; release: Release | null; releaseUrl: string; message: string };
+type Result = { available: boolean; currentVersion: string; canApply: boolean; release: Release | null; releaseUrl: string; downloadSource?: string; message: string };
 export function AppUpdatePanel() {
   const [version, setVersion] = useState('读取中…');
   const [preview, setPreview] = useState(true);
@@ -52,7 +52,7 @@ export function AppUpdatePanel() {
     </label>
     <p style={{ color: 'var(--text-muted)', lineHeight: 1.8 }}>这里只更新 Hub。手机安装助手请在手机上点“检查助手更新”，新版 APK 需要确认安装。游戏内插件在“星枢包管理器”或手机助手中单独更新。</p>
     {result && <div style={{ marginTop: 14, lineHeight: 1.8 }}>
-      <p>{result.message}</p>
+      <p>{result.message}{result.downloadSource ? `（通道：${result.downloadSource}）` : ''}</p>
       {result.available && result.release && <>
         <p><strong>新版本 {result.release.version}</strong> · {(result.release.desktop.size / 1048576).toFixed(1)} MB</p>
         <p style={{ whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>{result.release.notes}</p>
@@ -65,6 +65,7 @@ export function AppUpdatePanel() {
       </>}
     </div>}
     {error && <p role="alert" style={{ marginTop: 12, color: 'var(--danger)' }}>未完成：{error}。可重试或从官方发布页下载。</p>}
+    <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 10 }}>检查与下载会自动优先官方源并回退国内加速镜像，所有更新包仍强制校验签名与 SHA256，无需翻墙也可更新。</p>
     <button className="btn btn-secondary btn-sm" style={{ marginTop: 14 }} onClick={() => void openUrl(PROJECT_SOURCE + '/releases')}>打开官方发布页 ↗</button>
   </section>;
 }

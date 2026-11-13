@@ -51,4 +51,32 @@ public class CacheConflictTest {
         catch(IOException expected) { assertTrue(expected.getMessage().contains("备份损坏")); }
         assertArrayEquals(new byte[]{9,9},Files.readAllBytes(target.toPath()));
     }
+    @Test public void apxCompanionFilesAreIdentifiedArchivedAndDeletedWithoutTouchingUnrelatedMods() throws Exception {
+        File filesRoot = temporary.newFolder("files");
+        File bundleDir = new File(filesRoot, "com.unity.addressables/AssetBundles/aaaa/bbbb");
+        assertTrue(bundleDir.mkdirs());
+        File target = new File(bundleDir, "__data");
+        Files.write(target.toPath(), new byte[]{'U','n','i','t','y','F','S',0,1,2,3});
+        File apxDeps = new File(filesRoot, "runtime_dependencies.json");
+        Files.write(apxDeps.toPath(), "{\"apx\":1}".getBytes("UTF-8"));
+        File apxDll = new File(filesRoot, "Plugins/x86_64/APXLive2DBridge.dll");
+        assertTrue(apxDll.getParentFile().mkdirs());
+        Files.write(apxDll.toPath(), new byte[]{77,90,1,2});
+        File unrelatedMod = new File(filesRoot, "mods/skin/note.txt");
+        assertTrue(unrelatedMod.getParentFile().mkdirs());
+        Files.write(unrelatedMod.toPath(), "keep".getBytes("UTF-8"));
+
+        java.util.List<File> companions = CacheConflict.findCompanions(filesRoot, target);
+        assertEquals(2, companions.size());
+        assertEquals("APX 插件", CacheConflict.identifyPlugin(target, companions));
+
+        File conflictHome = temporary.newFolder("conflict-home");
+        CacheConflict.archiveAndDeleteCompanions(filesRoot, companions, conflictHome);
+        assertFalse(apxDeps.exists());
+        assertFalse(apxDll.exists());
+        assertTrue(unrelatedMod.isFile());
+        assertTrue(new File(conflictHome, "companions/runtime_dependencies.json").isFile());
+        assertTrue(new File(conflictHome, "companions/Plugins/x86_64/APXLive2DBridge.dll").isFile());
+        assertTrue(new File(conflictHome, "companions.properties").isFile());
+    }
 }

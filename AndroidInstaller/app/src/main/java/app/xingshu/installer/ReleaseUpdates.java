@@ -12,6 +12,7 @@ import javax.net.ssl.HttpsURLConnection;
 /** Signed metadata is shared with the desktop updater; URLs are constructed from a fixed repository. */
 final class ReleaseUpdates {
     static final String REPO="Breezecaresses/Xingshu-hub", RELEASES="https://github.com/"+REPO+"/releases";
+    static final String[] DOMESTIC_MIRRORS={"https://edgeone.gh-proxy.org/","https://gh-proxy.org/","https://ghfast.top/"};
     static final class Update {
         final JSONObject manifest;
         // A locator from the same release, never an integrity or version authority.
@@ -64,13 +65,19 @@ final class ReleaseUpdates {
         }
         return request.open(browserAddress);
     }
+    private static boolean isAllowedHost(String host) {
+        if(host==null)return false;
+        String h=host.toLowerCase(java.util.Locale.ROOT);
+        return h.equals("github.com")||h.equals("api.github.com")||h.equals("release-assets.githubusercontent.com")||h.equals("objects.githubusercontent.com")
+            ||h.equals("edgeone.gh-proxy.org")||h.equals("gh-proxy.org")||h.equals("ghfast.top");
+    }
     private static HttpsURLConnection connect(String address) throws Exception { return connect(address,30000,60000,null); }
     private static HttpsURLConnection connect(String address,int connectTimeout,int readTimeout,CheckDeadline budget) throws Exception {
         boolean binary=address.startsWith("https://api.github.com/repos/"+REPO+"/releases/assets/");
         for(int i=0;i<6;i++) {
             URL url=new URL(address); String host=url.getHost();
             if(!url.getProtocol().equals("https") || url.getUserInfo()!=null || (url.getPort()!=-1&&url.getPort()!=443) ||
-               !(host.equals("github.com")||host.equals("api.github.com")||host.equals("release-assets.githubusercontent.com")||host.equals("objects.githubusercontent.com")))throw new IOException("更新地址不属于官方发布服务");
+               !isAllowedHost(host))throw new IOException("更新地址不属于官方发布服务");
             HttpsURLConnection c=(HttpsURLConnection)url.openConnection(); c.setInstanceFollowRedirects(false);
             c.setConnectTimeout(budget==null?connectTimeout:budget.limitMillis(connectTimeout));
             c.setReadTimeout(budget==null?readTimeout:budget.limitMillis(readTimeout)); c.setRequestProperty("User-Agent","XingShu-Android-Updater/1");
@@ -127,31 +134,89 @@ final class ReleaseUpdates {
         verified.checkWarning="部分发布信息未读取完成，暂不能确认是否还有更新版本。\n"+failureMessage(networkError);
         return verified;
     }
+    private static boolean isRetryableNetwork(IOException error) {
+        return (error instanceof NetworkFailure) || (error instanceof SocketTimeoutException);
+    }
+    private static String fetchBrowserWithMirrors(String browserAddress,int max,CheckDeadline budget,boolean preferDomestic) throws Exception {
+        java.util.List<String> urls=new java.util.ArrayList<>();
+        if(preferDomestic)for(String m:DOMESTIC_MIRRORS)urls.add(m+browserAddress);
+        urls.add(browserAddress);
+        if(!preferDomestic)for(String m:DOMESTIC_MIRRORS)urls.add(m+browserAddress);
+        IOException last=null;
+        for(String candidate:urls) {
+            try { return fetch(candidate,max,budget); }
+            catch(IOException error) {
+                if(!isRetryableNetwork(error))throw error;
+                last=error;
+            }
+        }
+        throw last!=null?last:new IOException("无法连接更新服务");
+    }
+    static java.util.List<String> parseAtomTags(String xml,boolean preview,int limit) {
+        java.util.List<String> tags=new java.util.ArrayList<>();
+        if(xml==null)return tags;
+        java.util.regex.Matcher m=java.util.regex.Pattern.compile("/releases/tag/(v[0-9A-Za-z][0-9A-Za-z.\\-]{0,79})").matcher(xml);
+        while(m.find()) {
+            String tag=m.group(1);
+            if(!preview&&tag.contains("-"))continue;
+            if(!tags.contains(tag)) { tags.add(tag); if(tags.size()>=limit)break; }
+        }
+        return tags;
+    }
     static Update check(boolean preview,Certificate certificate,CheckListener listener) throws Exception {
         CheckDeadline budget=new CheckDeadline();
         listener.stage("正在读取官方发布列表…");
-        JSONArray releases=new JSONArray(fetch("https://api.github.com/repos/"+REPO+"/releases?per_page=30",1800000,budget));
+        JSONArray releases=null;
+        try {
+            releases=new JSONArray(fetch("https://api.github.com/repos/"+REPO+"/releases?per_page=30",1800000,budget));
+        } catch(IOException apiError) {
+            if(!isRetryableNetwork(apiError))throw apiError;
+        }
         Update best=null;
-        for(int i=0;i<releases.length();i++) {
-            JSONObject r=releases.getJSONObject(i);
-            if(r.getBoolean("draft")||(!preview&&r.getBoolean("prerelease")))continue;
-            String tag=r.getString("tag_name"); if(!tag.matches("v[0-9A-Za-z][0-9A-Za-z.\\-]{0,79}"))continue;
-            JSONArray assets=r.getJSONArray("assets"); boolean found=false;
-            for(int j=0;j<assets.length();j++)if(assets.getJSONObject(j).getString("name").equals("xingshu-update.json"))found=true;
-            if(!found)continue;
+        if(releases!=null) {
+            for(int i=0;i<releases.length();i++) {
+                JSONObject r=releases.getJSONObject(i);
+                if(r.getBoolean("draft")||(!preview&&r.getBoolean("prerelease")))continue;
+                String tag=r.getString("tag_name"); if(!tag.matches("v[0-9A-Za-z][0-9A-Za-z.\\-]{0,79}"))continue;
+                JSONArray assets=r.getJSONArray("assets"); boolean found=false;
+                for(int j=0;j<assets.length();j++)if(assets.getJSONObject(j).getString("name").equals("xingshu-update.json"))found=true;
+                if(!found)continue;
+                listener.stage("正在读取 "+tag.substring(1)+" 的签名更新清单…");
+                String envelope;
+                try {
+                    String directManifest=RELEASES+"/download/"+tag+"/xingshu-update.json";
+                    envelope=preferAsset(findAssetId(assets,"xingshu-update.json"),directManifest,
+                        address -> address.equals(directManifest)?fetchBrowserWithMirrors(address,300000,budget,false):fetch(address,300000,budget),
+                        () -> listener.stage("官方文件接口暂不可用，正在尝试国内加速镜像与发布页入口…"));
+                } catch(IOException networkError) {
+                    if(!isRetryableNetwork(networkError))throw networkError;
+                    return partialResult(best,networkError);
+                }
+                listener.stage("正在校验官方更新清单…");
+                try(InputStream cert=certificate.open()) {
+                    JSONObject manifest=verify(envelope,tag,cert);
+                    Update update=new Update(manifest,findAssetId(assets,manifest.getJSONObject("android").getString("asset")));
+                    if(best==null||update.code()>best.code())best=update;
+                }
+            }
+            return best;
+        }
+        listener.stage("官方接口暂不可用，正在通过国内加速镜像读取发布记录…");
+        String atomXml=fetchBrowserWithMirrors("https://github.com/"+REPO+"/releases.atom",600000,budget,true);
+        for(String tag:parseAtomTags(atomXml,preview,8)) {
             listener.stage("正在读取 "+tag.substring(1)+" 的签名更新清单…");
             String envelope;
             try {
-                envelope=preferAsset(findAssetId(assets,"xingshu-update.json"),RELEASES+"/download/"+tag+"/xingshu-update.json",
-                    address -> fetch(address,300000,budget),() -> listener.stage("官方文件接口暂不可用，正在尝试发布页下载入口…"));
+                envelope=fetchBrowserWithMirrors(RELEASES+"/download/"+tag+"/xingshu-update.json",300000,budget,true);
             } catch(IOException networkError) {
-                if(!(networkError instanceof NetworkFailure)&&!(networkError instanceof SocketTimeoutException))throw networkError;
+                if(networkError instanceof NetworkFailure && String.valueOf(networkError.getMessage()).contains("404"))continue;
+                if(!isRetryableNetwork(networkError))throw networkError;
                 return partialResult(best,networkError);
             }
             listener.stage("正在校验官方更新清单…");
             try(InputStream cert=certificate.open()) {
                 JSONObject manifest=verify(envelope,tag,cert);
-                Update update=new Update(manifest,findAssetId(assets,manifest.getJSONObject("android").getString("asset")));
+                Update update=new Update(manifest,0);
                 if(best==null||update.code()>best.code())best=update;
             }
         }
@@ -177,12 +242,27 @@ final class ReleaseUpdates {
         if(total!=size)throw new IOException("下载中断，未收到完整 APK，请重试");
         return hex(digest.digest());
     }
+    static HttpsURLConnection openDownloadWithMirrors(long assetId,String address) throws Exception {
+        try { return preferAsset(assetId,address,ReleaseUpdates::connect,() -> {}); }
+        catch(IOException firstError) {
+            if(!isRetryableNetwork(firstError))throw firstError;
+            IOException last=firstError;
+            for(String mirror:DOMESTIC_MIRRORS) {
+                try { return connect(mirror+address); }
+                catch(IOException mirrorError) {
+                    if(!isRetryableNetwork(mirrorError))throw mirrorError;
+                    last=mirrorError;
+                }
+            }
+            throw last;
+        }
+    }
     static File download(Update update,File directory,DownloadListener listener) throws Exception {
         JSONObject asset=update.manifest.getJSONObject("android");
         String address=RELEASES+"/download/"+update.manifest.getString("tag")+"/"+asset.getString("asset");
         File partial=new File(directory,"update.download"), target=new File(directory,"update.apk");
         // Fallback is limited to opening the response, before any bytes or integrity checks.
-        HttpsURLConnection c=preferAsset(update.androidAssetId,address,ReleaseUpdates::connect,() -> {});
+        HttpsURLConnection c=openDownloadWithMirrors(update.androidAssetId,address);
         try {
             long size=asset.getLong("size"); String hash;
             if(c.getContentLengthLong()>=0&&c.getContentLengthLong()!=size)throw new IOException("更新文件大小不符");
