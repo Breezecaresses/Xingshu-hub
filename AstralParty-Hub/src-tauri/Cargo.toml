@@ -1,6 +1,6 @@
 [package]
 name = "xingshu-hub"
-version = "0.1.3"
+version = "0.1.4"
 description = "XingShu Hub (星枢 Hub) Core Backend"
 authors = ["XingShu Team"]
 edition = "2024"

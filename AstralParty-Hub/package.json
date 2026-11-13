@@ -1,7 +1,7 @@
 {
   "name": "xingshu-hub",
   "private": true,
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "星枢 Hub (XingShu Hub) - Astral Party Next-Gen Management, Spectator & Runtime Integration Platform",
   "type": "module",
   "scripts": {
