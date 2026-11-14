@@ -253,6 +253,13 @@ fn scan_dlls(root: &Path) -> HubResult<Vec<Finding>> {
     }
     paths.sort();
     paths.dedup();
+    let mut name_counts: HashMap<String, usize> = HashMap::new();
+    for path in &paths {
+        if let Some(n) = path.file_name() {
+            *name_counts.entry(n.to_string_lossy().to_lowercase()).or_insert(0) += 1;
+        }
+    }
+    let dual_proxy = root.join("winhttp.dll").is_file() && root.join("version.dll").is_file();
     let mut findings = Vec::new();
     for path in paths {
         let safe = PathGuard::ensure_within_root(root, &path)?;
@@ -265,13 +272,22 @@ fn scan_dlls(root: &Path) -> HubResult<Vec<Finding>> {
         }
         let digest = hash(&safe)?;
         let name = path.file_name().unwrap().to_string_lossy().to_string();
-        let (level, description) = classify_dll(&name, &digest);
+        let name_lower = name.to_lowercase();
+        let (mut level, base_desc) = classify_dll(&name, &digest);
+        let mut description = base_desc.to_string();
+        if name_counts.get(&name_lower).copied().unwrap_or(0) > 1 {
+            level = "conflict";
+            description = format!("检测到多路径同名 DLL 重复放置，易引发重复注入或资源覆盖冲突；{base_desc}");
+        } else if dual_proxy && (name_lower == "winhttp.dll" || name_lower == "version.dll") && level != "compatible" {
+            level = "conflict";
+            description = format!("检测到 winhttp.dll 与 version.dll 双代理共存，易引发加载器冲突；{base_desc}");
+        }
         findings.push(Finding {
             name,
             path: safe.display().to_string(),
             sha256: digest,
             level: level.into(),
-            description: description.into(),
+            description,
         });
     }
     Ok(findings)

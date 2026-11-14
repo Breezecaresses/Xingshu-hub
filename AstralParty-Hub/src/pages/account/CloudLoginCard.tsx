@@ -3,8 +3,9 @@ import {invoke} from '@tauri-apps/api/core';
 import {openUrl} from '@tauri-apps/plugin-opener';
 import {LogIn, LogOut, RefreshCw, X, ShieldCheck, Link2, Sparkles} from 'lucide-react';
 import {Link} from 'react-router-dom';
+import {deriveQqAuthorizedBanner, type CloudAccount} from './cloudLoginStatus';
 
-type Account = {uid: string; nick: string};
+type Account = CloudAccount;
 type Grant = {loginUrl: string; qrPng: string; expiresIn: number};
 type LoginState = {status: string; account?: Account; message?: string};
 type DetectedChannel = {platform: string; appId: string; label: string; updatedAt: number};
@@ -33,8 +34,10 @@ export function CloudLoginCard({isZh}: {isZh: boolean}) {
   const [qqOpen, setQqOpen] = useState(false);
   const [qqLink, setQqLink] = useState('');
   const [qqChannelKey, setQqChannelKey] = useState('');
+  const [qqPairedAccount, setQqPairedAccount] = useState<Account | null>(null);
 
   const selectedChannel = channels.find(ch => channelKey(ch) === qqChannelKey) ?? channels[0] ?? null;
+  const qqAuthorizedBanner = deriveQqAuthorizedBanner(account, qqPairedAccount, isZh);
 
   const refresh = async () => {
     setBusy(true); setNotice('');
@@ -113,13 +116,19 @@ export function CloudLoginCard({isZh}: {isZh: boolean}) {
         loginUrl: qqLink.trim(), platform: ch.platform, appId: ch.appId,
       });
       setQqLink(''); setQqOpen(false);
+      if (res.account?.uid) {
+        const bound = res.account;
+        setQqPairedAccount(bound);
+        setAccount(prev => (prev && prev.uid === bound.uid) ? {...prev, qqAuthorized: true} : prev);
+        void refresh();
+      }
       setNotice(isZh ? `已授权给 QQ Bot：${res.account?.nick ?? ''}（UID ${res.account?.uid ?? ''}）` : `Authorized QQ Bot: ${res.account?.nick ?? ''}`, 'ok');
     } catch (error) { setNotice(readable(error), 'error'); }
     finally { setBusy(false); }
   };
   const logout = async () => {
     setBusy(true); setNotice('');
-    try { await invoke('logout_cloud_account'); setAccount(null); setGrant(null); setPolling(false); setLoaded(true); }
+    try { await invoke('logout_cloud_account'); setAccount(null); setQqPairedAccount(null); setGrant(null); setPolling(false); setLoaded(true); }
     catch (error) { setNotice(readable(error), 'error'); }
     finally { setBusy(false); }
   };
@@ -180,7 +189,14 @@ export function CloudLoginCard({isZh}: {isZh: boolean}) {
           )}
         </div>
       )}
-      {notice && <p role="status" style={{margin: '10px 0 0', fontSize: 13, color: noticeTone === 'error' ? '#dc2626' : noticeTone === 'ok' ? '#059669' : 'var(--text-secondary)'}}>{notice}</p>}
+      {qqAuthorizedBanner && (
+        <p role="status" style={{margin: '10px 0 0', fontSize: 13, color: '#059669'}}>
+          {qqAuthorizedBanner}
+        </p>
+      )}
+      {notice && !notice.startsWith('已授权给 QQ Bot') && !notice.startsWith('Authorized QQ Bot:') && (
+        <p role="status" style={{margin: '10px 0 0', fontSize: 13, color: noticeTone === 'error' ? '#dc2626' : noticeTone === 'ok' ? '#059669' : 'var(--text-secondary)'}}>{notice}</p>
+      )}
       {!loaded && busy && <span role="status" style={{fontSize: 12}}>{isZh ? '正在读取登录状态…' : 'Loading account…'}</span>}
     </section>
     {visible && <div role="dialog" aria-modal="true" aria-label={isZh ? '手机号登录' : 'Phone sign in'} style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1200, display: 'grid', placeItems: 'center', padding: 24}}>

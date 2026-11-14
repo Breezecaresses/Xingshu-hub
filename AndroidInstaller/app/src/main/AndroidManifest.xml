@@ -3,6 +3,14 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <queries>
         <package android:name="com.feimo.astralparty" />
+        <package android:name="com.feimo.jxpd.mi" />
+        <package android:name="com.feimo.astralparty.bilibili" />
+        <package android:name="com.feimo.jxpd.bili" />
+        <package android:name="com.feimo.astralparty.huawei" />
+        <package android:name="com.feimo.jxpd.huawei" />
+        <package android:name="com.feimo.astralparty.nearme.gamecenter" />
+        <package android:name="com.feimo.astralparty.vivo" />
+        <package android:name="com.tencent.tmgp.astralparty" />
         <package android:name="moe.shizuku.privileged.api" />
     </queries>
     <application android:allowBackup="false" android:label="星枢安装助手"

@@ -160,7 +160,7 @@ fn mirror(target: &RuntimeSession, value: Value) -> Option<SpectatorHandPayload>
     let context = target.match_context.as_ref()?;
     if target.room_id != Some(room_id) || target.live_player_id != Some(player_id)
         || observer_id == 0 || observer_id > i64::MAX as u64 || observer_id == player_id as u64
-        || !(-3000..8000).contains(&age) || live.hands.len() > 16
+        || !(-300_000..120_000).contains(&age) || live.hands.len() > 16
     {
         return None;
     }
@@ -217,9 +217,16 @@ mod tests {
         assert_eq!(payload.room_players["102"].card_ids, vec![10001, 10001]);
         assert!(payload.room_players["103"].card_ids.is_empty());
         assert_eq!(payload.spectator_session_epoch, 7);
+        for skew in [chrono::Duration::seconds(-30), chrono::Duration::seconds(60)] {
+            let mut skewed = response.clone();
+            skewed["observedAt"] = json!(Utc::now() + skew);
+            assert!(mirror(&target, skewed).is_some(), "rejected tolerated skew/idle {skew}");
+        }
         for (key, value) in [
             ("roomId", json!("51")), ("playerId", json!("102")), ("observerId", json!("101")),
-            ("observedAt", json!("2020-01-01T00:00:00Z")), ("hands", json!({"104":[10001]})),
+            ("observedAt", json!("2020-01-01T00:00:00Z")),
+            ("observedAt", json!(Utc::now() - chrono::Duration::seconds(150))),
+            ("hands", json!({"104":[10001]})),
             ("hands", json!({"102":[0]})), ("hands", json!({"101":[10001]})),
         ] {
             let mut invalid = response.clone();

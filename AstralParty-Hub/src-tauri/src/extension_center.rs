@@ -157,12 +157,19 @@ pub fn inventory(db: &Database, game: &GameInstallation) -> HubResult<ExtensionI
     if root.join("dependence/apx_modern_assist_ui.bundle").is_file() { apx_markers.push("dependence/apx_modern_assist_ui.bundle"); }
     if root.join("BepInEx/core").is_dir() { apx_markers.push("BepInEx"); }
     if root.join("MelonLoader").is_dir() { apx_markers.push("MelonLoader"); }
+    if root.join("winhttp.dll").is_file() && root.join("version.dll").is_file() {
+        apx_markers.push("双代理加载器共存 (winhttp.dll + version.dll)");
+    }
+    apx_markers.sort();
+    apx_markers.dedup();
     if !apx_markers.is_empty() {
         out.warnings.push(format!(
             "检测到同定位冲突插件文件（{}）。建议点击“打开安装助手”，确认后备份删除冲突插件并替换为星枢。",
             apx_markers.join("、")
         ));
     }
+    let mut seen_names: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let mut dup_names: Vec<String> = Vec::new();
     for (directory, category) in [("xingshu/plugins", "xingshu-plugin"), ("BepInEx/plugins", "xingshu-plugin"), ("mods", "mod"), ("resources", "resource-pack"), ("modimg", "resource-pack")] {
         let dir = root.join(directory);
         let files = match std::fs::read_dir(&dir) { Ok(f) => f, Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue, Err(e) => { out.warnings.push(format!("无法读取 {}：{}", dir.display(), e)); continue } };
@@ -173,9 +180,23 @@ pub fn inventory(db: &Database, game: &GameInstallation) -> HubResult<ExtensionI
             if out.entries.iter().any(|e| Path::new(&e.path).starts_with(&path) || path.starts_with(Path::new(&e.path))) { continue; }
             if category == "xingshu-plugin" && !path.is_dir() && path.extension().and_then(|e| e.to_str()) != Some("dll") { continue; }
             let archive = matches!(path.extension().and_then(|e| e.to_str()), Some("zip" | "xspkg" | "xingshu"));
-            out.entries.push(ExtensionEntry { id: format!("local:{}", path.display()), package_id: String::new(), name: file.file_name().to_string_lossy().into(), category: category.into(),
+            let fname = file.file_name().to_string_lossy().to_string();
+            let fname_key = fname.to_lowercase();
+            if let Some(prev_dir) = seen_names.get(&fname_key) {
+                if prev_dir != directory {
+                    dup_names.push(format!("{fname} ({prev_dir} 与 {directory})"));
+                }
+            } else {
+                seen_names.insert(fname_key, directory.to_string());
+            }
+            out.entries.push(ExtensionEntry { id: format!("local:{}", path.display()), package_id: String::new(), name: fname, category: category.into(),
                 version: None, path: path.display().to_string(), source: "本地目录扫描".into(), status: if archive { "本地归档 · 未验证安装" } else { "本地文件 · 加载状态待确认" }.into(), description: "由外部工具或手动放入；星枢只展示检测到的文件，不推断它是否已加载。".into(), managed: false });
         }
+    }
+    dup_names.sort();
+    dup_names.dedup();
+    if !dup_names.is_empty() {
+        out.warnings.push(format!("检测到跨目录同名扩展/资源重复冲突：{}。建议清理重复副本以避免覆盖异常。", dup_names.join("、")));
     }
     Ok(out)
 }

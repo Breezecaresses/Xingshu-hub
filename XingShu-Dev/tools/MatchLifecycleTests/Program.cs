@@ -47,6 +47,31 @@ class Program {
         HandSessionLifecycle.Observe();
         Check(callbackCount == 4 && HandSessionLifecycle.ActiveRoomId() == 0,
             "exit cleanup callbacks cannot recurse while the other store is still active");
+
+        // CloudMirrorStore tests
+        var store = new CloudMirrorStore();
+        var t0 = new DateTime(2026, 11, 14, 10, 0, 0, DateTimeKind.Utc);
+        System.Collections.Generic.IReadOnlyDictionary<long, System.Collections.Generic.IReadOnlyList<int>> MakeHands(params int[] cards)
+            => new System.Collections.Generic.Dictionary<long, System.Collections.Generic.IReadOnlyList<int>> { [202] = new System.Collections.Generic.List<int>(cards).AsReadOnly() };
+
+        Check(store.Record(71, 1, 1, t0.AddSeconds(60), MakeHands(101, 102), t0),
+            "cloud mirror accepts modest future clock skew (+60s)");
+        Check(!store.Record(71, 1, 2, t0.AddMinutes(10), MakeHands(103), t0),
+            "cloud mirror rejects excessive future clock skew (+10m)");
+        Check(!store.Record(71, 1, 3, t0.AddSeconds(-150), MakeHands(103), t0),
+            "cloud mirror rejects stale observedAt (>=120s)");
+        Check(!store.Record(71, 1, 4, t0.AddSeconds(50), MakeHands(999), t0.AddSeconds(5)),
+            "cloud mirror rejects older remote observedAt on same clock domain");
+        Check(store.Record(71, 1, 5, t0.AddSeconds(60), MakeHands(101, 102, 103, 104, 105), t0.AddSeconds(45)),
+            "cloud mirror heartbeat at same observedAt refreshes receipt time during slow turns");
+        Check(store.TryGetPlayerCards(71, 202, out var updatedCards, t0.AddSeconds(80)) && updatedCards.Count == 5,
+            "cloud mirror survives 80s total idle elapsed when refreshed within 60s lifetime");
+        Check(!store.TryGetPlayerCards(71, 202, out _, t0.AddSeconds(110)),
+            "cloud mirror expires when unrefreshed beyond 60s lifetime");
+        Check(store.Record(71, 2, 1, t0.AddSeconds(40), MakeHands(), t0.AddSeconds(110)),
+            "cloud mirror rematch epoch accepts updated empty hand");
+        Check(store.TryGetPlayerCards(71, 202, out var emptyCards, t0.AddSeconds(115)) && emptyCards.Count == 0,
+            "cloud mirror preserves empty teammate hand");
     }
 }
 namespace Tools { public static class SimpleSingletonProvider<T> where T:new() { public static T inst = new T(); } }

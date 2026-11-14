@@ -175,7 +175,7 @@ namespace XingShuRuntime.UI
             rect.offsetMax = new Vector2(-6, 57);
 
             _copyCloudHandButton = XingShuUIFactory.CreateButton(card, "CopyCloudHandsCommand", "复制指令",
-                sprite, buttonColor, XingShuUITheme.PrimaryText, CopyCloudHandCommand, 16);
+                sprite, buttonColor, XingShuUITheme.PrimaryText, XingShu.Runtime.AndroidCloudHands.TriggerSecondaryAction, 16);
             _copyCloudHandLabel = _copyCloudHandButton.GetComponentInChildren<Text>();
             var copyRect = _copyCloudHandButton.GetComponent<RectTransform>();
             copyRect.anchorMin = new Vector2(.5f, 0);
@@ -183,14 +183,6 @@ namespace XingShuRuntime.UI
             copyRect.offsetMin = new Vector2(6, 14);
             copyRect.offsetMax = new Vector2(-24, 57);
             _copyCloudHandButton.gameObject.SetActive(false);
-        }
-
-        private void CopyCloudHandCommand()
-        {
-            string command = XingShu.Runtime.AndroidCloudHands.PairingCommand;
-            if (command == null) return;
-            GUIUtility.systemCopyBuffer = command;
-            _copyCloudHandLabel.text = "已复制";
         }
 #endif
 
@@ -605,12 +597,14 @@ namespace XingShuRuntime.UI
                 _cloudHandStatus.text = XingShu.Runtime.AndroidCloudHands.Status;
             if (_cloudHandButton.text != XingShu.Runtime.AndroidCloudHands.ButtonLabel)
                 _cloudHandButton.text = XingShu.Runtime.AndroidCloudHands.ButtonLabel;
-            bool canCopy = XingShu.Runtime.AndroidCloudHands.PairingCommand != null;
-            if (_copyCloudHandButton.gameObject.activeSelf != canCopy)
+            bool showSecondary = XingShu.Runtime.AndroidCloudHands.ShowSecondaryButton;
+            if (_copyCloudHandButton.gameObject.activeSelf != showSecondary)
             {
-                _copyCloudHandButton.gameObject.SetActive(canCopy);
-                if (!canCopy) _copyCloudHandLabel.text = "复制指令";
+                _copyCloudHandButton.gameObject.SetActive(showSecondary);
             }
+            string secLabel = XingShu.Runtime.AndroidCloudHands.SecondaryButtonLabel;
+            if (showSecondary && _copyCloudHandLabel.text != secLabel)
+                _copyCloudHandLabel.text = secLabel;
 #endif
             bool curEnabled = HandCardDisplayManager.IsEnabled;
             _suppressCallbacks = true;

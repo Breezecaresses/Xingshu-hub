@@ -20,6 +20,10 @@ namespace XingShu.Runtime
     {
         private static float _next;
         private static string _last;
+#if XINGSHU_ANDROID_PREVIEW
+        private static string _lastMobile;
+        internal static void ResetMobileDedup() { _lastMobile = null; }
+#endif
         private static bool _force;
         private static readonly CareerRefreshWindow CareerRefresh = new CareerRefreshWindow();
         // Native speed plugins can accelerate even Unity's unscaled clock. Network
@@ -115,7 +119,13 @@ namespace XingShu.Runtime
             if (Now < _next) return;
             _next = Now + 5f;
             var bridge = XingShuBridgeClient.Instance;
-            if (!bridge.IsHandshakeComplete || !SimpleSingletonProvider<GameLogicManager>.hasInstance) return;
+            bool canSendDesktop = bridge.IsHandshakeComplete;
+#if XINGSHU_ANDROID_PREVIEW
+            bool canReportMobile = AndroidCloudHands.CanReport;
+#else
+            bool canReportMobile = false;
+#endif
+            if ((!canSendDesktop && !canReportMobile) || !SimpleSingletonProvider<GameLogicManager>.hasInstance) return;
             try
             {
                 var account = SimpleSingletonProvider<GameLogicManager>.inst.account;
@@ -129,7 +139,8 @@ namespace XingShu.Runtime
                     skin = kv.Value.UseAdorn, breakthrough = kv.Value.IsBreakThrough,
                     pveLevel = kv.Value.PveStrengthen == null ? (int?)null : kv.Value.PveStrengthen.Level,
                     pveExp = kv.Value.PveStrengthen == null ? (int?)null : kv.Value.PveStrengthen.Exp,
-                    potential = kv.Value.PveStrengthen == null ? new int[0] : kv.Value.PveStrengthen.Talent.Take(32).ToArray()
+                    potential = kv.Value.PveStrengthen == null ? new int[0] : kv.Value.PveStrengthen.Talent.Take(32).ToArray(),
+                    fightCount = kv.Value.FightCount
                 }).ToArray();
                 var skins = new List<int>();
                 var arts = new List<int>();
@@ -180,10 +191,16 @@ namespace XingShu.Runtime
                     playerId = pid, name = player.Nick ?? "", level = player.Level, exp = player.Exp,
                     heroes = heroes, skins = skins, altArts = arts, matches = records
                 };
-                string json = BridgeJson.Serialize(payload);
-                if (Encoding.UTF8.GetByteCount(json) > 60000) return;
-                if (_force || json != _last)
-                    if (bridge.SendEnvelope("GAME_LIBRARY_SNAPSHOT", payload)) { _last = json; _force = false; }
+                bool desktopDone = !canSendDesktop;
+                if (canSendDesktop)
+                {
+                    string json = BridgeJson.Serialize(payload);
+                    if (Encoding.UTF8.GetByteCount(json) <= 60000 && (_force || json != _last))
+                    {
+                        if (bridge.SendEnvelope("GAME_LIBRARY_SNAPSHOT", payload)) _last = json;
+                        else desktopDone = false;
+                    }
+                }
                 // The summary must first have appeared in the authenticated own-account career.
                 // This binds live settlement metrics to the same immutable history identity.
                 if (_settlement != null)
@@ -204,6 +221,19 @@ namespace XingShu.Runtime
                         }
                     }
                 }
+                bool mobileDone = !canReportMobile;
+#if XINGSHU_ANDROID_PREVIEW
+                if (canReportMobile)
+                {
+                    string mobileJson = BuildMobileReportJson(player, payload);
+                    if (!string.IsNullOrEmpty(mobileJson) && (_force || mobileJson != _lastMobile))
+                    {
+                        if (AndroidCloudHands.EnqueueReport(mobileJson)) _lastMobile = mobileJson;
+                        else mobileDone = false;
+                    }
+                }
+#endif
+                if (desktopDone && mobileDone) _force = false;
             }
             catch (Exception ex)
             {
@@ -545,18 +575,131 @@ namespace XingShu.Runtime
 
         private static bool SendMatch(PendingMatch request, string status, string error, string message, string type = "GAME_LIBRARY_MATCH_DETAIL")
         {
-            var payload = new {
-                requestId = request.RequestId, playerId = request.PlayerId, index = request.Index,
-                time = request.Time, heroId = request.HeroId, mapId = request.MapId,
-                replayId = request.ReplayId ?? "", version = request.Version ?? "", status = status,
-                error = error, message = message,
-                participants = request.Participants ?? new List<Dictionary<string, object>>(),
-                statsSource = request.StatsSource, statsError = request.StatsError ?? "",
-                arenaId = request.ArenaId, rounds = request.Rounds, durationSeconds = request.DurationSeconds
+            var payload = new Dictionary<string, object> {
+                { "requestId", request.RequestId ?? "" },
+                { "playerId", request.PlayerId },
+                { "index", request.Index },
+                { "time", request.Time },
+                { "heroId", request.HeroId },
+                { "mapId", request.MapId },
+                { "replayId", request.ReplayId ?? "" },
+                { "version", request.Version ?? "" },
+                { "status", status },
+                { "error", error ?? "" },
+                { "message", message ?? "" },
+                { "participants", request.Participants ?? new List<Dictionary<string, object>>() },
+                { "statsSource", request.StatsSource ?? "" },
+                { "statsError", request.StatsError ?? "" },
+                { "arenaId", request.ArenaId },
+                { "rounds", request.Rounds },
+                { "durationSeconds", request.DurationSeconds }
             };
-            return Encoding.UTF8.GetByteCount(BridgeJson.Serialize(payload)) <= 60000 &&
+            bool desktopSent = XingShuBridgeClient.Instance.IsHandshakeComplete &&
+                Encoding.UTF8.GetByteCount(BridgeJson.Serialize(payload)) <= 60000 &&
                 XingShuBridgeClient.Instance.SendEnvelope(BridgeEnvelope.Create(type, payload, request.RequestId));
+#if XINGSHU_ANDROID_PREVIEW
+            bool mobileQueued = status == "ready" && AndroidCloudHands.CanReport && AndroidCloudHands.EnqueueMatchDetail(payload);
+            return desktopSent || mobileQueued;
+#else
+            return desktopSent;
+#endif
         }
+
+#if XINGSHU_ANDROID_PREVIEW
+        private static string BuildMobileReportJson(party.model.Player player, object snapshotPayload)
+        {
+            var official = new Dictionary<string, object>
+            {
+                { "wins", player.WinCount },
+                { "unlockedDifficulty", player.UnLockDifficulty },
+                { "createdAt", player.CreateTime }
+            };
+            if (player.ShowPlayer != null) official["praise"] = player.ShowPlayer.PraiseNum;
+
+            var usage = new List<Dictionary<string, object>>();
+            var seenHeroes = new HashSet<int>();
+            foreach (var kv in player.RoleCard.Take(256))
+            {
+                seenHeroes.Add(kv.Key);
+                usage.Add(new Dictionary<string, object> {
+                    { "id", kv.Key }, { "fightCount", kv.Value.FightCount }, { "source", "role_card" }
+                });
+            }
+            if (player.Task != null && player.Task.Condition1 != null && player.Task.Condition1.TryGetValue(17, out var cond17) && cond17?.Params != null)
+            {
+                foreach (var p in cond17.Params)
+                {
+                    if (p.Param1 > 0 && p.Param >= 0 && seenHeroes.Add(p.Param1))
+                    {
+                        usage.Add(new Dictionary<string, object> {
+                            { "id", p.Param1 }, { "fightCount", (long)p.Param }, { "source", "official_task_counter" }, { "owned", false }
+                        });
+                    }
+                }
+            }
+            official["heroUsage"] = usage;
+
+            if (player.SingleInfo != null)
+            {
+                var completedLevels = new Dictionary<string, int>();
+                if (player.SingleInfo.LevelPassIds != null)
+                    foreach (var kv in player.SingleInfo.LevelPassIds) completedLevels[kv.Key.ToString(System.Globalization.CultureInfo.InvariantCulture)] = kv.Value;
+                var stageLevelId = new Dictionary<string, int>();
+                if (player.SingleInfo.StageLevelId != null)
+                    foreach (var kv in player.SingleInfo.StageLevelId) stageLevelId[kv.Key.ToString(System.Globalization.CultureInfo.InvariantCulture)] = kv.Value;
+                int? weeklyWins = null;
+                if (player.Task != null && player.Task.WeekCondition != null && player.Task.WeekCondition.TryGetValue(317, out int ww))
+                    weeklyWins = ww;
+                var town = new Dictionary<string, object>
+                {
+                    { "maxScore", player.SingleInfo.MaxScore },
+                    { "completedLevels", completedLevels },
+                    { "stageLevelId", stageLevelId }
+                };
+                if (weeklyWins.HasValue) town["weeklyWins"] = weeklyWins.Value;
+                official["town"] = town;
+            }
+
+            if (player.BattlePass != null)
+            {
+                official["battlePass"] = new Dictionary<string, object>
+                {
+                    { "id", player.BattlePass.DefId },
+                    { "level", player.BattlePass.Lv },
+                    { "exp", player.BattlePass.Exp },
+                    { "gear", player.BattlePass.Gear },
+                    { "claimedTaskRewards", player.BattlePass.TaskRewardIs != null ? player.BattlePass.TaskRewardIs.Take(1000).ToList() : new List<bool>() }
+                };
+            }
+
+            var inv = new List<Dictionary<string, object>>();
+            if (player.BagItems != null)
+            {
+                foreach (var item in player.BagItems)
+                {
+                    if (item.Count > 0 && inv.Count < 2000)
+                        inv.Add(new Dictionary<string, object> { { "id", item.ItemId }, { "count", item.Count } });
+                }
+            }
+            official["inventory"] = inv;
+
+            var report = new Dictionary<string, object>
+            {
+                { "platform", XingShuBridgeClient.DetectPlatform() },
+                { "snapshot", snapshotPayload },
+                { "official", official }
+            };
+            var queued = AndroidCloudHands.SnapshotQueuedDetails();
+            if (queued != null && queued.Count > 0) report["matchDetails"] = queued;
+            string serialized = BridgeJson.Serialize(report);
+            if (Encoding.UTF8.GetByteCount(serialized) > 450000)
+            {
+                official.Remove("inventory");
+                serialized = BridgeJson.Serialize(report);
+            }
+            return Encoding.UTF8.GetByteCount(serialized) <= 450000 ? serialized : null;
+        }
+#endif
 
         private static void ClearDetail(PendingMatch request)
         {

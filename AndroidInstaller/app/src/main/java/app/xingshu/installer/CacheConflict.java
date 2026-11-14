@@ -26,9 +26,28 @@ final class CacheConflict {
     static boolean replaceable(File target, File catalog, String expectedCatalog) throws Exception {
         if (expectedCatalog == null || !expectedCatalog.matches("[a-f0-9]{64}")
                 || !catalog.isFile() || !hash(catalog).equals(expectedCatalog)
-                || target.length() < 128 || target.length() > 64L * 1024 * 1024) return false;
+                || !isUnityFs(target)) return false;
+        return true;
+    }
+
+    static boolean replaceableTarget(File target, File catalog, String expectedCatalog,
+            String resolvedRelativePath, String expectedRelativePath) throws Exception {
+        if (replaceable(target, catalog, expectedCatalog)) return true;
+        if (resolvedRelativePath == null || expectedRelativePath == null
+                || !resolvedRelativePath.equals(expectedRelativePath)) {
+            return false;
+        }
+        return isUnityFs(target);
+    }
+
+    static boolean isUnityFs(File target) throws Exception {
+        if (target == null || !target.isFile() || target.length() < 128 || target.length() > 64L * 1024 * 1024) {
+            return false;
+        }
         byte[] header = new byte[8];
-        try (DataInputStream in = new DataInputStream(new FileInputStream(target))) { in.readFully(header); }
+        try (DataInputStream in = new DataInputStream(new FileInputStream(target))) {
+            in.readFully(header);
+        }
         return Arrays.equals(header, new byte[]{'U','n','i','t','y','F','S',0});
     }
 

@@ -3,6 +3,8 @@ package app.xingshu.installer;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
@@ -44,8 +46,11 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -55,15 +60,45 @@ import rikka.shizuku.Shizuku;
 
 public final class MainActivity extends Activity {
     private static final int REQ_EXPORT_LOG = 1001;
+    private static final int TAB_INSTALL = 0;
+    private static final int TAB_LOGIN = 1;
+    private static final int TAB_WIRELESS = 2;
+    private static final int TAB_UPDATES = 3;
     // Only one worker request may write update.apk or update.download at a time.
     private static final AtomicBoolean updateTaskActive = new AtomicBoolean(false);
 
     private boolean busy, binding, useShizuku, destroyed, waitingInstallPermission;
-    private int activeTab = 0;
+    private volatile boolean authBusy, webPollCancelled;
+    private int activeTab = TAB_INSTALL;
 
     private IInstaller remote;
     private LocalAdbInstaller local;
     private String lastResult = "";
+    private String selectedPackageName = GamePackageCatalog.DEFAULT_PACKAGE;
+
+    private static final class DiscoveredPkg {
+        final String packageName;
+        final String label;
+        final String platform;
+        final String versionName;
+        final String installState;
+        final boolean running;
+
+        DiscoveredPkg(String packageName, String label, String platform, String versionName, String installState, boolean running) {
+            this.packageName = packageName;
+            this.label = label;
+            this.platform = platform;
+            this.versionName = versionName;
+            this.installState = installState;
+            this.running = running;
+        }
+    }
+
+    private final List<DiscoveredPkg> discoveredPackages = new ArrayList<>();
+    private final List<BnSdkTokenExtractor.ChannelToken> detectedTokens = new ArrayList<>();
+    private int selectedTokenIndex = 0;
+    private MobileAuthHub.BoundAccount boundSession;
+    private String cloudSummaryLine = "";
 
     private ReleaseUpdates.Update availableUpdate;
     private ReleaseUpdates.Update pendingUpdate;
@@ -71,6 +106,7 @@ public final class MainActivity extends Activity {
     private long autoPromptShownCode = -1;
 
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
+    private final ExecutorService authWorker = Executors.newSingleThreadExecutor();
     private final ExecutorService updateWorker = Executors.newSingleThreadExecutor();
     private final Handler progressHandler = new Handler(Looper.getMainLooper());
     private volatile String checkStage;
@@ -79,13 +115,16 @@ public final class MainActivity extends Activity {
     private boolean verifyingDownload;
 
     // UI references
-    private TextView connBadge, connSummary, logView, updateStatus, updateDetails, bannerText;
+    private TextView connBadge, connSummary, pkgSummaryView, logView, updateStatus, updateDetails, bannerText;
+    private TextView authSummaryView, tokenStatusView, webAuthStatusView;
+    private LinearLayout packageChipsRow, tokenListRow;
     private ProgressBar updateProgress;
     private View updateBanner;
-    private View[] tabContainers = new View[3];
-    private TextView[] tabPills = new TextView[3];
-    private Button installBtn, restoreBtn, inspectBtn, pairBtn, connectBtn, shizukuBtn, updateCheckBtn, exportLogBtn;
-    private EditText pairingPort, pairingCode, connectionPort;
+    private View[] tabContainers = new View[4];
+    private TextView[] tabPills = new TextView[4];
+    private Button installBtn, restoreBtn, inspectBtn, scanPackagesBtn, pairBtn, connectBtn, shizukuBtn, updateCheckBtn, exportLogBtn;
+    private Button scanTokenBtn, bindQqBtn, hubTokenLoginBtn, webAuthBtn, webAuthCancelBtn, refreshCloudBtn, hubLogoutBtn, launchGameBtn;
+    private EditText pairingPort, pairingCode, connectionPort, qqLinkInput;
     private Switch previewUpdates;
 
     // Live modal controls (null when dialog is dismissed)
@@ -145,7 +184,11 @@ public final class MainActivity extends Activity {
     });
     private final ServiceConnection connection = new ServiceConnection() {
         @Override public void onServiceConnected(ComponentName name, IBinder binder) {
-            remote = IInstaller.Stub.asInterface(binder); useShizuku = true; binding = false; refresh(); inspect();
+            remote = IInstaller.Stub.asInterface(binder);
+            useShizuku = true;
+            binding = false;
+            refresh();
+            scanPackagesAndInspect();
         }
         @Override public void onServiceDisconnected(ComponentName name) { remote = null; binding = false; refresh(); }
     };
@@ -153,6 +196,9 @@ public final class MainActivity extends Activity {
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         configureSystemBars();
+        boundSession = MobileAuthHub.loadSession(getPreferences(0));
+        String savedPkg = getPreferences(0).getString("selectedPackageName", GamePackageCatalog.DEFAULT_PACKAGE);
+        if (GamePackageCatalog.isValidPackageName(savedPkg)) selectedPackageName = savedPkg;
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -180,9 +226,10 @@ public final class MainActivity extends Activity {
         int hp = AuroraUi.dp(this, 16);
         body.setPadding(hp, AuroraUi.dp(this, 8), hp, AuroraUi.dp(this, 24));
 
-        tabContainers[0] = buildInstallTab();
-        tabContainers[1] = buildWirelessTab();
-        tabContainers[2] = buildUpdatesHelpTab();
+        tabContainers[TAB_INSTALL] = buildInstallTab();
+        tabContainers[TAB_LOGIN] = buildLoginTab();
+        tabContainers[TAB_WIRELESS] = buildWirelessTab();
+        tabContainers[TAB_UPDATES] = buildUpdatesHelpTab();
         for (View tab : tabContainers) {
             body.addView(tab);
         }
@@ -190,11 +237,13 @@ public final class MainActivity extends Activity {
         root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
         setContentView(root);
-        selectTab(0);
+        selectTab(TAB_INSTALL);
 
         Shizuku.addBinderReceivedListenerSticky(received);
         Shizuku.addBinderDeadListener(dead);
         Shizuku.addRequestPermissionResultListener(permission);
+        refreshPackageChips();
+        refreshAuthUi();
         refresh();
 
         // Silently check GitHub/mirror for newer helper builds once on launch
@@ -315,13 +364,13 @@ public final class MainActivity extends Activity {
         int p = AuroraUi.dp(this, 4);
         track.setPadding(p, p, p, p);
 
-        String[] labels = { "安装维护", "无线配对", "更新与帮助" };
+        String[] labels = { "安装维护", "全端登录", "无线配对", "更新与帮助" };
         for (int i = 0; i < labels.length; i++) {
             final int idx = i;
             TextView pill = new TextView(this);
             pill.setText(labels[i]);
             pill.setGravity(Gravity.CENTER);
-            pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+            pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
             pill.setTypeface(Typeface.DEFAULT_BOLD);
             pill.setPadding(0, AuroraUi.dp(this, 8), 0, AuroraUi.dp(this, 8));
             pill.setOnClickListener(v -> selectTab(idx));
@@ -345,13 +394,25 @@ public final class MainActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
 
-        // Card 1: Connection Status & Primary Install Actions
+        // Card 1: Multi-channel Target Selector + Connection Status & Primary Install Actions
         LinearLayout card1 = AuroraUi.card(this);
-        card1.addView(AuroraUi.cardTitle(this, "1. 游戏插件安装与还原"));
-        card1.addView(AuroraUi.caption(this, "先启动官方《吉星派对》进一次大厅完成资源更新并正常退出，再执行检测与安装。冲突插件会按 SHA256 自动备份后再替换。"));
+        card1.addView(AuroraUi.cardTitle(this, "1. 多渠道包识别与插件安装"));
+        card1.addView(AuroraUi.caption(this, "支持 TapTap/官服、小米、B站及通用 3.3.0 安卓渠道包。先从对应渠道打开游戏进大厅完成资源更新并退出，再连接调试安装。"));
 
         connSummary = AuroraUi.callout(this, "调试状态：尚未连接本机调试。请在“无线配对”页配对连接，或使用 Shizuku。");
         card1.addView(connSummary);
+
+        pkgSummaryView = AuroraUi.callout(this, "当前目标渠道：TapTap / 官服（com.feimo.astralparty）");
+        card1.addView(pkgSummaryView);
+
+        packageChipsRow = new LinearLayout(this);
+        packageChipsRow.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams chipsLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        chipsLp.bottomMargin = AuroraUi.dp(this, 6);
+        card1.addView(packageChipsRow, chipsLp);
+
+        scanPackagesBtn = AuroraUi.button(this, "扫描手机已安装游戏渠道", AuroraUi.BtnStyle.SECONDARY, v -> scanInstalledPackages());
+        card1.addView(scanPackagesBtn);
 
         installBtn = AuroraUi.button(this, "安装 / 更新星枢插件", AuroraUi.BtnStyle.PRIMARY, v -> execute(false));
         card1.addView(installBtn);
@@ -368,8 +429,17 @@ public final class MainActivity extends Activity {
         row.addView(restoreBtn, rightLp);
         card1.addView(row);
 
-        Button quickCfg = AuroraUi.button(this, "前往“无线配对 / Shizuku 连接” →", AuroraUi.BtnStyle.ACCENT, v -> selectTab(1));
-        card1.addView(quickCfg);
+        LinearLayout navRow = new LinearLayout(this);
+        navRow.setOrientation(LinearLayout.HORIZONTAL);
+        Button loginNav = AuroraUi.button(this, "全端登录与 QQ 绑定 →", AuroraUi.BtnStyle.ACCENT, v -> selectTab(TAB_LOGIN));
+        Button quickCfg = AuroraUi.button(this, "无线配对 / Shizuku →", AuroraUi.BtnStyle.ACCENT, v -> selectTab(TAB_WIRELESS));
+        LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        nl.rightMargin = AuroraUi.dp(this, 6);
+        LinearLayout.LayoutParams nr = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        nr.leftMargin = AuroraUi.dp(this, 6);
+        navRow.addView(loginNav, nl);
+        navRow.addView(quickCfg, nr);
+        card1.addView(navRow);
         col.addView(card1);
 
         // Card 2: Diagnostic Output Console
@@ -402,6 +472,101 @@ public final class MainActivity extends Activity {
         logBar.addView(clearBtn, cbLp);
         card2.addView(logBar);
         col.addView(card2);
+
+        return col;
+    }
+
+    private View buildLoginTab() {
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+
+        // Card 1: Mobile Hub Cloud Session Card
+        LinearLayout statusCard = AuroraUi.card(this);
+        statusCard.addView(AuroraUi.cardTitle(this, "1. 手机端全端登录中枢"));
+        statusCard.addView(AuroraUi.caption(this, "作为手机端登录与账号绑定中枢，可配合 QQ Bot 的「趴登录」或查看助手已同步的云端档案。"));
+        authSummaryView = AuroraUi.callout(this, "当前未登录助手云端会话（可选择下方任一方式登录或直连 QQ Bot）。");
+        statusCard.addView(authSummaryView);
+
+        LinearLayout sessionRow = new LinearLayout(this);
+        sessionRow.setOrientation(LinearLayout.HORIZONTAL);
+        refreshCloudBtn = AuroraUi.button(this, "刷新云端战绩档案", AuroraUi.BtnStyle.SECONDARY, v -> refreshHubAccountSummary());
+        hubLogoutBtn = AuroraUi.button(this, "退出当前会话", AuroraUi.BtnStyle.SUBTLE, v -> logoutHubSession());
+        LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.3f);
+        sl.rightMargin = AuroraUi.dp(this, 6);
+        LinearLayout.LayoutParams sr = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        sr.leftMargin = AuroraUi.dp(this, 6);
+        sessionRow.addView(refreshCloudBtn, sl);
+        sessionRow.addView(hubLogoutBtn, sr);
+        statusCard.addView(sessionRow);
+        col.addView(statusCard);
+
+        // Card 2: Native BnSdk Token Scan & One-Tap QQ Bind / Hub Auth
+        LinearLayout tokenCard = AuroraUi.card(this);
+        tokenCard.addView(AuroraUi.cardTitle(this, "2. 渠道免短信识别与 QQ 授权（TapTap / 小米 / B站）"));
+        tokenCard.addView(AuroraUi.caption(this, "先打开渠道游戏登录一次，再点扫描读取本机 BnSdk 实时票据；既可粘贴 QQ 的「趴登录」链接完成绑定，也可直接登录助手查看数据。"));
+        tokenStatusView = AuroraUi.callout(this, "尚未扫描本机渠道登录日志（需在「无线配对」连接调试或使用 Shizuku）。");
+        tokenCard.addView(tokenStatusView);
+
+        tokenListRow = new LinearLayout(this);
+        tokenListRow.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams tlLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        tlLp.bottomMargin = AuroraUi.dp(this, 6);
+        tokenCard.addView(tokenListRow, tlLp);
+
+        scanTokenBtn = AuroraUi.button(this, "扫描本机渠道登录票据", AuroraUi.BtnStyle.ACCENT, v -> scanChannelTokens());
+        tokenCard.addView(scanTokenBtn);
+
+        LinearLayout linkHeader = new LinearLayout(this);
+        linkHeader.setOrientation(LinearLayout.HORIZONTAL);
+        linkHeader.setGravity(Gravity.CENTER_VERTICAL);
+        TextView linkLabel = AuroraUi.caption(this, "QQ Bot 登录链接（发送「趴登录」获取）：");
+        linkLabel.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        Button pasteBtn = AuroraUi.button(this, "粘贴剪贴板", AuroraUi.BtnStyle.SUBTLE, v -> pasteClipboardToLink());
+        pasteBtn.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        pasteBtn.setPadding(AuroraUi.dp(this, 10), AuroraUi.dp(this, 6), AuroraUi.dp(this, 10), AuroraUi.dp(this, 6));
+        pasteBtn.setMinHeight(AuroraUi.dp(this, 32));
+        linkHeader.addView(linkLabel);
+        linkHeader.addView(pasteBtn);
+        tokenCard.addView(linkHeader);
+
+        qqLinkInput = AuroraUi.input(this, "https://124.221.176.134/login#...", false);
+        LinearLayout.LayoutParams qlLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        qlLp.bottomMargin = AuroraUi.dp(this, 8);
+        tokenCard.addView(qqLinkInput, qlLp);
+
+        bindQqBtn = AuroraUi.button(this, "用选中渠道授权给 QQ Bot（趴登录）", AuroraUi.BtnStyle.PRIMARY, v -> bindQqWithChannelToken());
+        tokenCard.addView(bindQqBtn);
+        hubTokenLoginBtn = AuroraUi.button(this, "用选中渠道直接登录助手查看数据", AuroraUi.BtnStyle.SECONDARY, v -> startHubChannelAuth());
+        tokenCard.addView(hubTokenLoginBtn);
+        col.addView(tokenCard);
+
+        // Card 3: Official Phone SMS / Steam Web Authorization
+        LinearLayout webCard = AuroraUi.card(this);
+        webCard.addView(AuroraUi.cardTitle(this, "3. 官服手机号短信 / Steam 网页授权"));
+        webCard.addView(AuroraUi.caption(this, "游玩官服手机号账号或 Steam 国服的玩家，可点下方打开官方授权页输入验证码并同步回助手。"));
+        webAuthStatusView = AuroraUi.callout(this, "等待发起官网短信 / Steam 授权。");
+        webCard.addView(webAuthStatusView);
+        webAuthBtn = AuroraUi.button(this, "打开官服 / Steam 授权网页", AuroraUi.BtnStyle.SECONDARY, v -> startWebAuth());
+        webCard.addView(webAuthBtn);
+        webAuthCancelBtn = AuroraUi.button(this, "停止等待网页授权", AuroraUi.BtnStyle.SUBTLE, v -> {
+            webPollCancelled = true;
+            webAuthStatusView.setText("已取消网页授权轮询。");
+            refreshAuthUi();
+        });
+        webCard.addView(webAuthCancelBtn);
+        col.addView(webCard);
+
+        // Card 4: Universal Zero-Adaptation In-Game Bind (All Android Channels)
+        LinearLayout uniCard = AuroraUi.card(this);
+        uniCard.addView(AuroraUi.cardTitle(this, "4. 全渠道通用免适配同步（华为 / OPPO / vivo / 4399 / 应用宝等）"));
+        uniCard.addView(AuroraUi.callout(this,
+            "无需逐家适配厂商登录 SDK，一次接入所有安卓渠道：\n"
+            + "1. 先在「安装维护」选中目标渠道并安装星枢插件；\n"
+            + "2. 启动游戏点击星形悬浮球 →「手牌监视」→「绑定 QQ 全端同步」；\n"
+            + "3. 复制生成的「趴绑定 XXXXXXXX」发送给 QQ Bot，进大厅与结算后自动全量同步。"));
+        launchGameBtn = AuroraUi.button(this, "启动当前选中游戏渠道", AuroraUi.BtnStyle.ACCENT, v -> launchSelectedGame());
+        uniCard.addView(launchGameBtn);
+        col.addView(uniCard);
 
         return col;
     }
@@ -610,10 +775,10 @@ public final class MainActivity extends Activity {
             final String code = pairingCode.getText().toString().trim();
             if (!code.matches("[0-9]{6}")) {
                 write("请输入系统弹窗中的 6 位数字配对码。");
-                selectTab(0);
+                selectTab(TAB_INSTALL);
                 return;
             }
-            selectTab(0);
+            selectTab(TAB_INSTALL);
             runWorker("正在配对本机无线调试…", () -> {
                 local().pair(p, code);
                 useShizuku = false;
@@ -621,7 +786,7 @@ public final class MainActivity extends Activity {
             });
         } catch (Exception e) {
             write(e.getMessage());
-            selectTab(0);
+            selectTab(TAB_INSTALL);
         }
     }
 
@@ -629,15 +794,153 @@ public final class MainActivity extends Activity {
         try {
             final int p = port(connectionPort);
             getPreferences(0).edit().putString("connectionPort", String.valueOf(p)).apply();
-            selectTab(0);
-            runWorker("正在连接本机无线调试…", () -> {
+            selectTab(TAB_INSTALL);
+            runWorker("正在连接本机无线调试并扫描已装渠道包…", () -> {
                 local().connect(p);
                 useShizuku = false;
-                return "已连接本机无线调试。\n" + local().inspect();
+                String scanJson = local().scanPackages();
+                String resolvedPkg = applyScannedPackagesFromBg(scanJson);
+                return "已连接本机无线调试。\n" + local().inspect(resolvedPkg);
             });
         } catch (Exception e) {
             write(e.getMessage());
-            selectTab(0);
+            selectTab(TAB_INSTALL);
+        }
+    }
+
+    private void scanPackagesAndInspect() {
+        if (busy) return;
+        runWorker("正在扫描手机内已安装的游戏渠道…", () -> {
+            String scanJson = useShizuku ? remote.scanPackages() : local().scanPackages();
+            String resolvedPkg = applyScannedPackagesFromBg(scanJson);
+            String inspectOut = useShizuku ? remote.inspect(resolvedPkg) : local().inspect(resolvedPkg);
+            return inspectOut;
+        });
+    }
+
+    private void scanInstalledPackages() {
+        boolean shizukuReady = useShizuku && remote != null;
+        boolean localReady = !useShizuku && local != null && local.connected();
+        if (!shizukuReady && !localReady) {
+            write("请先连接无线调试或 Shizuku，再扫描渠道包。");
+            return;
+        }
+        runWorker("正在扫描手机内所有 3.3.0 渠道包…", () -> {
+            String scanJson = useShizuku ? remote.scanPackages() : local().scanPackages();
+            applyScannedPackagesFromBg(scanJson);
+            if (discoveredPackages.isEmpty()) {
+                return "未扫描到《吉星派对》渠道包，请确认已安装游戏 3.3.0 并进过一次大厅。";
+            }
+            StringBuilder sb = new StringBuilder("已识别以下已安装渠道包：\n");
+            for (DiscoveredPkg pkg : discoveredPackages) {
+                sb.append("· ").append(pkg.label).append("（").append(pkg.packageName).append("，")
+                    .append(pkg.versionName).append("）：").append(installStateLabel(pkg.installState)).append("\n");
+            }
+            return sb.toString().trim();
+        });
+    }
+
+    private String applyScannedPackagesFromBg(String scanJson) {
+        List<DiscoveredPkg> parsed = new ArrayList<>();
+        try {
+            Map<String, Object> root = MiniJson.parseObject(scanJson);
+            Object rawList = root.get("packages");
+            if (rawList instanceof List<?>) {
+                for (Object item : (List<?>) rawList) {
+                    if (!(item instanceof Map<?, ?>)) continue;
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> m = (Map<String, Object>) item;
+                    String pkgName = MiniJson.stringField(m, "packageName");
+                    if (!GamePackageCatalog.isValidPackageName(pkgName)) continue;
+                    parsed.add(new DiscoveredPkg(
+                        pkgName,
+                        MiniJson.stringField(m, "label"),
+                        MiniJson.stringField(m, "platform"),
+                        MiniJson.stringField(m, "versionName"),
+                        MiniJson.stringField(m, "installState"),
+                        Boolean.TRUE.equals(m.get("running"))
+                    ));
+                }
+            }
+        } catch (Exception ignored) { }
+
+        String nextSelected = selectedPackageName;
+        boolean currentPresent = false;
+        String first330 = null;
+        for (DiscoveredPkg pkg : parsed) {
+            if (pkg.packageName.equals(nextSelected)) currentPresent = true;
+            if (first330 == null && "3.3.0".equals(pkg.versionName)) first330 = pkg.packageName;
+        }
+        if (!currentPresent) {
+            if (first330 != null) nextSelected = first330;
+            else if (!parsed.isEmpty()) nextSelected = parsed.get(0).packageName;
+        }
+        final String chosen = nextSelected;
+        runOnUiThread(() -> {
+            discoveredPackages.clear();
+            discoveredPackages.addAll(parsed);
+            selectPackage(chosen);
+        });
+        return chosen;
+    }
+
+    private void selectPackage(String pkg) {
+        if (GamePackageCatalog.isValidPackageName(pkg)) {
+            selectedPackageName = pkg;
+            getPreferences(0).edit().putString("selectedPackageName", pkg).apply();
+        }
+        refreshPackageChips();
+    }
+
+    private static String installStateLabel(String state) {
+        switch (state) {
+            case "installed": return "已装本版星枢";
+            case "vanilla": return "官方原版";
+            case "upgrade": return "旧版星枢可升";
+            case "conflict": return "同位插件冲突";
+            case "no_catalog": return "请先进入大厅";
+            case "no_bundle": return "缺少资源文件";
+            case "version_mismatch": return "版本非 3.3.0";
+            default: return "待检查";
+        }
+    }
+
+    private void refreshPackageChips() {
+        if (pkgSummaryView == null || packageChipsRow == null) return;
+        GamePackageCatalog.ChannelMeta meta = GamePackageCatalog.classifyPackage(selectedPackageName);
+        DiscoveredPkg active = null;
+        for (DiscoveredPkg item : discoveredPackages) {
+            if (item.packageName.equals(selectedPackageName)) {
+                active = item;
+                break;
+            }
+        }
+        if (active == null) {
+            pkgSummaryView.setText("当前目标渠道：" + meta.label + "（" + selectedPackageName + "）");
+        } else {
+            pkgSummaryView.setText("当前目标渠道：" + active.label + "（" + active.packageName + "）\n版本 "
+                + active.versionName + " · 状态：" + installStateLabel(active.installState)
+                + (active.running ? " · 游戏运行中" : ""));
+        }
+        if (launchGameBtn != null) {
+            launchGameBtn.setText("启动当前选中渠道：" + meta.label);
+        }
+
+        packageChipsRow.removeAllViews();
+        if (discoveredPackages.isEmpty()) return;
+        for (DiscoveredPkg item : discoveredPackages) {
+            boolean selected = item.packageName.equals(selectedPackageName);
+            Button chip = AuroraUi.button(
+                this,
+                (selected ? "✓ " : "○ ") + item.label + "（" + item.packageName + "）· " + installStateLabel(item.installState),
+                selected ? AuroraUi.BtnStyle.ACCENT : AuroraUi.BtnStyle.SUBTLE,
+                v -> selectPackage(item.packageName)
+            );
+            chip.setMinHeight(AuroraUi.dp(this, 36));
+            chip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+            chip.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+            chip.setPadding(AuroraUi.dp(this, 12), AuroraUi.dp(this, 6), AuroraUi.dp(this, 12), AuroraUi.dp(this, 6));
+            packageChipsRow.addView(chip);
         }
     }
 
@@ -649,6 +952,7 @@ public final class MainActivity extends Activity {
         installBtn.setEnabled(!busy && connected);
         restoreBtn.setEnabled(!busy && connected);
         inspectBtn.setEnabled(!busy && connected);
+        if (scanPackagesBtn != null) scanPackagesBtn.setEnabled(!busy && connected);
         pairBtn.setEnabled(!busy);
         connectBtn.setEnabled(!busy);
         shizukuBtn.setEnabled(!busy && !binding);
@@ -657,15 +961,16 @@ public final class MainActivity extends Activity {
         pairingPort.setEnabled(!busy);
         pairingCode.setEnabled(!busy);
         connectionPort.setEnabled(!busy);
+        refreshAuthUi();
 
         if (shizukuReady) {
             connBadge.setText("Shizuku 已连接");
             AuroraUi.tintPill(connBadge, AuroraUi.OK_SOFT, AuroraUi.OK_BORDER, AuroraUi.OK_INK, this);
-            connSummary.setText("当前通道：Shizuku 已就绪 · 可直接检测冲突、安装/更新插件或还原原版。");
+            connSummary.setText("当前通道：Shizuku 已就绪 · 可多渠道检测、安装/更新或扫描登录票据。");
         } else if (localReady) {
             connBadge.setText("无线调试已连接");
             AuroraUi.tintPill(connBadge, AuroraUi.OK_SOFT, AuroraUi.OK_BORDER, AuroraUi.OK_INK, this);
-            connSummary.setText("当前通道：本机无线调试 (127.0.0.1) 已就绪 · 可直接检测、安装或还原。");
+            connSummary.setText("当前通道：本机无线调试 (127.0.0.1) 已就绪 · 可多渠道检测、安装或扫描登录票据。");
         } else if (binding) {
             connBadge.setText("正在连接…");
             AuroraUi.tintPill(connBadge, AuroraUi.ACCENT_SOFT, AuroraUi.ACCENT_BORDER, AuroraUi.ACCENT_INK, this);
@@ -675,6 +980,374 @@ public final class MainActivity extends Activity {
             AuroraUi.tintPill(connBadge, AuroraUi.SURFACE, AuroraUi.BORDER, AuroraUi.INK_MUTED, this);
             connSummary.setText("尚未连接调试通道：请到“无线配对”页填写端口并连接，或授权 Shizuku。");
         }
+    }
+
+    private void refreshAuthUi() {
+        boolean connected = (useShizuku && remote != null) || (!useShizuku && local != null && local.connected());
+        if (authSummaryView != null) {
+            if (boundSession == null) {
+                authSummaryView.setText("当前未登录助手云端会话（可扫码/渠道/网页登录，也可直接进游戏使用「趴绑定」）。");
+            } else {
+                StringBuilder sb = new StringBuilder();
+                sb.append("已接入账号：").append(boundSession.nick.isEmpty() ? ("UID " + boundSession.uid) : boundSession.nick)
+                    .append("（UID ").append(boundSession.uid).append(" · ").append(boundSession.platform).append("）");
+                if (!cloudSummaryLine.isEmpty()) sb.append("\n").append(cloudSummaryLine);
+                authSummaryView.setText(sb.toString());
+            }
+        }
+        boolean hasToken = !detectedTokens.isEmpty() && selectedTokenIndex >= 0 && selectedTokenIndex < detectedTokens.size();
+        if (scanTokenBtn != null) scanTokenBtn.setEnabled(!authBusy && connected);
+        if (bindQqBtn != null) bindQqBtn.setEnabled(!authBusy && hasToken);
+        if (hubTokenLoginBtn != null) hubTokenLoginBtn.setEnabled(!authBusy && hasToken);
+        if (webAuthBtn != null) webAuthBtn.setEnabled(!authBusy);
+        if (webAuthCancelBtn != null) webAuthCancelBtn.setVisibility(authBusy && !webPollCancelled ? View.VISIBLE : View.GONE);
+        if (refreshCloudBtn != null) refreshCloudBtn.setEnabled(!authBusy && boundSession != null && !boundSession.token.isEmpty());
+        if (hubLogoutBtn != null) hubLogoutBtn.setEnabled(!authBusy && boundSession != null);
+        if (launchGameBtn != null) launchGameBtn.setEnabled(!authBusy);
+    }
+
+    private void pasteClipboardToLink() {
+        try {
+            ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            if (cm != null && cm.hasPrimaryClip() && cm.getPrimaryClip() != null && cm.getPrimaryClip().getItemCount() > 0) {
+                CharSequence cs = cm.getPrimaryClip().getItemAt(0).coerceToText(this);
+                if (cs != null && qqLinkInput != null) {
+                    qqLinkInput.setText(cs.toString().trim());
+                    return;
+                }
+            }
+            if (tokenStatusView != null) tokenStatusView.setText("剪贴板为空，请先复制 QQ Bot 发来的登录链接。");
+        } catch (Exception e) {
+            if (tokenStatusView != null) tokenStatusView.setText("读取剪贴板失败：" + e.getMessage());
+        }
+    }
+
+    private void scanChannelTokens() {
+        if (authBusy) return;
+        boolean shizukuReady = useShizuku && remote != null;
+        boolean localReady = !useShizuku && local != null && local.connected();
+        if (!shizukuReady && !localReady) {
+            if (tokenStatusView != null) tokenStatusView.setText("请先在“无线配对”连接本机调试或授权 Shizuku，再扫描渠道登录日志。");
+            return;
+        }
+        authBusy = true;
+        if (tokenStatusView != null) tokenStatusView.setText("正在扫描本机 BN_DEBUG 渠道登录票据…");
+        refreshAuthUi();
+        authWorker.execute(() -> {
+            List<BnSdkTokenExtractor.ChannelToken> parsed = new ArrayList<>();
+            String err = "";
+            try {
+                String json = shizukuReady ? remote.readChannelLogcat() : local().readChannelLogcat();
+                Map<String, Object> root = MiniJson.parseObject(json);
+                err = MiniJson.stringField(root, "error");
+                Object rawToks = root.get("tokens");
+                if (rawToks instanceof List<?>) {
+                    for (Object item : (List<?>) rawToks) {
+                        if (!(item instanceof Map<?, ?>)) continue;
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> m = (Map<String, Object>) item;
+                        String platform = MiniJson.stringField(m, "platform");
+                        String appId = MiniJson.stringField(m, "appId");
+                        String label = MiniJson.stringField(m, "label");
+                        String userId = MiniJson.stringField(m, "userId");
+                        String sdkToken = MiniJson.stringField(m, "sdkToken");
+                        boolean nat = Boolean.TRUE.equals(m.get("nativeSupported"));
+                        if (!sdkToken.isEmpty()) {
+                            parsed.add(new BnSdkTokenExtractor.ChannelToken(platform, appId, label, userId, sdkToken, nat));
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                err = e.getMessage();
+            }
+            final String finalErr = err;
+            runOnUiThread(() -> {
+                authBusy = false;
+                detectedTokens.clear();
+                detectedTokens.addAll(parsed);
+                selectedTokenIndex = 0;
+                refreshTokenChips(finalErr);
+                refreshAuthUi();
+            });
+        });
+    }
+
+    private void refreshTokenChips(String err) {
+        if (tokenStatusView == null || tokenListRow == null) return;
+        tokenListRow.removeAllViews();
+        if (err != null && !err.isEmpty()) {
+            tokenStatusView.setText("扫描渠道票据失败：" + err);
+            return;
+        }
+        if (detectedTokens.isEmpty()) {
+            tokenStatusView.setText("暂未发现有效的 BN_DEBUG 登录票据。\n请先打开渠道游戏（如小米/TapTap/B站）登录一次进入大厅，再切回助手点扫描；其他长尾渠道也可直接在游戏内点「绑定 QQ 全端同步」。");
+            return;
+        }
+        tokenStatusView.setText("已识别到 " + detectedTokens.size() + " 条渠道票据，点击下方选择要授权的渠道：");
+        for (int i = 0; i < detectedTokens.size(); i++) {
+            final int idx = i;
+            BnSdkTokenExtractor.ChannelToken tok = detectedTokens.get(i);
+            boolean selected = (idx == selectedTokenIndex);
+            Button chip = AuroraUi.button(
+                this,
+                (selected ? "✓ " : "○ ") + tok.displaySummary(),
+                selected ? AuroraUi.BtnStyle.ACCENT : AuroraUi.BtnStyle.SUBTLE,
+                v -> {
+                    selectedTokenIndex = idx;
+                    refreshTokenChips("");
+                    refreshAuthUi();
+                }
+            );
+            chip.setMinHeight(AuroraUi.dp(this, 36));
+            chip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
+            chip.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+            chip.setPadding(AuroraUi.dp(this, 12), AuroraUi.dp(this, 6), AuroraUi.dp(this, 12), AuroraUi.dp(this, 6));
+            tokenListRow.addView(chip);
+        }
+    }
+
+    private BnSdkTokenExtractor.ChannelToken currentSelectedToken() {
+        if (detectedTokens.isEmpty() || selectedTokenIndex < 0 || selectedTokenIndex >= detectedTokens.size()) return null;
+        return detectedTokens.get(selectedTokenIndex);
+    }
+
+    private void bindQqWithChannelToken() {
+        if (authBusy) return;
+        final BnSdkTokenExtractor.ChannelToken tok = currentSelectedToken();
+        if (tok == null) {
+            if (tokenStatusView != null) tokenStatusView.setText("请先扫描并选中一个渠道登录票据。");
+            return;
+        }
+        final String link = qqLinkInput == null ? "" : qqLinkInput.getText().toString().trim();
+        try {
+            BnSdkTokenExtractor.parseLoginLink(link);
+        } catch (IOException e) {
+            if (tokenStatusView != null) tokenStatusView.setText(e.getMessage());
+            return;
+        }
+        authBusy = true;
+        if (tokenStatusView != null) tokenStatusView.setText("正在向星枢服务器验证 " + tok.label + " 票据并绑定 QQ…");
+        refreshAuthUi();
+        authWorker.execute(() -> {
+            MobileAuthHub.BoundAccount res = null;
+            String err = "";
+            try {
+                res = MobileAuthHub.completeQqLinkWithChannelToken(link, tok);
+            } catch (Exception e) {
+                err = e.getMessage();
+            }
+            final MobileAuthHub.BoundAccount finalRes = res;
+            final String finalErr = err;
+            runOnUiThread(() -> {
+                authBusy = false;
+                refreshAuthUi();
+                if (finalRes != null) {
+                    String msg = "QQ Bot 授权成功！\n已绑定：" + finalRes.nick + "（UID " + finalRes.uid + " · " + tok.label + "）\n\n可以回到 QQ 群发送「趴数据」或「趴小镇」验证。";
+                    if (tokenStatusView != null) tokenStatusView.setText(msg);
+                    if (!isFinishing() && !destroyed) {
+                        new AlertDialog.Builder(this).setTitle("QQ 绑定成功").setMessage(msg).setPositiveButton("知道了", null).show();
+                    }
+                } else {
+                    String tip = finalErr == null || finalErr.isEmpty() ? "绑定未完成" : finalErr;
+                    if (tokenStatusView != null) tokenStatusView.setText("授权未完成：" + tip);
+                    if (!isFinishing() && !destroyed) {
+                        new AlertDialog.Builder(this).setTitle("授权提示").setMessage(tip).setPositiveButton("知道了", null).show();
+                    }
+                }
+            });
+        });
+    }
+
+    private void startHubChannelAuth() {
+        if (authBusy) return;
+        final BnSdkTokenExtractor.ChannelToken tok = currentSelectedToken();
+        if (tok == null) {
+            if (tokenStatusView != null) tokenStatusView.setText("请先扫描并选中一个渠道登录票据。");
+            return;
+        }
+        authBusy = true;
+        webPollCancelled = false;
+        if (tokenStatusView != null) tokenStatusView.setText("正在通过 " + tok.label + " 票据登录助手云端账号…");
+        refreshAuthUi();
+        final String deviceId = MobileAuthHub.getOrCreateDeviceId(getPreferences(0));
+        authWorker.execute(() -> {
+            try {
+                MobileAuthHub.DeviceStart start = MobileAuthHub.startChannelHubLogin(deviceId, tok);
+                long deadline = SystemClock.elapsedRealtime() + 75000L;
+                while (SystemClock.elapsedRealtime() < deadline && !destroyed && !webPollCancelled) {
+                    MobileAuthHub.PollOutcome poll = MobileAuthHub.pollDeviceLogin(start.requestId, start.verifier);
+                    if ("succeeded".equals(poll.status) && poll.account != null) {
+                        MobileAuthHub.saveSession(getPreferences(0), poll.account);
+                        String summary = "";
+                        try { summary = MobileAuthHub.fetchAccountSummary(poll.account.token); } catch (Exception ignored) { }
+                        final MobileAuthHub.BoundAccount acct = poll.account;
+                        final String sum = summary;
+                        runOnUiThread(() -> {
+                            authBusy = false;
+                            boundSession = acct;
+                            cloudSummaryLine = sum;
+                            if (tokenStatusView != null) tokenStatusView.setText("助手渠道登录成功：" + acct.nick + "（UID " + acct.uid + "）");
+                            refreshAuthUi();
+                        });
+                        return;
+                    }
+                    if ("failed".equals(poll.status) || "expired".equals(poll.status) || "superseded".equals(poll.status)) {
+                        String msg = poll.error != null && !poll.error.isEmpty() ? poll.error : "渠道登录未完成，请先退出同账号游戏客户端后重试。";
+                        throw new IOException(msg);
+                    }
+                    Thread.sleep(1500);
+                }
+                throw new IOException("等待渠道登录超时，请重试");
+            } catch (Exception e) {
+                String msg = e.getMessage() == null ? "渠道登录失败" : e.getMessage();
+                runOnUiThread(() -> {
+                    authBusy = false;
+                    if (tokenStatusView != null) tokenStatusView.setText(msg);
+                    refreshAuthUi();
+                });
+            }
+        });
+    }
+
+    private void startWebAuth() {
+        if (authBusy) return;
+        authBusy = true;
+        webPollCancelled = false;
+        if (webAuthStatusView != null) webAuthStatusView.setText("正在向星枢服务器申请官服 / Steam 授权页…");
+        refreshAuthUi();
+        final String deviceId = MobileAuthHub.getOrCreateDeviceId(getPreferences(0));
+        authWorker.execute(() -> {
+            try {
+                final MobileAuthHub.DeviceStart start = MobileAuthHub.startWebDeviceLogin(deviceId);
+                runOnUiThread(() -> {
+                    if (webAuthStatusView != null) {
+                        webAuthStatusView.setText("请在打开的浏览器中完成手机号短信或 Steam 验证，完成后自动返回同步…");
+                    }
+                    open(start.loginUrl);
+                });
+                long deadline = SystemClock.elapsedRealtime() + 180000L;
+                while (SystemClock.elapsedRealtime() < deadline && !destroyed && !webPollCancelled) {
+                    Thread.sleep(2000);
+                    if (webPollCancelled || destroyed) break;
+                    MobileAuthHub.PollOutcome poll = MobileAuthHub.pollDeviceLogin(start.requestId, start.verifier);
+                    if ("succeeded".equals(poll.status) && poll.account != null) {
+                        MobileAuthHub.saveSession(getPreferences(0), poll.account);
+                        String summary = "";
+                        try { summary = MobileAuthHub.fetchAccountSummary(poll.account.token); } catch (Exception ignored) { }
+                        final MobileAuthHub.BoundAccount acct = poll.account;
+                        final String sum = summary;
+                        runOnUiThread(() -> {
+                            authBusy = false;
+                            boundSession = acct;
+                            cloudSummaryLine = sum;
+                            if (webAuthStatusView != null) {
+                                webAuthStatusView.setText("已通过官网验证登录：" + acct.nick + "（UID " + acct.uid + "）");
+                            }
+                            refreshAuthUi();
+                        });
+                        return;
+                    }
+                    if ("failed".equals(poll.status) || "expired".equals(poll.status) || "superseded".equals(poll.status)) {
+                        throw new IOException(poll.error != null && !poll.error.isEmpty() ? poll.error : "网页授权已取消或超时");
+                    }
+                }
+                if (!webPollCancelled && !destroyed) {
+                    throw new IOException("等待网页验证超时，请重新点击发起。");
+                }
+                runOnUiThread(() -> {
+                    authBusy = false;
+                    refreshAuthUi();
+                });
+            } catch (Exception e) {
+                String msg = e.getMessage() == null ? "网页授权失败" : e.getMessage();
+                runOnUiThread(() -> {
+                    authBusy = false;
+                    if (webAuthStatusView != null) webAuthStatusView.setText(msg);
+                    refreshAuthUi();
+                });
+            }
+        });
+    }
+
+    private void refreshHubAccountSummary() {
+        if (authBusy || boundSession == null || boundSession.token.isEmpty()) return;
+        authBusy = true;
+        refreshAuthUi();
+        final String tok = boundSession.token;
+        authWorker.execute(() -> {
+            String line = "";
+            boolean expired = false;
+            String err = "";
+            try {
+                line = MobileAuthHub.fetchAccountSummary(tok);
+            } catch (Exception e) {
+                if ("UNAUTHORIZED".equals(e.getMessage())) expired = true;
+                else err = e.getMessage();
+            }
+            final String finalLine = line;
+            final boolean isExpired = expired;
+            final String finalErr = err;
+            runOnUiThread(() -> {
+                authBusy = false;
+                if (isExpired) {
+                    MobileAuthHub.clearSession(getPreferences(0));
+                    boundSession = null;
+                    cloudSummaryLine = "";
+                    if (authSummaryView != null) authSummaryView.setText("会话已过期，请重新扫码或渠道登录。");
+                } else if (!finalErr.isEmpty()) {
+                    if (authSummaryView != null) authSummaryView.setText("刷新失败：" + finalErr);
+                } else {
+                    cloudSummaryLine = finalLine;
+                }
+                refreshAuthUi();
+            });
+        });
+    }
+
+    private void logoutHubSession() {
+        final MobileAuthHub.BoundAccount prev = boundSession;
+        MobileAuthHub.clearSession(getPreferences(0));
+        boundSession = null;
+        cloudSummaryLine = "";
+        refreshAuthUi();
+        if (prev != null && !prev.token.isEmpty()) {
+            authWorker.execute(() -> MobileAuthHub.logout(prev.token));
+        }
+    }
+
+    private void launchSelectedGame() {
+        final String pkg = GamePackageCatalog.isValidPackageName(selectedPackageName)
+            ? selectedPackageName : GamePackageCatalog.DEFAULT_PACKAGE;
+        boolean shizukuReady = useShizuku && remote != null;
+        boolean localReady = !useShizuku && local != null && local.connected();
+        if (shizukuReady || localReady) {
+            authBusy = true;
+            refreshAuthUi();
+            authWorker.execute(() -> {
+                String out;
+                try {
+                    out = shizukuReady ? remote.launchGame(pkg) : local().launchGame(pkg);
+                } catch (Exception e) {
+                    out = "启动失败：" + e.getMessage();
+                }
+                final String finalOut = out;
+                runOnUiThread(() -> {
+                    authBusy = false;
+                    write(finalOut);
+                    refreshAuthUi();
+                });
+            });
+            return;
+        }
+        try {
+            Intent launch = getPackageManager().getLaunchIntentForPackage(pkg);
+            if (launch != null) {
+                launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(launch);
+                return;
+            }
+        } catch (Exception ignored) { }
+        write("未检测到系统启动入口；请在系统桌面打开对应游戏渠道，或先连接无线调试。");
     }
 
     private void connectShizuku() {
@@ -703,7 +1376,7 @@ public final class MainActivity extends Activity {
                     }
                 }, 15000);
             } else {
-                inspect();
+                scanPackagesAndInspect();
             }
             refresh();
         } catch (Exception e) {
@@ -719,14 +1392,16 @@ public final class MainActivity extends Activity {
 
     private void execute(boolean undo) {
         if (busy) return;
+        final String pkg = GamePackageCatalog.isValidPackageName(selectedPackageName)
+            ? selectedPackageName : GamePackageCatalog.DEFAULT_PACKAGE;
         busy = true;
         lastResult = "";
-        write(undo ? "正在检查官方原版恢复条件…" : "正在检查资源版本与冲突…");
+        write(undo ? "正在检查官方原版恢复条件（" + pkg + "）…" : "正在检查资源版本与冲突（" + pkg + "）…");
         refresh();
         worker.execute(() -> {
             String result;
             try {
-                result = useShizuku ? remote.inspect() : local().inspect();
+                result = useShizuku ? remote.inspect(pkg) : local().inspect(pkg);
             } catch (Exception e) {
                 result = "检查未完成：" + e.getMessage();
             }
@@ -744,10 +1419,10 @@ public final class MainActivity extends Activity {
                     Matcher match = Pattern.compile("冲突文件SHA256：([a-f0-9]{64})").matcher(out);
                     if (!match.find()) { write("无法确认冲突文件校验和，请重新检查。"); return; }
                     final String conflictHash = match.group(1);
-                    new AlertDialog.Builder(this).setTitle("检测到同定位冲突插件")
-                        .setMessage("当前位置已被其他同定位插件（如 APX）占用。\n\n继续后会先按 SHA256 完整备份原文件，再清理冲突并替换为星枢。")
+                    new AlertDialog.Builder(this).setTitle("检测到同定位冲突或变体资源")
+                        .setMessage("当前位置已被其他同定位插件（如 APX）或非本版缓存占用。\n\n继续后会先按 SHA256 完整备份原文件，再清理冲突并替换为星枢。")
                         .setNegativeButton("暂不安装", null)
-                        .setPositiveButton("删除冲突并安装星枢", (d, w) -> run(true, false, conflictHash))
+                        .setPositiveButton("备份整理并安装星枢", (d, w) -> run(true, false, conflictHash))
                         .show();
                     return;
                 }
@@ -758,19 +1433,21 @@ public final class MainActivity extends Activity {
 
     private void run(boolean apply, boolean undo, String conflictHash) {
         if (busy) return;
+        final String pkg = GamePackageCatalog.isValidPackageName(selectedPackageName)
+            ? selectedPackageName : GamePackageCatalog.DEFAULT_PACKAGE;
         if (!useShizuku) {
-            runWorker(apply ? (undo ? "正在还原官方原版…" : "正在写入并校验星枢插件…") : "正在检查当前版本与路径…",
-                () -> apply ? local().apply(undo, conflictHash) : local().inspect());
+            runWorker(apply ? (undo ? "正在还原官方原版（" + pkg + "）…" : "正在写入并校验星枢插件（" + pkg + "）…") : "正在检查当前版本与路径…",
+                () -> apply ? local().apply(pkg, undo, conflictHash) : local().inspect(pkg));
             return;
         }
         if (remote == null) { write("请先连接 Shizuku 或本机无线调试。"); return; }
         final IInstaller service = remote;
-        runWorker(apply ? (undo ? "正在通过 Shizuku 还原原版…" : "正在通过 Shizuku 写入并校验星枢…") : "正在检查游戏版本与插件状态…", () -> {
-            if (!apply) return service.inspect();
+        runWorker(apply ? (undo ? "正在通过 Shizuku 还原原版（" + pkg + "）…" : "正在通过 Shizuku 写入并校验星枢（" + pkg + "）…") : "正在检查游戏版本与插件状态…", () -> {
+            if (!apply) return service.inspect(pkg);
             File patch = undo ? null : stage("candidate.__data"), vanilla = stage("vanilla.__data");
             try (ParcelFileDescriptor p = undo ? null : ParcelFileDescriptor.open(patch, ParcelFileDescriptor.MODE_READ_ONLY);
                  ParcelFileDescriptor v = ParcelFileDescriptor.open(vanilla, ParcelFileDescriptor.MODE_READ_ONLY)) {
-                return service.apply(undo, conflictHash, p, v);
+                return service.apply(pkg, undo, conflictHash, p, v);
             } finally {
                 if (patch != null) patch.delete();
                 if (vanilla != null) vanilla.delete();
@@ -1205,8 +1882,10 @@ public final class MainActivity extends Activity {
         sb.append("导出时间: ").append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CHINA).format(new Date())).append("\n");
         sb.append("助手版本: ").append(BuildConfig.VERSION_NAME).append(" (code=").append(BuildConfig.VERSION_CODE).append(")\n");
         sb.append("内置插件版本: ").append(PayloadSpec.VERSION).append("\n");
-        sb.append("目标包名: ").append(Build.MODEL).append(" / Android ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")\n");
-        sb.append("目标资源相对路径: ").append(PayloadSpec.RELATIVE).append("\n");
+        sb.append("设备信息: ").append(Build.MODEL).append(" / Android ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")\n");
+        sb.append("当前选中渠道包名: ").append(selectedPackageName).append("\n");
+        sb.append("已发现渠道数量: ").append(discoveredPackages.size()).append("\n");
+        sb.append("默认资源相对路径: ").append(PayloadSpec.RELATIVE).append("\n");
         sb.append("期望清单 SHA256: ").append(PayloadSpec.CATALOG).append("\n");
         sb.append("连接模式: ").append(useShizuku ? "Shizuku" : "本机无线调试(LocalADB)").append("\n\n");
         if (!lastResult.isEmpty()) sb.append("--- 最近检查/执行结果 ---\n").append(lastResult).append("\n\n");
@@ -1266,6 +1945,7 @@ public final class MainActivity extends Activity {
             try { if (Shizuku.pingBinder()) Shizuku.unbindUserService(serviceArgs, connection, true); } catch (Exception ignored) { }
         });
         worker.shutdown();
+        authWorker.shutdownNow();
         updateWorker.shutdownNow();
         super.onDestroy();
     }

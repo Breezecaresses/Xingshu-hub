@@ -1,28 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import React, { useEffect } from 'react';
 import { CheckCircle2, Download, ExternalLink, X } from 'lucide-react';
 import { useTranslation } from '../i18n';
+import { appUpdateStore, useAppUpdateState } from '../shared/appUpdateStore';
 
-export type AppUpdateRelease = {
-  version: string;
-  sequence: number;
-  notes: string;
-  desktop: { size: number };
-  android: { versionCode: number };
-};
-
-export type AppUpdateCheckResult = {
-  available: boolean;
-  currentVersion: string;
-  canApply: boolean;
-  release: AppUpdateRelease | null;
-  releaseUrl: string;
-  downloadSource?: string;
-  checkWarning?: string;
-  message: string;
-};
-
-type UpdatePhase = 'idle' | 'downloading' | 'ready' | 'applying';
+export type { AppUpdateCheckResult, AppUpdateRelease } from '../shared/appUpdateStore';
 
 function formatSizeMb(bytes?: number): string {
   if (!bytes || bytes <= 0) return '';
@@ -32,81 +13,29 @@ function formatSizeMb(bytes?: number): string {
 export const UpdatePromptController: React.FC = () => {
   const { locale } = useTranslation();
   const isZh = locale === 'zh-CN';
+  const state = useAppUpdateState();
 
-  const [result, setResult] = useState<AppUpdateCheckResult | null>(null);
-  const [bannerDismissed, setBannerDismissed] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [phase, setPhase] = useState<UpdatePhase>('idle');
-  const [error, setError] = useState('');
+  useEffect(() => appUpdateStore.startBackgroundSync(), []);
 
-  const gateRef = useRef(false);
-  const autoShownSeqRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const timer = window.setTimeout(async () => {
-      try {
-        const next = await invoke<AppUpdateCheckResult>('check_app_update', { preview: true });
-        if (cancelled) return;
-        if (next.available && next.release) {
-          setResult(next);
-          if (autoShownSeqRef.current !== next.release.sequence) {
-            autoShownSeqRef.current = next.release.sequence;
-            setModalOpen(true);
-          }
-        }
-      } catch {
-        // Silent background check: dev builds without HubUpdater.exe or offline environments stay quiet.
-      }
-    }, 1100);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, []);
-
+  const result = state.result;
   if (!result?.available || !result.release) return null;
+
   const release = result.release;
+  const phase = state.phase === 'checking' ? 'idle' : state.phase;
   const busy = phase === 'downloading' || phase === 'applying';
   const sizeLabel = formatSizeMb(release.desktop?.size);
+  const bannerDismissed = state.bannerDismissedSequence === release.sequence;
   const blockedReason = !result.canApply
     ? (isZh ? '请完整解压电脑版 ZIP，并从其中的 Hub 文件夹启动后即可一键在线更新。' : 'Extract the full Desktop ZIP and launch from Hub/ to enable one-click updates.')
     : (result.checkWarning || '');
 
-  const handlePrimaryAction = async () => {
-    if (gateRef.current || busy) return;
-    gateRef.current = true;
-    setError('');
-    try {
-      if (phase === 'ready') {
-        setPhase('applying');
-        await invoke('apply_app_update');
-        return;
-      }
-      setPhase('downloading');
-      const next = await invoke<AppUpdateCheckResult>('prepare_app_update', {
-        preview: true,
-        sequence: release.sequence,
-      });
-      setResult(next);
-      setPhase('ready');
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(msg || (isZh ? '下载或校验失败，请稍后重试。' : 'Failed to prepare update.'));
-      setPhase('idle');
-    } finally {
-      gateRef.current = false;
+  const handlePrimaryAction = () => {
+    if (busy) return;
+    if (phase === 'ready') {
+      void appUpdateStore.applyUpdate();
+      return;
     }
-  };
-
-  const handleLater = () => {
-    if (busy) return;
-    setModalOpen(false);
-  };
-
-  const handleDismissBanner = () => {
-    if (busy) return;
-    setBannerDismissed(true);
+    void appUpdateStore.prepareUpdate();
   };
 
   const ctaText = (() => {
@@ -127,7 +56,9 @@ export const UpdatePromptController: React.FC = () => {
               <Download size={14} />
             </span>
             <span className="xingshu-update-banner-title">
-              {isZh ? `发现新版本 ${release.version}` : `New version ${release.version} available`}
+              {phase === 'downloading'
+                ? (isZh ? `正在后台下载新版本 ${release.version}…` : `Downloading ${release.version} in background…`)
+                : (isZh ? `发现新版本 ${release.version}` : `New version ${release.version} available`)}
             </span>
             {phase === 'ready' && (
               <span className="xingshu-update-pill-ready">{isZh ? '已就绪' : 'Ready'}</span>
@@ -137,14 +68,15 @@ export const UpdatePromptController: React.FC = () => {
             <button
               type="button"
               className="xingshu-update-banner-cta"
-              onClick={() => setModalOpen(true)}
+              onClick={appUpdateStore.openModal}
             >
               {isZh ? '查看更新' : 'View update'}
             </button>
             <button
               type="button"
               className="xingshu-update-banner-close"
-              onClick={handleDismissBanner}
+              disabled={busy}
+              onClick={appUpdateStore.dismissBanner}
               aria-label={isZh ? '关闭更新提示' : 'Dismiss update notice'}
               title={isZh ? '暂不提示' : 'Dismiss'}
             >
@@ -154,7 +86,7 @@ export const UpdatePromptController: React.FC = () => {
         </div>
       )}
 
-      {modalOpen && (
+      {state.modalOpen && (
         <div
           className="xingshu-update-modal-backdrop"
           role="dialog"
@@ -170,7 +102,7 @@ export const UpdatePromptController: React.FC = () => {
                 type="button"
                 className="xingshu-update-modal-x"
                 disabled={busy}
-                onClick={handleLater}
+                onClick={appUpdateStore.closeModal}
                 aria-label={isZh ? '关闭窗口' : 'Close dialog'}
               >
                 <X size={17} />
@@ -202,8 +134,8 @@ export const UpdatePromptController: React.FC = () => {
               <p className="xingshu-update-warning">{blockedReason}</p>
             )}
 
-            {error && (
-              <p className="xingshu-update-error">{error}</p>
+            {state.error && (
+              <p className="xingshu-update-error">{state.error}</p>
             )}
 
             {result.canApply && !result.checkWarning ? (
@@ -211,7 +143,7 @@ export const UpdatePromptController: React.FC = () => {
                 type="button"
                 className="xingshu-update-primary-cta"
                 disabled={busy}
-                onClick={() => void handlePrimaryAction()}
+                onClick={handlePrimaryAction}
               >
                 {phase === 'ready' ? <CheckCircle2 size={17} /> : <Download size={17} />}
                 <span>{ctaText}</span>
@@ -232,15 +164,15 @@ export const UpdatePromptController: React.FC = () => {
               type="button"
               className="xingshu-update-later-btn"
               disabled={busy}
-              onClick={handleLater}
+              onClick={appUpdateStore.closeModal}
             >
               {isZh ? '稍后再说' : 'Later'}
             </button>
 
             <p className="xingshu-update-footer-note">
               {isZh
-                ? '安装前会校验官方签名与 SHA256，更新前会自动备份当前文件并保留手机配对身份。'
-                : 'Signatures and SHA256 hashes are verified before applying updates.'}
+                ? '安装前会校验官方签名与 SHA256，更新前会自动备份当前文件并保留手机配对身份。可在「设置 -> 软件更新」调整自动接收更新策略。'
+                : 'Signatures and SHA256 hashes are verified before applying updates. Configure auto-update preferences in Settings.'}
             </p>
           </div>
         </div>

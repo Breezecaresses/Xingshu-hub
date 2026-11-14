@@ -1572,6 +1572,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 					{
 						ApplyCardIdsToHand(orCreateHand, cloudCards);
 						MarkOverlayDirty("CloudTeammateHandChanged");
+						RefreshHandWidget(orCreateHand);
 						Log("CLOUD_TEAMMATE_SYNC", $"Slot={orCreateHand.Slot} Count={cloudCards.Count}");
 					}
 					orCreateHand.IsAuthoritative = true;

@@ -136,10 +136,26 @@ namespace XingShu.Bridge
         {
             string processName = null;
             try { processName = RuntimeProcessIdentity.CurrentName; } catch { }
+            string packageId = null;
+            try { packageId = Application.identifier; } catch { }
             _runtimePlatform = Application.platform == RuntimePlatform.Android
-                ? (processName == "com.feimo.astralparty" ? "ANDROID_CN" : "ANDROID")
+                ? ClassifyAndroidPlatform(!string.IsNullOrEmpty(packageId) ? packageId : processName)
                 : ClassifyPlatform(processName, Application.dataPath);
             _runtimeGameVersion = Application.version;
+        }
+
+        public static string ClassifyAndroidPlatform(string packageName)
+        {
+            string id = packageName ?? "";
+            if (id.IndexOf(".mi", StringComparison.OrdinalIgnoreCase) >= 0 || id.IndexOf("xiaomi", StringComparison.OrdinalIgnoreCase) >= 0) return "XIAOMI";
+            if (id.IndexOf("bilibili", StringComparison.OrdinalIgnoreCase) >= 0 || id.IndexOf(".bili", StringComparison.OrdinalIgnoreCase) >= 0) return "BILIBILI";
+            if (id.IndexOf("taptap", StringComparison.OrdinalIgnoreCase) >= 0) return "TAPTAP";
+            if (id.IndexOf("huawei", StringComparison.OrdinalIgnoreCase) >= 0) return "HUAWEI";
+            if (id.IndexOf("oppo", StringComparison.OrdinalIgnoreCase) >= 0 || id.IndexOf("nearme", StringComparison.OrdinalIgnoreCase) >= 0) return "OPPO";
+            if (id.IndexOf("vivo", StringComparison.OrdinalIgnoreCase) >= 0) return "VIVO";
+            if (id.IndexOf("yyb", StringComparison.OrdinalIgnoreCase) >= 0 || id.IndexOf("tencent", StringComparison.OrdinalIgnoreCase) >= 0) return "YYB";
+            if (id.IndexOf("meizu", StringComparison.OrdinalIgnoreCase) >= 0) return "MEIZU";
+            return "ANDROID_CN";
         }
 
         public static string ClassifyPlatform(string processName, string dataPath)
@@ -786,6 +802,16 @@ namespace XingShu.Bridge
                         rejectionReason = "Cloud hand snapshot is stale or outside the current co-op match";
                         Log("[XingShuBridgeClient] CLOUD_HAND_REJECTED: stale or unmatched snapshot.");
                         return false;
+                    }
+                    XingShuRuntime.Utilities.HandCardDisplayManager.OverlayRenderDirty = true;
+                    XingShuRuntime.Utilities.HandCardDisplayManager.MarkOverlayDirty("CloudMirrorUpdated");
+                    try
+                    {
+                        XingShuRuntime.Utilities.HandCardDisplayManager.RefreshAllWidgets();
+                    }
+                    catch (Exception refreshEx)
+                    {
+                        Log("[XingShuBridgeClient] CLOUD_HAND_DEFERRED_REFRESH: " + refreshEx.Message);
                     }
                     return true;
                 }

@@ -12,8 +12,6 @@ import {
   Map,
   History,
   Sparkles,
-  RefreshCw,
-  Archive,
   Activity,
   Settings,
   Eye,
@@ -133,20 +131,6 @@ export const Sidebar: React.FC = () => {
         </NavLink>
 
         <div className="nav-section-title">{t('nav.operations')}</div>
-        <NavLink
-          to="/maintenance/transactions"
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <RefreshCw size={17} />
-          <span>{t('nav.transactions')}</span>
-        </NavLink>
-        <NavLink
-          to="/maintenance/backups"
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <Archive size={17} />
-          <span>{t('nav.backups')}</span>
-        </NavLink>
         <NavLink
           to="/diagnostics"
           className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}

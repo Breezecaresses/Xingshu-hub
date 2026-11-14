@@ -4,6 +4,7 @@ import { PROJECT_SOURCE, PROJECT_SOURCE_LABEL } from '../../shared/projectSource
 import { api } from '../../shared/api/tauri';
 import type { GameInstallation, ProbeResult, ProviderMetadata } from '../../shared/types';
 import { Folder, Save, Database, Shield, RefreshCw, Globe, Check } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 import { useTranslation } from '../../i18n';
 import { AppUpdatePanel } from './AppUpdatePanel';
 
@@ -188,17 +189,21 @@ export const SettingsPage: React.FC = () => {
           <p style={{ color: 'var(--text-muted)', marginTop: 12 }}>代码许可见项目仓库的 LICENSE；角色、卡面及游戏配置素材来源于吉星派对，相关权利归原权利人所有。</p>
         </div>
 
-        {/* Security & Architecture Non-Goals */}
+        {/* 资源冲突防线与运维快捷中心 */}
         <div className="panel">
           <h2 className="panel-title" style={{ marginBottom: 12 }}>
             <Shield size={18} color="var(--info)" />
-            <span>{t('settings.principlesTitle')}</span>
+            <span>{locale === 'zh-CN' ? '资源冲突防线与运维中心' : 'Resource Conflict Guard & Maintenance'}</span>
           </h2>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            <p>• {t('settings.providerFirst')}</p>
-            <p>• {t('settings.declarativePackages')}</p>
-            <p>• {t('settings.transactionalSafety')}</p>
-            <p>• {t('settings.zeroCredential')}</p>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+            <p>• 自动排查 APX 残留、双代理加载器（<code>winhttp.dll</code> / <code>version.dll</code>）与多目录同名模组 DLL 冲突。</p>
+            <p>• 所有插件安装、替换与卸载均自动生成事务快照，支持随时一键无损还原。</p>
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}>
+            <NavLink to="/extensions/packages" className="btn btn-secondary">星枢包管理器 →</NavLink>
+            <NavLink to="/maintenance/transactions" className="btn btn-secondary">安装事务记录 →</NavLink>
+            <NavLink to="/maintenance/backups" className="btn btn-secondary">数据备份与还原 →</NavLink>
+            <NavLink to="/diagnostics" className="btn btn-secondary">系统诊断中心 →</NavLink>
           </div>
         </div>
       </div>

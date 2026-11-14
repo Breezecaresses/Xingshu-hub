@@ -5,7 +5,7 @@ $taskOutput = Join-Path $taskRoot 'XingShu-Dev/build/lifecycle-tests'
 $taskSource = Join-Path $taskRoot 'XingShu-Dev/src/XingShu.Runtime'
 $null = New-Item -ItemType Directory -Force -Path $taskOutput
 $taskExe = Join-Path $taskOutput 'HandSessionLifecycleTests.exe'
-& $Compiler /nologo /langversion:latest "/out:$taskExe" (Join-Path $PSScriptRoot 'MatchLifecycleTests/Program.cs') (Join-Path $taskSource 'XingShu/Truth/HandSessionLifecycle.cs')
+& $Compiler /nologo /langversion:latest "/out:$taskExe" (Join-Path $PSScriptRoot 'MatchLifecycleTests/Program.cs') (Join-Path $taskSource 'XingShu/Truth/HandSessionLifecycle.cs') (Join-Path $taskSource 'XingShu/Truth/CloudMirrorStore.cs')
 if ($LASTEXITCODE -ne 0) { throw 'Lifecycle test compilation failed' }
 & $taskExe
 if ($LASTEXITCODE -ne 0) { throw 'Lifecycle tests failed' }

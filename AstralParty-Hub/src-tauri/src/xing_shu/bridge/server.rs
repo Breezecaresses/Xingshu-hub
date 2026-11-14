@@ -764,7 +764,7 @@ impl BridgeServer {
 
     pub(crate) fn send_cloud_hand_mirror(&self, requested: &RuntimeSession, payload: &SpectatorHandPayload) -> bool {
         // Re-check the verified game session after the network request returns.
-        let Some(target) = self.cloud_hand_target() else { return false; };
+        let Some(target) = self.cloud_hand_target_for(i64::try_from(payload.player_id).ok()) else { return false; };
         if requested.connection_id != target.connection_id || requested.generation != target.generation
             || target.live_player_id != i64::try_from(payload.player_id).ok()
             || target.room_id != Some(payload.room_id)
@@ -3169,6 +3169,65 @@ mod tests {
         assert_eq!(server.cloud_hand_target_for(Some(172852)).and_then(|s| s.live_player_id), Some(172852));
         assert_eq!(server.cloud_hand_target_for(Some(3045259)).and_then(|s| s.live_player_id), Some(3045259));
         assert!(server.cloud_hand_target_for(Some(999999)).is_none());
+    }
+
+    #[test]
+    fn send_cloud_hand_mirror_routes_to_matching_account_in_multi_open_pve() {
+        let server = BridgeServer::new_test();
+        let (tx_main, mut rx_main) = tokio::sync::mpsc::channel(4);
+        let (tx_alt, mut rx_alt) = tokio::sync::mpsc::channel(4);
+        server.connection_manager.insert(crate::xing_shu::bridge::connection::ActiveConnection::new(
+            "multi_1",
+            "STEAM_CN",
+            1001,
+            1,
+            tx_main,
+        ));
+        server.connection_manager.insert(crate::xing_shu::bridge::connection::ActiveConnection::new(
+            "multi_2",
+            "TAPTAP",
+            1002,
+            1,
+            tx_alt,
+        ));
+        let make_session = |conn_id: &str, platform: &str, pid: u32, uid: i64, room_id: u64| {
+            let mut session = RuntimeSession::new(conn_id, platform, pid, "game.exe", Some(uid), "1.0.0-game-ui-r8.28", 1, "MAIN");
+            session.room_id = Some(room_id);
+            session.match_context = Some(RuntimeMatchContext {
+                local_player_id: Some(uid),
+                roster_player_ids: vec![uid, 99],
+                match_state: "MAIN_IN_MATCH".into(),
+                match_kind: Some("PVE".into()),
+                sequence: 3,
+                ..Default::default()
+            });
+            session
+        };
+        let main_session = make_session("multi_1", "STEAM_CN", 1001, 172852, 501);
+        let alt_session = make_session("multi_2", "TAPTAP", 1002, 3045259, 502);
+        server.session_manager.insert(main_session.clone());
+        server.session_manager.insert(alt_session.clone());
+
+        let payload = SpectatorHandPayload {
+            room_id: 501,
+            spectator_session_epoch: 3,
+            spectator_account_player_id: 172852,
+            player_id: 172852,
+            card_ids: vec![101, 102],
+            hand_size: 2,
+            platform_id: Some("CLOUD_OFFICIAL".into()),
+            ..Default::default()
+        };
+        assert!(server.send_cloud_hand_mirror(&main_session, &payload));
+        let line = rx_main.try_recv().expect("expected mirror frame on main session");
+        assert!(line.contains(message_types::HAND_TRUTH_MIRROR));
+        assert!(rx_alt.try_recv().is_err());
+
+        assert!(!server.send_cloud_hand_mirror(&alt_session, &payload));
+        let wrong_room = SpectatorHandPayload { room_id: 999, ..payload.clone() };
+        assert!(!server.send_cloud_hand_mirror(&main_session, &wrong_room));
+        let wrong_epoch = SpectatorHandPayload { spectator_session_epoch: 99, ..payload };
+        assert!(!server.send_cloud_hand_mirror(&main_session, &wrong_epoch));
     }
 
     use super::*;

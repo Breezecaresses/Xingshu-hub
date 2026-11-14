@@ -2,9 +2,9 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { api } from '../../shared/api/tauri';
 import type { DiagnosticReport, SpectatorHandPayload, BridgeConnectionState } from '../../shared/types';
-import { Activity, RefreshCw, CheckCircle2, AlertTriangle, AlertCircle, Info, Cpu, HardDrive, Eye, Radio } from 'lucide-react';
+import { Activity, RefreshCw, CheckCircle2, AlertTriangle, AlertCircle, Info, Cpu, HardDrive, Eye, Radio, Archive, History } from 'lucide-react';
 import { useTranslation } from '../../i18n';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, NavLink } from 'react-router-dom';
 import { RuntimeDiagnosticsPanel } from '../runtime/RuntimePage';
 
 export const DiagnosticsPage: React.FC = () => {
@@ -14,10 +14,10 @@ export const DiagnosticsPage: React.FC = () => {
   const [report, setReport] = useState<DiagnosticReport | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // HS3 Spectator Live Diagnostics State
+  // HS3 Spectator Live Diagnostics State (event-driven by default; 1s polling is opt-in only)
   const [handPayload, setHandPayload] = useState<SpectatorHandPayload | null>(null);
   const [bridgeStatus, setBridgeStatus] = useState<BridgeConnectionState | null>(null);
-  const [pollingActive, setPollingActive] = useState(true);
+  const [pollingActive, setPollingActive] = useState(false);
   const [spectatorLoading, setSpectatorLoading] = useState(false);
 
   const fetchSpectatorData = useCallback(async () => {
@@ -105,10 +105,20 @@ export const DiagnosticsPage: React.FC = () => {
             {t('diagnostics.subtitle')}
           </p>
         </div>
-        <button className="btn btn-primary" onClick={runDiagnostics} disabled={loading}>
-          <RefreshCw size={14} className={loading ? 'spin' : ''} />
-          <span>{t('diagnostics.runProbe')}</span>
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <NavLink to="/maintenance/transactions" className="btn btn-secondary">
+            <History size={14} />
+            <span>{isZh ? '安装事务记录' : 'Transactions'}</span>
+          </NavLink>
+          <NavLink to="/maintenance/backups" className="btn btn-secondary">
+            <Archive size={14} />
+            <span>{isZh ? '数据备份与恢复' : 'Backups'}</span>
+          </NavLink>
+          <button className="btn btn-primary" onClick={runDiagnostics} disabled={loading}>
+            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            <span>{t('diagnostics.runProbe')}</span>
+          </button>
+        </div>
       </div>
 
       <details className="panel" open={runtimeOpen} onToggle={event => setRuntimeOpen(event.currentTarget.open)}>
@@ -340,6 +350,11 @@ export const DiagnosticsPage: React.FC = () => {
               </div>
             </div>
 
+            <details style={{ marginTop: 8 }}>
+              <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                {isZh ? '展开开发者原始手牌报文详情 (日常观战请前往「星枢观战」专页)' : 'Expand Raw Spectator Snapshot Payload'}
+              </summary>
+
             {/* Spectator Snapshot Diagnostics Table */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
@@ -501,6 +516,7 @@ export const DiagnosticsPage: React.FC = () => {
                 </div>
               )}
             </div>
+            </details>
           </div>
         </div>
       )}

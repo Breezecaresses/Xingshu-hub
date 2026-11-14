@@ -1525,3 +1525,304 @@ summary:focus-visible {
   font-size: 11.5px;
   color: var(--text-muted, #8a857c);
 }
+
+.xingshu-update-panel-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.xingshu-update-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--glass-surface-subtle, #f7f5ef);
+  border: 1px solid var(--glass-border, rgba(28, 28, 28, 0.1));
+  color: var(--text-secondary, #6e6a63);
+}
+
+.xingshu-update-mode-pill.is-auto {
+  background: var(--accent-soft, #fff1e5);
+  border-color: var(--accent-border, #f5cfaf);
+  color: var(--accent-text, #b84b08);
+}
+
+.xingshu-update-version-line {
+  color: var(--text-secondary);
+  line-height: 1.8;
+  margin-bottom: 10px;
+}
+
+.xingshu-update-checked-at {
+  color: var(--text-muted, #8a857c);
+  font-size: 12.5px;
+}
+
+.xingshu-update-toggles {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 14px;
+}
+
+.xingshu-update-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--glass-surface-subtle, #f7f5ef);
+  border: 1px solid var(--glass-border, rgba(28, 28, 28, 0.08));
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.xingshu-update-switch-row:hover:not(.is-disabled) {
+  border-color: var(--accent-border, #f5cfaf);
+}
+
+.xingshu-update-switch-row.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.xingshu-update-switch-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.xingshu-update-switch-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary, #1c1c1c);
+}
+
+.xingshu-update-switch-desc {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted, #8a857c);
+}
+
+.xingshu-switch-track {
+  appearance: none;
+  position: relative;
+  width: 42px;
+  height: 24px;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(28, 28, 28, 0.14);
+  background: #d8d3c9;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.xingshu-switch-track.is-on {
+  background: linear-gradient(100deg, #ff7a2f, #f43f5e);
+  border-color: transparent;
+}
+
+.xingshu-switch-track:disabled {
+  cursor: not-allowed;
+}
+
+.xingshu-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(18, 16, 26, 0.22);
+  transition: transform 0.18s ease;
+}
+
+.xingshu-switch-track.is-on .xingshu-switch-thumb {
+  transform: translateX(18px);
+}
+
+/* --------------------------------------------------------------------------
+   9. Dashboard Usage Guide Card & Modal
+   -------------------------------------------------------------------------- */
+.xingshu-help-card {
+  position: relative;
+}
+
+.xingshu-help-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.xingshu-help-header h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.xingshu-help-header h2 svg {
+  color: var(--accent-text, #b84b08);
+}
+
+.xingshu-help-lead {
+  margin-top: 2px;
+}
+
+.xingshu-help-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.xingshu-help-shortcuts > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--glass-surface-subtle, #f7f5ef);
+  border: 1px solid var(--glass-border, rgba(28, 28, 28, 0.1));
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.xingshu-help-shortcuts kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid rgba(28, 28, 28, 0.14);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-text, #b84b08);
+}
+
+.xingshu-help-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.xingshu-help-step {
+  padding: 13px 15px;
+  border-radius: 12px;
+  background: var(--glass-surface-subtle, #f7f5ef);
+  border: 1px solid var(--glass-border, rgba(28, 28, 28, 0.08));
+}
+
+.xingshu-help-step strong {
+  display: block;
+  font-size: 13.5px;
+  color: var(--text-primary, #1c1c1c);
+  margin-bottom: 6px;
+}
+
+.xingshu-help-step p {
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.xingshu-help-step code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: #ffffff;
+  border: 1px solid rgba(28, 28, 28, 0.12);
+  color: var(--accent-text, #b84b08);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.xingshu-help-modal {
+  width: min(720px, 100%);
+}
+
+.xingshu-help-modal-tabs {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #f5f2eb;
+  border: 1px solid rgba(28, 28, 28, 0.08);
+}
+
+.xingshu-help-tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #5f5c56);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.xingshu-help-tab.active {
+  background: #ffffff;
+  color: var(--accent-text, #b84b08);
+  box-shadow: 0 2px 8px rgba(18, 16, 26, 0.08);
+}
+
+.xingshu-help-doc-scroll {
+  background: #f7f5ef;
+  border: 1px solid #e6e1d7;
+  border-radius: 14px;
+  padding: 16px;
+  max-height: min(56vh, 460px);
+  overflow-y: auto;
+  margin-bottom: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.xingshu-help-doc-section {
+  background: #ffffff;
+  border: 1px solid rgba(28, 28, 28, 0.07);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.xingshu-help-doc-section h3 {
+  margin: 0 0 10px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-primary, #1c1c1c);
+}
+
+.xingshu-help-doc-section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.xingshu-help-doc-section li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-secondary, #494640);
+}
+
+.xingshu-help-doc-section li svg {
+  flex-shrink: 0;
+  margin-top: 4px;
+  color: var(--accent-text, #b84b08);
+}

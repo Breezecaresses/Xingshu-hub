@@ -99,13 +99,12 @@ namespace XingShu.Truth
     {
         private static readonly object _syncRoot = new object();
         private static HandTruthSnapshot _currentSnapshot = new HandTruthSnapshot();
-        private static HandTruthSnapshot _cloudSnapshot;
-        private static readonly TimeSpan CloudSnapshotLifetime = TimeSpan.FromSeconds(8);
+        private static readonly CloudMirrorStore _cloudMirrorStore = new CloudMirrorStore();
 
 #if XINGSHU_ANDROID_PREVIEW
         internal static void ClearCloudMirror()
         {
-            lock (_syncRoot) _cloudSnapshot = null;
+            _cloudMirrorStore.Clear();
         }
 #endif
 
@@ -126,9 +125,6 @@ namespace XingShu.Truth
                 return false;
             }
 
-            var age = DateTime.UtcNow - observedAt.UtcDateTime;
-            if (age >= CloudSnapshotLifetime || age < TimeSpan.FromSeconds(-3)) return false;
-
             var hands = new Dictionary<long, IReadOnlyList<int>>();
             foreach (var player in payload.roomPlayers.Values)
             {
@@ -141,16 +137,13 @@ namespace XingShu.Truth
                 hands[player.playerId] = new List<int>(player.cardIds).AsReadOnly();
             }
 
-            lock (_syncRoot)
-            {
-                if (_cloudSnapshot != null && _cloudSnapshot.Epoch == matchSequence
-                    && _cloudSnapshot.Timestamp > observedAt.UtcDateTime) return false;
-                _cloudSnapshot = new HandTruthSnapshot
-                {
-                    RoomId = payload.roomId, Epoch = matchSequence, Timestamp = observedAt.UtcDateTime, Hands = hands
-                };
-            }
-            return true;
+            return _cloudMirrorStore.Record(
+                payload.roomId,
+                matchSequence,
+                payload.sequenceNumber,
+                observedAt.UtcDateTime,
+                hands,
+                DateTime.UtcNow);
         }
 
         internal static bool TryGetTeammateMirrorHand(long roomId, long playerId, out IReadOnlyList<int> cards)
@@ -165,16 +158,7 @@ namespace XingShu.Truth
 
         internal static bool TryGetCloudHand(long roomId, long playerId, out IReadOnlyList<int> cards)
         {
-            lock (_syncRoot)
-            {
-                if (_cloudSnapshot != null && _cloudSnapshot.RoomId == roomId
-                    && DateTime.UtcNow - _cloudSnapshot.Timestamp < CloudSnapshotLifetime)
-                {
-                    return _cloudSnapshot.TryGetPlayerCards(playerId, out cards);
-                }
-                cards = null;
-                return false;
-            }
+            return _cloudMirrorStore.TryGetPlayerCards(roomId, playerId, out cards, DateTime.UtcNow);
         }
 
         public static HandTruthSnapshot CurrentSnapshot
@@ -670,10 +654,10 @@ namespace XingShu.Truth
         /// </summary>
         public static void ResetSession(string reason)
         {
+            _cloudMirrorStore.Clear();
             lock (_syncRoot)
             {
                 _currentSnapshot = new HandTruthSnapshot();
-                _cloudSnapshot = null;
                 _authoritativeSteamMainRoomId = 0;
                 _lastPublishedRoomId = -1;
                 _lastPublishedInMatch = false;
