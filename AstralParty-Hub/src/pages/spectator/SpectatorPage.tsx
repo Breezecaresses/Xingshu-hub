@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useSpectatorState, SpectatorLifecycleState } from './useSpectatorState';
 import { formatSpectatorPlayerId } from './spectatorTransition';
+import { SPECTATOR_PLATFORM_NAMES, summarizeMainGameRuntime } from './spectatorRuntimeSummary.ts';
 import { SpectatorStepIndicator } from './components/SpectatorStepIndicator';
 import { SpectatorAccountSelector } from './components/SpectatorAccountSelector';
 import { ClientSessionStatusCard } from './components/ClientSessionStatusCard';
@@ -58,6 +59,7 @@ export const SpectatorPage: React.FC = () => {
     isRoleMismatch,
     roleMismatchWarning,
 
+    activeRuntimeSessions,
     resolvedSessions,
     selectedSpectatorConnectionId,
     mainSession,
@@ -125,10 +127,13 @@ export const SpectatorPage: React.FC = () => {
     }
   }, []);
 
-  const platformNames: Record<string, string> = { TAPTAP: 'TapTap', BILIBILI: '哔哩哔哩', STEAM_CN: 'Steam 国服', STEAM_GLOBAL: 'Steam 国际服', WEGAME: 'WeGame' };
-  const spectatorPlatformName = platformNames[autoFollowContext.targetPlatform] ?? '已绑定平台';
-  const mainPlatformName = platformNames[mainSession?.platformId ?? ''] ?? '已绑定平台';
-  const effectiveMainId = mainSession?.playerId ?? null;
+  const spectatorPlatformName = SPECTATOR_PLATFORM_NAMES[autoFollowContext.targetPlatform] ?? '已绑定平台';
+  const mainRuntimeSummary = summarizeMainGameRuntime(
+    mainSession,
+    activeRuntimeSessions,
+    spectatorSession,
+    isZh,
+  );
   const effectiveSpectatorId = spectatorSession?.playerId ?? null;
   const hasSpectatorBinding = gameAccountService.getBindings().some((b) => b.role === 'USER_SPECTATOR');
   const localSpectatorActive = Boolean(spectatorSession || hasSpectatorBinding || accountMode === 'USER_OWNED');
@@ -140,9 +145,7 @@ export const SpectatorPage: React.FC = () => {
     ? (isZh ? `观战执行端：${spectatorPlatformName} · 未连接` : `Spectator: ${spectatorPlatformName} · Disconnected`)
     : (isZh ? '本地观战：未启用（可选）' : 'Local Spectator: Off (Optional)');
 
-  const mainSummaryText = mainSession
-    ? `主游戏账号：${mainPlatformName} · ${effectiveMainId ?? (isZh ? '已连接' : 'Connected')}`
-    : (isZh ? '主游戏账号：未连接' : 'Main: Disconnected');
+  const mainSummaryText = mainRuntimeSummary.summaryText;
 
   const hasRoleMismatch = isRoleMismatch;
 
@@ -366,8 +369,8 @@ export const SpectatorPage: React.FC = () => {
             style={{
               padding: '6px 12px',
               borderRadius: 6,
-              backgroundColor: mainSession ? 'rgba(34, 197, 94, 0.15)' : 'rgba(100, 116, 139, 0.15)',
-              border: mainSession ? '1px solid rgba(34, 197, 94, 0.35)' : '1px solid rgba(100, 116, 139, 0.25)',
+              backgroundColor: mainRuntimeSummary.connected ? 'rgba(34, 197, 94, 0.15)' : 'rgba(100, 116, 139, 0.15)',
+              border: mainRuntimeSummary.connected ? '1px solid rgba(34, 197, 94, 0.35)' : '1px solid rgba(100, 116, 139, 0.25)',
               fontSize: 12,
               display: 'flex',
               alignItems: 'center',
@@ -375,8 +378,8 @@ export const SpectatorPage: React.FC = () => {
             }}
           >
             <span style={{ color: 'var(--text-secondary)' }}>{isZh ? '主游戏账号：' : 'Main Account: '}</span>
-            <strong style={{ color: mainSession ? '#15803d' : 'var(--text-secondary)', fontFamily: 'monospace' }}>
-              {mainSession ? `${mainPlatformName} · ${effectiveMainId ?? (isZh ? '已连接' : 'Connected')}` : (isZh ? '未连接' : 'Disconnected')}
+            <strong style={{ color: mainRuntimeSummary.connected ? '#15803d' : 'var(--text-secondary)', fontFamily: 'monospace' }}>
+              {mainRuntimeSummary.badgeText}
             </strong>
           </div>
 

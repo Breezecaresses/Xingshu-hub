@@ -117,7 +117,10 @@ namespace XingShu.Truth
                 || payload.spectatorAccountPlayerId <= 0 || payload.playerId <= 0
                 || manager.account?.IsSelf(payload.playerId) != true
                 || payload.spectatorAccountPlayerId == payload.playerId
-                || matchSequence <= 0 || payload.spectatorSessionEpoch != matchSequence
+                || matchSequence <= 0
+                || payload.spectatorSessionEpoch <= 0
+                || payload.spectatorSessionEpoch <= HandSessionLifecycle.RetiredMirrorEpoch
+                || payload.spectatorSessionEpoch > matchSequence
                 || payload.roomPlayers == null || payload.roomPlayers.Count == 0 || payload.roomPlayers.Count > 16
                 || !DateTimeOffset.TryParse(payload.snapshotTimestamp, CultureInfo.InvariantCulture,
                     DateTimeStyles.AssumeUniversal, out var observedAt))

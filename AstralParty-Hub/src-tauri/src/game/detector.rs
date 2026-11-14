@@ -22,17 +22,20 @@ impl GameDetector {
             return Some(details);
         }
 
-        // Try direct fallback checks
-        let common_paths = [
-            r"E:\steam\steamapps\common\Astral Party",
-            r"C:\Program Files (x86)\Steam\steamapps\common\Astral Party",
-            r"D:\SteamLibrary\steamapps\common\Astral Party",
+        // Try direct fallback checks across drives C..Z
+        let mut common_paths = vec![
+            PathBuf::from(r"C:\Program Files (x86)\Steam\steamapps\common\Astral Party"),
+            PathBuf::from(r"C:\Program Files\Steam\steamapps\common\Astral Party"),
         ];
+        for drive in b'C'..=b'Z' {
+            let drive = drive as char;
+            common_paths.push(PathBuf::from(format!(r"{}:\SteamLibrary\steamapps\common\Astral Party", drive)));
+            common_paths.push(PathBuf::from(format!(r"{}:\Steam\steamapps\common\Astral Party", drive)));
+        }
 
-        for p_str in common_paths {
-            let p = Path::new(p_str);
+        for p in common_paths {
             if p.exists() {
-                let details = Self::validate_game_directory(p);
+                let details = Self::validate_game_directory(&p);
                 if details.is_valid {
                     return Some(details);
                 }

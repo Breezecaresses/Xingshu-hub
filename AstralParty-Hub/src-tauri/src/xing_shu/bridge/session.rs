@@ -151,6 +151,30 @@ fn apply_binding(session: &mut RuntimeSession, bindings: &[RuntimeBinding]) {
     session.role = session.bound_role.clone();
 }
 
+fn assign_player_identity(
+    session: &mut RuntimeSession,
+    player_id: i64,
+    configured: Option<&[RuntimeBinding]>,
+) {
+    session.player_id = Some(player_id);
+    session.live_player_id = Some(player_id);
+    // STRICT PLATFORM-ROLE ISOLATION:
+    // Steam CN with 1556514 -> MAIN
+    // TapTap with 3045259 -> USER_SPECTATOR
+    if let Some(bindings) = configured {
+        apply_binding(session, bindings);
+    } else if session.platform_id == BOUND_STEAM_MAIN_PLATFORM && player_id == BOUND_STEAM_MAIN_PLAYER_ID {
+        session.role = BOUND_STEAM_MAIN_ROLE.to_string();
+        session.bound_role = BOUND_STEAM_MAIN_ROLE.to_string();
+    } else if session.platform_id == BOUND_TAPTAP_SPECTATOR_PLATFORM && player_id == BOUND_TAPTAP_SPECTATOR_PLAYER_ID {
+        session.role = BOUND_TAPTAP_SPECTATOR_ROLE.to_string();
+        session.bound_role = BOUND_TAPTAP_SPECTATOR_ROLE.to_string();
+    } else {
+        session.role = "UNBOUND".to_string();
+        session.bound_role = "UNBOUND".to_string();
+    }
+}
+
 impl SessionManager {
     pub fn configure_bindings(&self, bindings: Vec<RuntimeBinding>) -> Result<(), String> {
         let mut roles = std::collections::HashSet::new();
@@ -207,23 +231,7 @@ impl SessionManager {
         let configured = self.bindings.read().unwrap().clone();
         let mut map = self.sessions.write().unwrap();
         if let Some(session) = map.get_mut(connection_id) {
-            session.player_id = Some(player_id);
-            session.live_player_id = Some(player_id);
-            // STRICT PLATFORM-ROLE ISOLATION:
-            // Steam CN with 1556514 -> MAIN
-            // TapTap with 3045259 -> USER_SPECTATOR
-            if let Some(bindings) = configured.as_ref() {
-                apply_binding(session, bindings);
-            } else if session.platform_id == BOUND_STEAM_MAIN_PLATFORM && player_id == BOUND_STEAM_MAIN_PLAYER_ID {
-                session.role = BOUND_STEAM_MAIN_ROLE.to_string();
-                session.bound_role = BOUND_STEAM_MAIN_ROLE.to_string();
-            } else if session.platform_id == BOUND_TAPTAP_SPECTATOR_PLATFORM && player_id == BOUND_TAPTAP_SPECTATOR_PLAYER_ID {
-                session.role = BOUND_TAPTAP_SPECTATOR_ROLE.to_string();
-                session.bound_role = BOUND_TAPTAP_SPECTATOR_ROLE.to_string();
-            } else {
-                session.role = "UNBOUND".to_string();
-                session.bound_role = "UNBOUND".to_string();
-            }
+            assign_player_identity(session, player_id, configured.as_deref());
             if let Some(ref mut ctx) = session.match_context {
                 ctx.local_player_id = Some(player_id);
             }

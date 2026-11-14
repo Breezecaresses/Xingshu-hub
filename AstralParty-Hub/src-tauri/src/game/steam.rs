@@ -45,17 +45,17 @@ impl SteamDetector {
             }
         }
 
-        // Also check common default paths if not yet included
-        let common_fallbacks = [
-            r"C:\Program Files (x86)\Steam",
-            r"C:\Program Files\Steam",
-            r"D:\Steam",
-            r"D:\SteamLibrary",
-            r"E:\Steam",
-            r"E:\SteamLibrary",
+        // Also check common default paths across drives C..Z if not yet included
+        let mut common_fallbacks = vec![
+            PathBuf::from(r"C:\Program Files (x86)\Steam"),
+            PathBuf::from(r"C:\Program Files\Steam"),
         ];
-        for fb in common_fallbacks {
-            let p = PathBuf::from(fb);
+        for drive in b'C'..=b'Z' {
+            let drive = drive as char;
+            common_fallbacks.push(PathBuf::from(format!(r"{}:\Steam", drive)));
+            common_fallbacks.push(PathBuf::from(format!(r"{}:\SteamLibrary", drive)));
+        }
+        for p in common_fallbacks {
             if p.exists() && !libraries.contains(&p) {
                 libraries.push(p);
             }

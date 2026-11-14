@@ -25,9 +25,9 @@ namespace XingShu.Runtime
         public const string LogFileName = "xingshu_runtime_lifecycle.log";
         public const string LegacyLogFileName = "xingshu_runtime_lifecycle.log";
 #if XINGSHU_ANDROID_PREVIEW
-        public const string RuntimeVersion = "1.0.0-android-preview8.29";
+        public const string RuntimeVersion = "1.0.0-android-preview8.30";
 #else
-        public const string RuntimeVersion = "1.0.0-game-ui-r8.29";
+        public const string RuntimeVersion = "1.0.0-game-ui-r8.30";
 #endif
 
         private static string _logPath;
@@ -536,6 +536,7 @@ namespace XingShu.Runtime
                     spectatorCode = roomInfo.watchCode;
                     if (roomInfo.IsPVE()) { isPve = true; matchKind = "PVE"; }
                     else if (roomInfo.IsPVP()) { isPve = false; matchKind = "PVP"; }
+                    else if (XingShuRuntime.Utilities.HandCardDisplayManager.IsPVEMode()) { isPve = true; matchKind = "PVE"; }
 
                     if (roomInfo.Players != null && roomInfo.Players.Count > 0)
                     {

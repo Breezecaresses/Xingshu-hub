@@ -423,7 +423,8 @@ namespace XingShu.Runtime
                     Status = "本局账号与授权账号不一致";
                     return;
                 default:
-                    HandTruthSource.ClearCloudMirror();
+                    // Keep the latest valid teammate mirror alive across transient poll gaps;
+                    // match exit and room changes clear it through HandTruthSource lifecycle checks.
                     Status = "已绑定 · 等待官方服务器刷新当前手牌";
                     return;
             }

@@ -1560,10 +1560,16 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 				bool isSelf = (account != null && account.IsSelf(id));
 				if (isSelf)
 				{
+					bool wasLatest = orCreateHand.SyncState == HandSyncState.Latest;
 					orCreateHand.SyncState = HandSyncState.Latest;
 					orCreateHand.IsAuthoritative = true;
-					SyncSelfCardsFromContainer(orCreateHand, playerData);
+					SyncSelfCardsFromContainer(orCreateHand, playerData, out bool selfChanged);
 					orCreateHand.MaskedHandCount = orCreateHand.Cards.Count;
+					if (!wasLatest || selfChanged)
+					{
+						MarkOverlayDirty("SelfHandChanged");
+						RefreshHandWidget(orCreateHand);
+					}
 				}
 				else if (!orCreateHand.IsBot && XingShu.Truth.HandTruthSource.TryGetCloudHand(roomInfo.Id, id, out var cloudCards))
 				{
@@ -1581,40 +1587,23 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 				else
 				{
 					// DECISION A: Check if local cardContainer._HandCards contains valid CardId > 0 for all cards
-					bool decisionASucceeded = false;
 					CardContainer container = playerData.cardContainer;
-					if (container != null && container._HandCards != null && container._HandCards.Count > 0)
+					bool decisionASucceeded = TrySyncContainerCards(
+						orCreateHand,
+						container,
+						requireAllValid: true,
+						clearWhenEmpty: false,
+						out bool decAChanged);
+					if (decisionASucceeded)
 					{
-						bool allValid = true;
-						for (int i = 0; i < container._HandCards.Count; i++)
+						bool stateChanged = orCreateHand.SyncState != HandSyncState.Latest || decAChanged;
+						orCreateHand.SyncState = HandSyncState.Latest;
+						orCreateHand.IsAuthoritative = true;
+						orCreateHand.MaskedHandCount = orCreateHand.Cards.Count;
+						if (stateChanged)
 						{
-							var hc = container._HandCards[i];
-							int cid = hc != null ? ((hc.CardId > 0) ? hc.CardId : (hc.Config != null ? hc.Config.Id : 0)) : 0;
-							if (cid <= 0)
-							{
-								allValid = false;
-								break;
-							}
-						}
-						if (allValid)
-						{
-							decisionASucceeded = true;
-							orCreateHand.Cards.Clear();
-							foreach (var hc in container._HandCards)
-							{
-								int cid = (hc.CardId > 0) ? hc.CardId : (hc.Config != null ? hc.Config.Id : 0);
-								orCreateHand.Cards.Add(new TrackedCard
-								{
-									UniqueId = hc.Guid,
-									CardId = cid,
-									BattleCost = hc.BattleCost,
-									IsTemp = hc.IsTemp,
-									PurifyNum = hc.PurifyNum
-								});
-							}
-							orCreateHand.SyncState = HandSyncState.Latest;
-							orCreateHand.IsAuthoritative = true;
-							orCreateHand.MaskedHandCount = orCreateHand.Cards.Count;
+							MarkOverlayDirty("DecisionAHandChanged");
+							RefreshHandWidget(orCreateHand);
 							Log("DECISION_A_SYNC", $"Bot 玩家 {id} 从本地 cardContainer 权威加载手牌 (Count={orCreateHand.Cards.Count})");
 						}
 					}
@@ -1624,20 +1613,35 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 					{
 						if (XingShu.Truth.HandTruthSource.TryGetTeammateMirrorHand(roomInfo.Id, id, out var truthCards))
 						{
-							ApplyCardIdsToHand(orCreateHand, truthCards);
+							bool truthChanged = orCreateHand.SyncState != HandSyncState.Latest || !CardListsMatch(orCreateHand.Cards, truthCards);
+							if (truthChanged)
+							{
+								ApplyCardIdsToHand(orCreateHand, truthCards);
+								MarkOverlayDirty("TeammateMirrorHandChanged");
+								RefreshHandWidget(orCreateHand);
+								Log("DECISION_B_TRUTH_SYNC", $"Bot 玩家 {id} 从 HandTruthSource 获取权威手牌 (Count={truthCards.Count})");
+							}
 							orCreateHand.SyncState = HandSyncState.Latest;
 							orCreateHand.IsAuthoritative = true;
 							orCreateHand.MaskedHandCount = truthCards.Count;
-							Log("DECISION_B_TRUTH_SYNC", $"Bot 玩家 {id} 从 HandTruthSource 获取权威手牌 (Count={truthCards.Count})");
 						}
 						else
 						{
 							// Cards are masked and spectator stream is absent
 							int heldCount = (container != null) ? container.CardCount : 0;
+							bool clearedOrChanged = orCreateHand.Cards.Count > 0
+								|| orCreateHand.SyncState != HandSyncState.Pending
+								|| orCreateHand.MaskedHandCount != heldCount
+								|| orCreateHand.IsAuthoritative;
 							orCreateHand.Cards.Clear();
 							orCreateHand.MaskedHandCount = heldCount;
 							orCreateHand.IsAuthoritative = false;
 							orCreateHand.SyncState = HandSyncState.Pending;
+							if (clearedOrChanged)
+							{
+								MarkOverlayDirty("TeammateHandPending");
+								RefreshHandWidget(orCreateHand);
+							}
 						}
 					}
 				}
@@ -1652,8 +1656,99 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 		}
 	}
 
+	private static bool TrackedCardListsMatch(List<TrackedCard> current, List<TrackedCard> next)
+	{
+		if (current == null || next == null || current.Count != next.Count) return false;
+		for (int i = 0; i < current.Count; i++)
+		{
+			var a = current[i];
+			var b = next[i];
+			if (a == null || b == null) return false;
+			if (a.UniqueId != b.UniqueId || a.CardId != b.CardId || a.BattleCost != b.BattleCost
+				|| a.IsTemp != b.IsTemp || a.PurifyNum != b.PurifyNum)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static bool TrySyncContainerCards(
+		TrackedPlayerHand hand,
+		CardContainer cardContainer,
+		bool requireAllValid,
+		bool clearWhenEmpty,
+		out bool changed)
+	{
+		changed = false;
+		if (hand == null || cardContainer == null || cardContainer._HandCards == null)
+		{
+			return false;
+		}
+		if (cardContainer._HandCards.Count == 0)
+		{
+			if (!clearWhenEmpty)
+			{
+				return false;
+			}
+			if (hand.Cards.Count > 0)
+			{
+				hand.Cards.Clear();
+				changed = true;
+			}
+			return true;
+		}
+
+		bool anyValid = false;
+		var nextCards = new List<TrackedCard>(cardContainer._HandCards.Count);
+		for (int i = 0; i < cardContainer._HandCards.Count; i++)
+		{
+			var hc = cardContainer._HandCards[i];
+			if (hc == null)
+			{
+				if (requireAllValid) return false;
+				continue;
+			}
+			int cid = (hc.CardId > 0) ? hc.CardId : (hc.Config != null ? hc.Config.Id : 0);
+			if (cid <= 0)
+			{
+				if (requireAllValid) return false;
+			}
+			else
+			{
+				anyValid = true;
+			}
+			nextCards.Add(new TrackedCard
+			{
+				UniqueId = hc.Guid,
+				CardId = (cid > 0) ? cid : hc.CardId,
+				BattleCost = hc.BattleCost,
+				IsTemp = hc.IsTemp,
+				PurifyNum = hc.PurifyNum
+			});
+		}
+
+		if (!anyValid || nextCards.Count == 0)
+		{
+			return false;
+		}
+		if (!TrackedCardListsMatch(hand.Cards, nextCards))
+		{
+			hand.Cards.Clear();
+			hand.Cards.AddRange(nextCards);
+			changed = true;
+		}
+		return true;
+	}
+
 	private static bool SyncSelfCardsFromContainer(TrackedPlayerHand hand, BattlePlayerData playerData)
 	{
+		return SyncSelfCardsFromContainer(hand, playerData, out _);
+	}
+
+	private static bool SyncSelfCardsFromContainer(TrackedPlayerHand hand, BattlePlayerData playerData, out bool changed)
+	{
+		changed = false;
 		if (hand == null)
 		{
 			return false;
@@ -1661,38 +1756,13 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 		try
 		{
 			CardContainer cardContainer = playerData?.cardContainer ?? SimpleSingletonProvider<GameLogicManager>.inst?.battle?.GetSelfPlayerData()?.cardContainer;
-			if (cardContainer != null && cardContainer._HandCards != null && cardContainer._HandCards.Count > 0)
+			if (TrySyncContainerCards(hand, cardContainer, requireAllValid: false, clearWhenEmpty: true, out changed))
 			{
-				bool flag = false;
-				for (int i = 0; i < cardContainer._HandCards.Count; i++)
+				if (changed)
 				{
-					if (cardContainer._HandCards[i] != null && cardContainer._HandCards[i].CardId > 0)
-					{
-						flag = true;
-						break;
-					}
-				}
-				if (flag)
-				{
-					hand.Cards.Clear();
-					foreach (HandCardData handCard in cardContainer._HandCards)
-					{
-						if (handCard != null)
-						{
-							int cardId = ((handCard.CardId > 0) ? handCard.CardId : ((handCard.Config != null) ? handCard.Config.Id : handCard.CardId));
-							hand.Cards.Add(new TrackedCard
-							{
-								UniqueId = handCard.Guid,
-								CardId = cardId,
-								BattleCost = handCard.BattleCost,
-								IsTemp = handCard.IsTemp,
-								PurifyNum = handCard.PurifyNum
-							});
-						}
-					}
 					Log("SELF_CONTAINER_SYNC", $"己方手牌已从官方 cardContainer 权威同步，卡牌数={hand.Cards.Count}");
-					return true;
 				}
+				return true;
 			}
 		}
 		catch (Exception ex)

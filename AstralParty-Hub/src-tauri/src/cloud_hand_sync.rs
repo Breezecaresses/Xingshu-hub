@@ -115,30 +115,53 @@ async fn poll(app: AppHandle, token: String, generation: u64) {
         } else {
             Ok(None)
         };
+        let status = match (target.is_some(), result) {
+            (_, Err(err)) if err.code == "ACCOUNT_LOGIN_EXPIRED" => {
+                let mut sync = account.hand_sync.lock().unwrap();
+                if sync.generation == generation {
+                    sync.status = "signed_out";
+                }
+                return;
+            }
+            (_, Err(_)) => "unavailable",
+            (true, Ok(Some(value))) => match value["status"].as_str() {
+                Some("ready") => {
+                    if forward_ready_hands(&bridge, logged_in_uid, &value) {
+                        "forwarded"
+                    } else {
+                        "waiting_snapshot"
+                    }
+                }
+                Some("busy") => "busy",
+                Some("identity_mismatch") => "identity_mismatch",
+                Some("unsupported") => "waiting_match",
+                _ => "waiting_snapshot",
+            },
+            _ => "waiting_match",
+        };
         {
             let mut sync = account.hand_sync.lock().unwrap();
             if sync.generation != generation { return; }
-            sync.status = match (target, result) {
-                (_, Err(err)) if err.code == "ACCOUNT_LOGIN_EXPIRED" => {
-                    sync.status = "signed_out";
-                    return;
-                }
-                (_, Err(_)) => "unavailable",
-                (Some(target), Ok(Some(value))) => match value["status"].as_str() {
-                    Some("ready") => match mirror(&target, value) {
-                        Some(payload) if bridge.send_cloud_hand_mirror(&target, &payload) => "forwarded",
-                        _ => "waiting_snapshot",
-                    },
-                    Some("busy") => "busy",
-                    Some("identity_mismatch") => "identity_mismatch",
-                    Some("unsupported") => "waiting_match",
-                    _ => "waiting_snapshot",
-                },
-                _ => "waiting_match",
-            };
+            sync.status = status;
         }
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        tokio::time::sleep(Duration::from_millis(1500)).await;
     }
+}
+
+fn forward_ready_hands(bridge: &BridgeServer, logged_in_uid: Option<i64>, value: &Value) -> bool {
+    // Re-fetch the target session after the HTTP request finishes so sequence bumps don't go stale.
+    for _ in 0..2 {
+        let Some(fresh_target) = bridge.cloud_hand_target_for(logged_in_uid) else {
+            return false;
+        };
+        let Some(payload) = mirror(&fresh_target, value.clone()) else {
+            return false;
+        };
+        if bridge.send_cloud_hand_mirror(&fresh_target, &payload) {
+            return true;
+        }
+    }
+    false
 }
 
 #[derive(Deserialize)]
@@ -233,5 +256,57 @@ mod tests {
             invalid[key] = value;
             assert!(mirror(&target, invalid).is_none(), "accepted invalid {key}");
         }
+    }
+
+    #[test]
+    fn forward_ready_hands_uses_latest_sequence_after_context_advance() {
+        let server = BridgeServer::new_test();
+        let (tx, mut rx) = tokio::sync::mpsc::channel(4);
+        server.connection_manager().insert(crate::xing_shu::bridge::connection::ActiveConnection::new(
+            "steam_live",
+            "STEAM_CN",
+            1001,
+            1,
+            tx,
+        ));
+        let mut session = RuntimeSession::new("steam_live", "STEAM_CN", 1001, "game.exe", Some(101), "1.0.0-game-ui-r8.31", 1, "MAIN");
+        session.room_id = Some(50);
+        session.match_context = Some(RuntimeMatchContext {
+            local_player_id: Some(101),
+            roster_player_ids: vec![101, 102],
+            match_state: "MAIN_IN_MATCH".into(),
+            match_kind: Some("PVE".into()),
+            sequence: 7,
+            ..Default::default()
+        });
+        server.session_manager().insert(session);
+
+        // Simulate sequence advancing from 7 -> 11 while the HTTP call was in flight.
+        server.session_manager().update_match_context_struct("steam_live", RuntimeMatchContext {
+            connection_id: "steam_live".into(),
+            platform_id: "STEAM_CN".into(),
+            process_id: 1001,
+            local_player_id: Some(101),
+            roster_player_ids: vec![101, 102],
+            internal_room_id: Some(50),
+            room_id: 50,
+            in_match: true,
+            match_state: "MAIN_IN_MATCH".into(),
+            match_kind: Some("PVE".into()),
+            sequence: 11,
+            ..Default::default()
+        });
+
+        let response = json!({
+            "status": "ready",
+            "roomId": "50",
+            "playerId": "101",
+            "observerId": "301",
+            "observedAt": Utc::now(),
+            "hands": {"102": [10001]}
+        });
+        assert!(forward_ready_hands(&server, Some(101), &response));
+        let forwarded = rx.try_recv().expect("expected forwarded mirror frame");
+        assert!(forwarded.contains("\"spectatorSessionEpoch\":11"));
     }
 }

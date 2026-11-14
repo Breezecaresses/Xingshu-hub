@@ -251,41 +251,37 @@ pub fn resolve_steam_cn_executable_path() -> Option<PathBuf> {
         }
     }
 
-    // 3. Fallback common drive checks
-    for drive in &["C", "D", "E", "F", "G"] {
-        let candidate = PathBuf::from(format!(r"{}:\Steam\steamapps\common\Astral Party\8vJXn6CN\AstralParty_CN.exe", drive));
-        if candidate.exists() {
-            return Some(candidate);
-        }
-        let candidate_lib = PathBuf::from(format!(r"{}:\SteamLibrary\steamapps\common\Astral Party\8vJXn6CN\AstralParty_CN.exe", drive));
-        if candidate_lib.exists() {
-            return Some(candidate_lib);
+    // 3. Fallback common drive checks across C..Z
+    find_existing_executable_on_drives(&[
+        r"Steam\steamapps\common\Astral Party\8vJXn6CN\AstralParty_CN.exe",
+        r"SteamLibrary\steamapps\common\Astral Party\8vJXn6CN\AstralParty_CN.exe",
+    ])
+}
+
+fn find_existing_executable_on_drives(relative_candidates: &[&str]) -> Option<PathBuf> {
+    for drive in b'C'..=b'Z' {
+        let drive = drive as char;
+        for rel in relative_candidates {
+            let candidate = PathBuf::from(format!(r"{}:\{}", drive, rel));
+            if candidate.exists() {
+                return Some(candidate);
+            }
         }
     }
-
     None
 }
 
 /// Dynamically resolves the canonical TapTap PlatformProfile executable path if discovered.
 pub fn resolve_taptap_executable_path() -> Option<PathBuf> {
-    for drive in &["C", "D", "E", "F", "G"] {
-        let candidates = [
-            format!(r"{}:\Program Files\TapTap\吉星派对\吉星派对.exe", drive),
-            format!(r"{}:\Program Files (x86)\TapTap\吉星派对\吉星派对.exe", drive),
-            format!(r"{}:\TapTap\PC Games\524022\CN_TAPTAP_V3.3.0\吉星派对.exe", drive),
-            format!(r"{}:\TapTap\CN_TAPTAP_V3.3.0\吉星派对.exe", drive),
-            format!(r"{}:\TapTap\吉星派对\吉星派对.exe", drive),
-            format!(r"{}:\Games\CN_TAPTAP_V3.3.0\吉星派对.exe", drive),
-            format!(r"{}:\吉星派对\吉星派对.exe", drive),
-        ];
-        for candidate in candidates {
-            let p = PathBuf::from(candidate);
-            if p.exists() {
-                return Some(p);
-            }
-        }
-    }
-    None
+    find_existing_executable_on_drives(&[
+        r"Program Files\TapTap\吉星派对\吉星派对.exe",
+        r"Program Files (x86)\TapTap\吉星派对\吉星派对.exe",
+        r"TapTap\PC Games\524022\CN_TAPTAP_V3.3.0\吉星派对.exe",
+        r"TapTap\CN_TAPTAP_V3.3.0\吉星派对.exe",
+        r"TapTap\吉星派对\吉星派对.exe",
+        r"Games\CN_TAPTAP_V3.3.0\吉星派对.exe",
+        r"吉星派对\吉星派对.exe",
+    ])
 }
 
 /// The three Chinese launchers share an executable name. Only their audited
