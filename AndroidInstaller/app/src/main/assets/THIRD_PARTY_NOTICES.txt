@@ -17,7 +17,7 @@ Shizuku API / Provider 13.1.5 — Rikka Apps，Apache-2.0。
 AndroidX Annotation 1.9.1 — The Android Open Source Project，Apache-2.0。
 
 完整许可见 APK assets/licenses/。本助手对应应用源码、构建说明和依赖版本：
-https://github.com/Breezecaresses/Xingshu-hub/tree/main/AndroidInstaller
+https://github.com/Breezecaresses/AstralParty-XingShu/tree/main/AndroidInstaller
 https://github.com/MuntashirAkon/spake2-java/tree/2.2.1
 https://github.com/google/conscrypt/tree/2.5.3
 https://github.com/bcgit/bc-java/tree/r1rv81

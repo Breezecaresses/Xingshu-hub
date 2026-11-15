@@ -28,7 +28,16 @@ class AppUpdates(unittest.TestCase):
         harness.write_text('''using System;using System.IO;using System.Text;using System.Linq;using System.Diagnostics;using System.Threading;using System.Threading.Tasks;using System.Collections.Generic;
 class FakeMetadata {
  internal Dictionary<string,object> Config; internal int Canceled,Active,MaxActive; internal List<string> Calls=new List<string>(),Downloads=new List<string>();
- internal async Task Probe(string url,long size,CancellationToken cancellation) { await Fetch(url,65536,cancellation); }
+ internal async Task<HubUpdater.DownloadSource> Probe(string url,long size,CancellationToken cancellation) {
+  var timer=Stopwatch.StartNew();await Fetch(url,1048576,cancellation);
+  var rule=Rule(url);
+  return new HubUpdater.DownloadSource { Url=url,Ranges=false,BytesPerSecond=rule.ContainsKey("speed")?Convert.ToDouble(rule["speed"]):1048576000.0/Math.Max(1,timer.ElapsedMilliseconds) };
+ }
+ internal Dictionary<string,object> Rule(string url) {
+  foreach(Dictionary<string,object> r in (System.Collections.IEnumerable)Config["rules"])
+   if(url.Contains(HubUpdater.S(r,"match"))&&(!r.ContainsKey("host")||new Uri(url).Host==HubUpdater.S(r,"host")))return r;
+  return HubUpdater.Object("{\\"delay\\":5,\\"status\\":503}");
+ }
  internal void Download(string url,string destination,long size,string hash) {
   string host=new Uri(url).Host;Downloads.Add(host);File.WriteAllText(destination,"partial");
   if(Config.ContainsKey("failDownloadHost")&&HubUpdater.S(Config,"failDownloadHost")==host)throw new HubUpdater.TransportException("fixture download interrupted",0,null);
@@ -36,12 +45,8 @@ class FakeMetadata {
   File.WriteAllText(destination,"complete");
  }
  internal async Task<byte[]> Fetch(string url,long limit,CancellationToken cancellation) {
-  Dictionary<string,object> rule=null;
   lock(Calls)Calls.Add(url);
-  foreach(Dictionary<string,object> r in (System.Collections.IEnumerable)Config["rules"]) {
-   if(url.Contains(HubUpdater.S(r,"match"))&&(!r.ContainsKey("host")||new Uri(url).Host==HubUpdater.S(r,"host"))) { rule=r;break; }
-  }
-  if(rule==null)rule=HubUpdater.Object("{\\"delay\\":5,\\"status\\":503}");
+  Dictionary<string,object> rule=Rule(url);
   bool track=rule.ContainsKey("track")&&Convert.ToBoolean(rule["track"]);
   if(track)lock(Calls) { Active++;MaxActive=Math.Max(Active,MaxActive); }
   try {
@@ -52,6 +57,26 @@ class FakeMetadata {
    return bytes;
   } catch(OperationCanceledException) { Interlocked.Increment(ref Canceled);throw; }
   finally { if(track)lock(Calls)Active--; }
+ }
+}
+class FakeRanges {
+ internal Dictionary<string,object> Config;internal byte[] Payload;internal int Active,MaxActive;
+ internal bool FailedOnce;
+ internal List<Dictionary<string,object>> Calls=new List<Dictionary<string,object>>();
+ internal async Task<byte[]> Fetch(string url,long offset,int count,long size,CancellationToken cancellation) {
+  string host=new Uri(url).Host;
+  lock(Calls) {Active++;MaxActive=Math.Max(Active,MaxActive);Calls.Add(new Dictionary<string,object>{{"host",host},{"offset",offset},{"count",count}});}
+  try {
+   await Task.Delay(40,cancellation);
+   bool transient=false;
+   lock(Calls)if(offset==0&&Config.ContainsKey("failOnce")&&Convert.ToBoolean(Config["failOnce"])&&!FailedOnce){FailedOnce=true;transient=true;}
+   if(transient)throw new HubUpdater.TransportException("fixture transient disconnect",0,null);
+   if(Config.ContainsKey("allFail")&&Convert.ToBoolean(Config["allFail"]))throw new HubUpdater.TransportException("fixture all ranges unavailable",0,null);
+   if(offset==0&&Config.ContainsKey("failHost")&&HubUpdater.S(Config,"failHost")==host)throw new HubUpdater.TransportException("fixture interrupted range",0,null);
+   var bytes=new byte[count];Array.Copy(Payload,offset,bytes,0,count);
+   if(Config.ContainsKey("tamper")&&Convert.ToBoolean(Config["tamper"]))bytes[0]^=1;
+   return bytes;
+  }finally {lock(Calls)Active--;}
  }
 }
 class Harness { static int Main(string[] a) { try {
@@ -67,20 +92,38 @@ class Harness { static int Main(string[] a) { try {
   string destination=Path.Combine(Path.GetDirectoryName(a[1]),"download.zip");
   try {
    string host=HubUpdater.DownloadWithFallback(urls,destination,100000,new String('a',64),fake.Probe,fake.Download);
-   Console.WriteLine(HubUpdater.Json.Serialize(new { host=host,elapsedMs=timer.ElapsedMilliseconds,canceled=fake.Canceled,downloads=fake.Downloads,content=File.ReadAllText(destination) }));return 0;
+   Console.WriteLine(HubUpdater.Json.Serialize(new { host=host,elapsedMs=timer.ElapsedMilliseconds,canceled=fake.Canceled,downloads=fake.Downloads,probes=fake.Calls,content=File.ReadAllText(destination) }));return 0;
   }catch(Exception e){Console.WriteLine(HubUpdater.Json.Serialize(new { error=e.Message,downloads=fake.Downloads }));return 2;}
  }
  if(a[0]=="probe-header")HubUpdater.ValidateDownloadProbe(Int32.Parse(a[1]),Int64.Parse(a[2]),a[3]=="-"?null:a[3],Int64.Parse(a[4]));
+ if(a[0]=="range-header")HubUpdater.ValidateDownloadRange(Int32.Parse(a[1]),Int64.Parse(a[2]),a[3],Int64.Parse(a[4]),Int32.Parse(a[5]),Int64.Parse(a[6]));
+ if(a[0]=="parallel-choice") {
+  var sources=new[]{new HubUpdater.DownloadSource { Ranges=false,BytesPerSecond=Double.Parse(a[1]) },new HubUpdater.DownloadSource { Ranges=true,BytesPerSecond=Double.Parse(a[2]) }};
+  Console.WriteLine(HubUpdater.ShouldDownloadParallel(sources,10000000)?"parallel":"stream");return 0;
+ }
+ if(a[0]=="parallel") {
+  var config=HubUpdater.Object(File.ReadAllText(a[1]));var timer=Stopwatch.StartNew();
+  var fake=new FakeRanges {Config=config,Payload=File.ReadAllBytes(HubUpdater.S(config,"payload"))};
+  string destination=HubUpdater.S(config,"destination");
+  var sources=new List<HubUpdater.DownloadSource>{
+   new HubUpdater.DownloadSource { Url="https://edgeone.gh-proxy.org/fixture",Ranges=true,BytesPerSecond=4000000 },
+   new HubUpdater.DownloadSource { Url="https://gh-proxy.org/fixture",Ranges=true,BytesPerSecond=2000000 }};
+  if(config.ContainsKey("oneSource")&&Convert.ToBoolean(config["oneSource"]))sources.RemoveAt(1);
+  try {
+   string host=HubUpdater.DownloadParallelAsync(sources,destination,fake.Payload.Length,HubUpdater.S(config,"hash"),fake.Fetch).GetAwaiter().GetResult();
+   Console.WriteLine(HubUpdater.Json.Serialize(new {host=host,sha256=HubUpdater.Hash(destination),elapsedMs=timer.ElapsedMilliseconds,maxActive=fake.MaxActive,calls=fake.Calls}));return 0;
+  }catch(Exception e){Console.WriteLine(HubUpdater.Json.Serialize(new {error=e.Message,elapsedMs=timer.ElapsedMilliseconds,calls=fake.Calls}));return 2;}
+ }
  if(a[0]=="wire") return (int)typeof(HubUpdater).GetMethod("Main",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static).Invoke(null,new object[]{new[]{"--apply"}});
  else if(a[0]=="verify") HubUpdater.Verify(File.ReadAllText(a[1]),a[2]);
  else if(a[0]=="manifest") { Console.WriteLine(HubUpdater.ManifestName(a[1].Split(','))??"NONE");return 0; }
  else if(a[0]=="hosts") {
-  Console.WriteLine((HubUpdater.IsAllowedUpdateHost("api.github.com")&&HubUpdater.IsAllowedUpdateHost("github.com")&&HubUpdater.IsAllowedUpdateHost("edgeone.gh-proxy.org")&&HubUpdater.IsAllowedUpdateHost("gh-proxy.org")&&HubUpdater.IsAllowedUpdateHost("ghfast.top")&&!HubUpdater.IsAllowedUpdateHost("evil.example"))?"ALLOW_OK":"ALLOW_BAD");
-  var c1=HubUpdater.CandidateUrls("https://github.com/Breezecaresses/Xingshu-hub/releases/download/v0.1.3/a.zip",42,false);
-  var c2=HubUpdater.CandidateUrls("https://github.com/Breezecaresses/Xingshu-hub/releases/download/v0.1.3/a.zip",42,true);
+  Console.WriteLine((HubUpdater.IsAllowedUpdateHost("api.github.com")&&HubUpdater.IsAllowedUpdateHost("github.com")&&HubUpdater.IsAllowedUpdateHost("gh-proxy.com")&&HubUpdater.IsAllowedUpdateHost("edgeone.gh-proxy.org")&&HubUpdater.IsAllowedUpdateHost("gh-proxy.org")&&HubUpdater.IsAllowedUpdateHost("ghfast.top")&&!HubUpdater.IsAllowedUpdateHost("evil.example")&&!HubUpdater.IsAllowedUpdateHost("gh-proxy.com.evil.example"))?"ALLOW_OK":"ALLOW_BAD");
+  var c1=HubUpdater.CandidateUrls("https://github.com/Breezecaresses/AstralParty-XingShu/releases/download/v0.1.3/a.zip",42,false);
+  var c2=HubUpdater.CandidateUrls("https://github.com/Breezecaresses/AstralParty-XingShu/releases/download/v0.1.3/a.zip",42,true);
   Console.WriteLine(String.Join("|",c1));
   Console.WriteLine(String.Join("|",c2));
-  Console.WriteLine(String.Join(",",HubUpdater.ParseAtomTags("<a href='/Breezecaresses/Xingshu-hub/releases/tag/v0.1.3'/><a href='/Breezecaresses/Xingshu-hub/releases/tag/v0.1.3-test.1'/>",false,8)));
+  Console.WriteLine(String.Join(",",HubUpdater.ParseAtomTags("<a href='/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.3'/><a href='/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.3-test.1'/>",false,8)));
   return 0;
  }
  else if(a[0]=="extract") { var m=HubUpdater.Verify(File.ReadAllText(a[3]),a[4]); HubUpdater.Extract(a[1],a[2],m); }
@@ -114,7 +157,7 @@ class Harness { static int Main(string[] a) { try {
             for path, content in (extra or {}).items():
                 z.writestr(path, content)
         component = {'asset': 'desktop.zip', 'size': archive.stat().st_size, 'sha256': hashlib.sha256(archive.read_bytes()).hexdigest()}
-        m = {'schema': 1, 'repository': 'Breezecaresses/Xingshu-hub', 'tag': 'v' + version, 'version': version,
+        m = {'schema': 1, 'repository': 'Breezecaresses/AstralParty-XingShu', 'tag': 'v' + version, 'version': version,
              'sequence': 1, 'notes': 'Isolated fixture', 'desktop': component,
              'android': {'asset': 'phone.apk', 'size': 1, 'sha256': 'a' * 64, 'versionCode': 1}}
         return folder, archive, m
@@ -259,9 +302,9 @@ class Harness { static int Main(string[] a) { try {
         self.assertEqual(out[0], 'ALLOW_OK')
         c1 = out[1].split('|')
         c2 = out[2].split('|')
-        self.assertTrue(c1[0].startswith('https://api.github.com/repos/Breezecaresses/Xingshu-hub/releases/assets/42'))
-        self.assertIn('https://edgeone.gh-proxy.org/https://github.com/Breezecaresses/Xingshu-hub/releases/download/v0.1.3/a.zip', c1)
-        self.assertTrue(c2[0].startswith('https://edgeone.gh-proxy.org/'))
+        self.assertTrue(c1[0].startswith('https://api.github.com/repos/Breezecaresses/AstralParty-XingShu/releases/assets/42'))
+        self.assertIn('https://edgeone.gh-proxy.org/https://github.com/Breezecaresses/AstralParty-XingShu/releases/download/v0.1.3/a.zip', c1)
+        self.assertTrue(c2[0].startswith('https://gh-proxy.com/'))
         self.assertEqual(out[3], 'v0.1.3')
 
     def release_fixtures(self, count=1):
@@ -369,7 +412,7 @@ class Harness { static int Main(string[] a) { try {
 
     def test_atom_fallback_retains_legacy_manifest_compatibility(self):
         _, manifests, _ = self.release_fixtures()
-        atom = '<feed xmlns="http://www.w3.org/2005/Atom"><entry><link href="https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.0.1"/></entry></feed>'
+        atom = '<feed xmlns="http://www.w3.org/2005/Atom"><entry><link href="https://github.com/Breezecaresses/AstralParty-XingShu/releases/tag/v0.0.1"/></entry></feed>'
         result = self.check_fixture([
             {'match': '/releases.atom', 'host': 'edgeone.gh-proxy.org', 'delay': 20, 'body': atom},
             {'match': '/xingshu-desktop-update.json', 'delay': 10, 'status': 404},
@@ -396,7 +439,7 @@ class Harness { static int Main(string[] a) { try {
 
     def download_fixture(self, rules, *, ok=True, **config):
         import uuid
-        direct = 'https://github.com/Breezecaresses/Xingshu-hub/releases/download/v9.8.7/XingShu_Desktop_9.8.7.zip'
+        direct = 'https://github.com/Breezecaresses/AstralParty-XingShu/releases/download/v9.8.7/XingShu_Desktop_9.8.7.zip'
         folder = self.root / uuid.uuid4().hex
         folder.mkdir()
         path = folder / 'download.json'
@@ -423,6 +466,7 @@ class Harness { static int Main(string[] a) { try {
         ], failDownloadHost='edgeone.gh-proxy.org')
         self.assertEqual(result['downloads'], ['edgeone.gh-proxy.org', 'gh-proxy.org'])
         self.assertEqual(result['content'], 'complete')
+        self.assertEqual(sum('gh-proxy.org/https:' in u and 'edgeone.' not in u for u in result['probes']), 1)
 
     def test_download_integrity_failure_is_fatal(self):
         result = self.download_fixture([
@@ -433,12 +477,77 @@ class Harness { static int Main(string[] a) { try {
         self.assertEqual(result['downloads'], ['edgeone.gh-proxy.org'])
 
     def test_download_probe_checks_full_size_and_range(self):
-        self.run_case('probe-header', 206, 65536, 'bytes 0-65535/100000', 100000)
+        self.run_case('probe-header', 206, 100000, 'bytes 0-99999/100000', 100000)
         self.run_case('probe-header', 200, 100000, '-', 100000)  # Range ignored, use the first chunk only.
         self.run_case('probe-header', 206, 7, 'bytes 0-6/7', 7)
-        self.run_case('probe-header', 206, 65536, 'bytes 0-65535/99999', 100000, ok=False)
-        self.run_case('probe-header', 206, 65536, 'bytes 1-65536/100000', 100000, ok=False)
+        self.run_case('probe-header', 206, 100000, 'bytes 0-99999/99999', 100000, ok=False)
+        self.run_case('probe-header', 206, 100000, 'bytes 1-100000/100000', 100000, ok=False)
         self.run_case('probe-header', 200, 500, '-', 100000, ok=False)
+
+    def test_source_selection_prefers_sustained_speed_over_first_response(self):
+        result = self.download_fixture([
+            {'match': '', 'host': 'edgeone.gh-proxy.org', 'delay': 5, 'body': 'ready', 'speed': 55000},
+            {'match': '', 'host': 'gh-proxy.org', 'delay': 100, 'body': 'ready', 'speed': 4000000},
+        ])
+        self.assertEqual(result['downloads'], ['gh-proxy.org'])
+
+    def parallel_fixture(self, *, ok=True, **config):
+        import uuid
+        folder = self.root / uuid.uuid4().hex
+        folder.mkdir()
+        payload = (bytes(range(251)) * (8 * 1024 * 1024 // 251 + 1))[:8 * 1024 * 1024]
+        (folder / 'payload').write_bytes(payload)
+        destination = folder / 'update.zip'
+        destination.write_bytes(b'previous verified archive')
+        request = folder / 'parallel.json'
+        request.write_text(json.dumps({'payload': str(folder / 'payload'), 'destination': str(destination),
+                           'hash': hashlib.sha256(payload).hexdigest(), **config}), encoding='utf-8')
+        result = json.loads(self.run_case('parallel', request, ok=ok))
+        self.assertFalse(list(folder.glob('*.partial-*')), 'Incomplete range assembly leaked')
+        return result, destination, payload
+
+    def test_parallel_download_uses_four_workers_and_assembles_exact_ranges(self):
+        result, destination, payload = self.parallel_fixture()
+        self.assertEqual(result['maxActive'], 4)
+        self.assertEqual(destination.read_bytes(), payload)
+        calls = sorted(result['calls'], key=lambda c: c['offset'])
+        offset = 0
+        for call in calls:
+            self.assertEqual(call['offset'], offset)
+            offset += call['count']
+        self.assertEqual(offset, len(payload))
+
+    def test_interrupted_range_retries_only_that_range_on_another_source(self):
+        result, destination, payload = self.parallel_fixture(failHost='edgeone.gh-proxy.org')
+        self.assertEqual(destination.read_bytes(), payload)
+        self.assertTrue(any(c['host'] == 'gh-proxy.org' and c['offset'] == 0 for c in result['calls']))
+        self.assertLess(sum(c['count'] for c in result['calls']), 2 * len(payload))
+
+    def test_parallel_integrity_failure_preserves_existing_archive(self):
+        result, destination, _ = self.parallel_fixture(tamper=True, ok=False)
+        self.assertIn('SHA256', result['error'])
+        self.assertEqual(destination.read_bytes(), b'previous verified archive')
+
+    def test_unavailable_range_sources_cancel_workers_and_preserve_existing_archive(self):
+        result, destination, _ = self.parallel_fixture(allFail=True, ok=False)
+        self.assertLess(result['elapsedMs'], 1500)
+        self.assertEqual(destination.read_bytes(), b'previous verified archive')
+
+    def test_parallel_ranges_reject_wrong_offset_total_and_ignored_range(self):
+        self.run_case('range-header', 206, 1024, 'bytes 2048-3071/100000', 2048, 1024, 100000)
+        self.run_case('range-header', 206, 1024, 'bytes 2048-3071/99999', 2048, 1024, 100000, ok=False)
+        self.run_case('range-header', 206, 1024, 'bytes 0-1023/100000', 2048, 1024, 100000, ok=False)
+        self.run_case('range-header', 200, 100000, '-', 2048, 1024, 100000, ok=False)
+
+    def test_single_source_transient_reset_retries_only_the_incomplete_range(self):
+        result, destination, payload = self.parallel_fixture(failOnce=True, oneSource=True)
+        self.assertEqual(destination.read_bytes(), payload)
+        self.assertLess(sum(c['count'] for c in result['calls']), 2 * len(payload))
+        self.assertEqual(sum(c['offset'] == 0 for c in result['calls']), 2)
+
+    def test_fast_stream_is_not_replaced_by_slower_range_sources(self):
+        self.assertEqual(self.run_case('parallel-choice', 20000000, 55000).strip(), 'stream')
+        self.assertEqual(self.run_case('parallel-choice', 1000000, 4000000).strip(), 'parallel')
 
 
 if __name__ == '__main__':

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Link } from 'react-router-dom';
 import { Activity, Cpu, FileCheck2, Radio, RefreshCw } from 'lucide-react';
+import { isTauriRuntime } from '../../shared/runtime';
+import { DesktopOnlyBanner } from '../../components/DesktopOnlyBanner';
 import { ExtensionTargetPicker, useExtensionTarget, type Inventory } from '../extensions/ExtensionWorkspace';
 import { selectedRuntimeSessions } from './selectedRuntimeSessions';
 
@@ -25,6 +27,7 @@ export function RuntimeDiagnosticsPanel() {
   const [busy, setBusy] = useState(false);
   const request = useRef(0);
   const refresh = useCallback(async () => {
+    if (!isTauriRuntime()) return;
     const ticket = ++request.current;
     setInventory(null); setLoadedId(''); setError('');
     if (!game) { setBusy(false); return; }
@@ -41,7 +44,7 @@ export function RuntimeDiagnosticsPanel() {
     let timer: ReturnType<typeof setTimeout>;
     setLiveId(''); setProcess(null); setSessions([]); setLiveError('');
     const poll = async () => {
-      if (!game) return;
+      if (!game || !isTauriRuntime()) return;
       const results = await Promise.allSettled([
         invoke<Session[]>('get_runtime_sessions'),
         invoke<ProcessState>('get_extension_runtime_state', { installationId: game.id }),
@@ -61,6 +64,7 @@ export function RuntimeDiagnosticsPanel() {
   const currentSessions = liveId === game?.id ? sessions : [];
   const runtime = current?.entries.find(entry => entry.id === 'builtin.runtime');
   return <div>
+    <DesktopOnlyBanner feature="runtime" compact />
     <header className="extension-header"><div><h2 style={{ fontSize: 18 }}>游戏组件状态</h2><p>检查所选游戏的文件版本、进程与实时连接，排查安装后未生效的问题</p></div><button className="btn btn-secondary" disabled={busy} onClick={() => void refresh()}><RefreshCw size={14} />重新校验文件</button></header>
     <ExtensionTargetPicker target={target} purpose="diagnose" />
     {game ? <>

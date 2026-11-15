@@ -14,7 +14,7 @@ import tempfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-REPO = 'Breezecaresses/Xingshu-hub'
+REPO = 'Breezecaresses/AstralParty-XingShu'
 
 
 def sha(path):

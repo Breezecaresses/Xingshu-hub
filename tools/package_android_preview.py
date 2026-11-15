@@ -107,7 +107,7 @@ def main():
 
 电脑连接手机的安装工具已包含在另一个电脑端 ZIP 内，本包不再附带 Windows EXE。
 GitHub 会另外保留与包内完全相同的 APK 和签名更新清单，供“检查助手更新”直接下载，无需手机先下载并解压整个 ZIP。
-源码：https://github.com/Breezecaresses/Xingshu-hub
+源码：https://github.com/Breezecaresses/AstralParty-XingShu
 提交：{args.source_commit}
 ''', encoding='utf-8-sig')
         entries = sorted(path for path in package.rglob('*') if path.is_file())

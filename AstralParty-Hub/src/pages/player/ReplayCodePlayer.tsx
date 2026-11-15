@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {invoke} from '@tauri-apps/api/core';
 import {platformName} from '../../shared/gameLibrary';
+import {isTauriRuntime} from '../../shared/runtime';
 import type {LibraryState} from './LibraryUI';
 
 type Result={requestId:string;status:string;message:string};
@@ -10,6 +11,9 @@ export function ReplayCodePlayer({state}:{state:LibraryState}){
   const available=state.sessions.filter(s=>s.connectionState==='CONNECTED'&&s.livePlayerId);
   const connection=available.find(s=>s.connectionId===target)||state.session||available[0];
   useEffect(()=>()=>{generation.current++;if(timer.current)clearTimeout(timer.current);},[]);
+  if (!isTauriRuntime()) {
+    return null;
+  }
   const play=async()=>{
     if(!/^[0-9]{1,30}$/.test(code.trim())){setNotice('请输入 1～30 位数字回放码。');return;}
     if(!connection){setNotice('请启动安装了新版星枢插件的电脑游戏，登录并停在大厅。');return;}

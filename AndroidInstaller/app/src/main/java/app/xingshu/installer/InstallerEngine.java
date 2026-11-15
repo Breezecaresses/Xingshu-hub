@@ -58,7 +58,7 @@ final class InstallerEngine {
                         installState = "no_catalog";
                     } else {
                         try {
-                            resolvedRel = AddressablesCatalog.resolveManagedRuntimeRelativePath(catalog);
+                            resolvedRel = AddressablesCatalog.resolveManagedRuntimeRelativePath(filesRoot, catalog);
                             File target = new File(filesRoot, resolvedRel);
                             if (!target.isFile()) {
                                 installState = "no_bundle";
@@ -111,7 +111,7 @@ final class InstallerEngine {
             if (!catalog.isFile()) {
                 throw new IOException("未找到 " + meta.label + "（" + pkg + "）的 catalog_3.3.0.json。\n请先打开该渠道游戏更新资源并进入大厅一次，再正常退出后检查。");
             }
-            String resolvedRel = AddressablesCatalog.resolveManagedRuntimeRelativePath(catalog);
+            String resolvedRel = AddressablesCatalog.resolveManagedRuntimeRelativePath(filesRoot, catalog);
             File target = new File(filesRoot, resolvedRel);
             String hash = hash(target);
             probe(target);
@@ -184,7 +184,7 @@ final class InstallerEngine {
 
             checkGame(pkg, meta);
             if (running(pkg)) throw new IOException("游戏仍在运行，请正常退出后重试，不会中断对局");
-            String resolvedRel = AddressablesCatalog.resolveManagedRuntimeRelativePath(catalog);
+            String resolvedRel = AddressablesCatalog.resolveManagedRuntimeRelativePath(filesRoot, catalog);
             File target = new File(filesRoot, resolvedRel);
 
             String before = hash(target);
@@ -215,7 +215,7 @@ final class InstallerEngine {
             if (!companions.isEmpty()) CacheConflict.archiveAndDeleteCompanions(filesRoot, companions, snapshot.getParentFile());
             if (running(pkg) || !hash(target).equals(before)) throw new IOException("游戏已启动或缓存已变化，请退出后重试");
 
-            String recheckedRel = AddressablesCatalog.resolveManagedRuntimeRelativePath(catalog);
+            String recheckedRel = AddressablesCatalog.resolveManagedRuntimeRelativePath(filesRoot, catalog);
             if (!recheckedRel.equals(resolvedRel) || !CacheConflict.replaceableTarget(
                     target, catalog, PayloadSpec.CATALOG, recheckedRel, PayloadSpec.RELATIVE)) {
                 throw new IOException("官方资源清单已变化，请重新检查，未修改游戏");

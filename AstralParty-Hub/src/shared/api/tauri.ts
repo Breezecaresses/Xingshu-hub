@@ -1,6 +1,27 @@
 import { invoke } from '@tauri-apps/api/core';
+import { isTauriRuntime } from '../runtime.ts';
 let syncedRuntimeBindings: string | null = null;
 let runtimeBindingsSync: Promise<void> | null = null;
+
+function safeInvoke<T>(command: string, args?: Record<string, unknown>, webFallback?: T): Promise<T> {
+  if (!isTauriRuntime()) {
+    if (webFallback !== undefined) return Promise.resolve(webFallback);
+    return Promise.reject(new Error('当前为纯网页版模式，本地游戏与插件管理仅在星枢 Hub 桌面端可用'));
+  }
+  return invoke<T>(command, args);
+}
+
+const EMPTY_WEB_REPORT: DiagnosticReport = {
+  overall_status: 'HEALTHY',
+  items: [],
+  snapshot: {
+    os_name: 'Web',
+    os_version: '',
+    running_processes: [],
+    xingshu_detected: false,
+    recent_transactions: [],
+  },
+};
 import { CANONICAL_BOUND_SPECTATOR_PLAYER_ID } from '../../services/expectedAccountBindings.ts';
 import type {
   Backup,
@@ -36,23 +57,23 @@ const isZh = (): boolean => {
 
 export const api = {
   // Locale & Startup
-  getStartupLocale: () => invoke<string | null>('get_startup_locale').catch(() => null),
-  getStartupRoute: () => invoke<string | null>('get_startup_route').catch(() => null),
+  getStartupLocale: () => safeInvoke<string | null>('get_startup_locale', undefined, null).catch(() => null),
+  getStartupRoute: () => safeInvoke<string | null>('get_startup_route', undefined, null).catch(() => null),
 
   // Game
-  detectGame: () => invoke<GameInstallation>('detect_game'),
+  detectGame: () => safeInvoke<GameInstallation>('detect_game'),
   setManualGamePath: (path: string) =>
-    invoke<GameInstallation>('set_manual_game_path', { path }),
-  getPrimaryGame: () => invoke<GameInstallation | null>('get_primary_game'),
+    safeInvoke<GameInstallation>('set_manual_game_path', { path }),
+  getPrimaryGame: () => safeInvoke<GameInstallation | null>('get_primary_game', undefined, null),
   checkGameProcessStatus: (platformId?: string) =>
-    invoke<GameProcessStatus>('check_game_process_status', { platformId }).catch(() => ({
+    safeInvoke<GameProcessStatus>('check_game_process_status', { platformId }).catch(() => ({
       isRunning: false,
       pid: undefined,
       processName: '',
       platformId: platformId || 'STEAM_CN',
     })),
   launchGameUri: (uri?: string, platformId?: string) =>
-    invoke<GameLaunchResult>('launch_game_uri', { uri, platformId,
+    safeInvoke<GameLaunchResult>('launch_game_uri', { uri, platformId,
       executablePath: typeof localStorage !== 'undefined' && platformId ? localStorage.getItem(`xingshu.launcher.${platformId}.executablePath`) : null,
     }).catch((err) => ({
       success: false,
@@ -62,43 +83,43 @@ export const api = {
     })),
 
   // Player & Progress
-  getPlayerProfile: () => invoke<PlayerProfile | null>('get_player_profile'),
+  getPlayerProfile: () => safeInvoke<PlayerProfile | null>('get_player_profile', undefined, null),
   listCharacterProgress: (profileId: string) =>
-    invoke<CharacterProgress[]>('list_character_progress', { profileId }),
+    safeInvoke<CharacterProgress[]>('list_character_progress', { profileId }, []),
   listCardInventory: (profileId: string) =>
-    invoke<CardInventory[]>('list_card_inventory', { profileId }),
+    safeInvoke<CardInventory[]>('list_card_inventory', { profileId }, []),
 
   // Catalog
-  listCharacters: () => invoke<Character[]>('list_characters'),
-  listCards: () => invoke<Card[]>('list_cards'),
+  listCharacters: () => safeInvoke<Character[]>('list_characters', undefined, []),
+  listCards: () => safeInvoke<Card[]>('list_cards', undefined, []),
 
   // Extensions
-  listPlugins: () => invoke<Plugin[]>('list_plugins'),
-  listMods: () => invoke<ModPackage[]>('list_mods'),
+  listPlugins: () => safeInvoke<Plugin[]>('list_plugins', undefined, []),
+  listMods: () => safeInvoke<ModPackage[]>('list_mods', undefined, []),
   inspectPackageArchive: (archivePath: string) =>
-    invoke<HubPackageManifestV1>('inspect_package_archive', { archivePath }),
+    safeInvoke<HubPackageManifestV1>('inspect_package_archive', { archivePath }),
   uninstallExtension: (extensionId: string, isPlugin: boolean, installationId: string) =>
-    invoke<void>('uninstall_extension', { extensionId, isPlugin, installationId }),
+    safeInvoke<void>('uninstall_extension', { extensionId, isPlugin, installationId }),
 
   // Install Engine
   installPackage: (archivePath: string, installationId: string) =>
-    invoke<InstallTransaction>('install_package', { archivePath, installationId }),
+    safeInvoke<InstallTransaction>('install_package', { archivePath, installationId }),
   rollbackTransaction: (transactionId: string) =>
-    invoke<void>('rollback_transaction', { transactionId }),
+    safeInvoke<void>('rollback_transaction', { transactionId }),
   listInstallTransactions: (limit?: number) =>
-    invoke<InstallTransaction[]>('list_install_transactions', { limit }),
-  listBackups: () => invoke<Backup[]>('list_backups'),
+    safeInvoke<InstallTransaction[]>('list_install_transactions', { limit }, []),
+  listBackups: () => safeInvoke<Backup[]>('list_backups', undefined, []),
 
   // Diagnostics & Providers
-  getDiagnosticReport: () => invoke<DiagnosticReport>('get_diagnostic_report'),
-  listProviders: () => invoke<ProviderMetadata[]>('list_providers'),
-  probeProviders: () => invoke<Array<[ProviderMetadata, ProbeResult]>>('probe_providers'),
+  getDiagnosticReport: () => safeInvoke<DiagnosticReport>('get_diagnostic_report', undefined, EMPTY_WEB_REPORT),
+  listProviders: () => safeInvoke<ProviderMetadata[]>('list_providers', undefined, []),
+  probeProviders: () => safeInvoke<Array<[ProviderMetadata, ProbeResult]>>('probe_providers', undefined, []),
   syncProviderData: (providerId: string) =>
-    invoke<number>('sync_provider_data', { providerId }),
+    safeInvoke<number>('sync_provider_data', { providerId }),
 
   // XingShu Runtime Manager
   getRuntimeStatus: () =>
-    invoke<{
+    safeInvoke<{
       active_version: string;
       versions: import('../types').RuntimeVersion[];
       installed_runtime?: import('../types').InstalledRuntime;
@@ -350,42 +371,90 @@ export const api = {
   setSubscribePlayer: (sessionId: string, playerId: string) =>
     invoke<void>('set_subscribe_player', { sessionId, playerId }).catch(() => console.log('Subscribed to', playerId)),
   getSpectatorHandPayload: () =>
-    invoke<SpectatorHandPayload | null>('get_spectator_hand_payload').catch(() => null),
+    safeInvoke<SpectatorHandPayload | null>('get_spectator_hand_payload', undefined, null).catch(() => null),
 
   // XingShu Bridge (IPC Server)
   getBridgeStatus: () =>
-    invoke<import('../types').BridgeConnectionState>('get_bridge_status').catch(() => null),
+    safeInvoke<import('../types').BridgeConnectionState | null>('get_bridge_status', undefined, null).catch(() => null),
   getRuntimeSessions: async () => {
+    if (!isTauriRuntime()) return [];
     const { gameAccountService } = await import('../../services/gameAccountService.ts');
     const bindings = gameAccountService.getBindings().map(({ platformId, playerId, role }) => ({ platformId, playerId, role }));
     const key = JSON.stringify(bindings);
     if (runtimeBindingsSync) await runtimeBindingsSync;
     if (key !== syncedRuntimeBindings) {
-      runtimeBindingsSync = invoke<void>('configure_runtime_bindings', { bindings })
+      runtimeBindingsSync = safeInvoke<void>('configure_runtime_bindings', { bindings })
         .then(() => { syncedRuntimeBindings = key; }).finally(() => { runtimeBindingsSync = null; });
       await runtimeBindingsSync;
     }
-    return invoke<import('../../types/runtimeSession').RuntimeSession[]>('get_runtime_sessions').catch(() => []);
+    return safeInvoke<import('../../types/runtimeSession').RuntimeSession[]>('get_runtime_sessions', undefined, []).catch(() => []);
   },
   sendBridgeTestEvent: (message?: string) =>
-    invoke<void>('send_bridge_test_event', { message }),
+    safeInvoke<void>('send_bridge_test_event', { message }),
   sendWatchTarget: (
     connectionId: string,
     target: any,
     expectedSpectatorPlayerId: number = CANONICAL_BOUND_SPECTATOR_PLAYER_ID
   ) =>
-    invoke<string>('send_watch_target', {
+    safeInvoke<string>('send_watch_target', {
       connectionId,
       target,
       expectedSpectatorPlayerId,
     }),
   clearBridgeLogs: () =>
-    invoke<void>('clear_bridge_logs'),
+    safeInvoke<void>('clear_bridge_logs'),
 
   // Match History & Analytics
   // Remote Packages / Update Center
-  listRemotePackages: () => invoke<import('../types').RemotePackage[]>('list_remote_packages'),
+  listRemotePackages: () => safeInvoke<import('../types').RemotePackage[]>('list_remote_packages', undefined, []),
+
+  // Mod / Card / Skin Workshop (Desktop installer)
+  workshopListLocalState: (installationId: string) =>
+    safeInvoke<WorkshopLocalItemState[]>('workshop_list_local_state', { installationId }, []),
+  workshopDownloadAndInstall: (request: WorkshopInstallRequestPayload) =>
+    safeInvoke<WorkshopInstallResult>('workshop_download_and_install', { request }),
+  workshopRestoreMod: (installationId: string, modId: string) =>
+    safeInvoke<string>('workshop_restore_mod', { installationId, modId }),
 };
+
+export interface WorkshopDownloadFilePayload {
+  target: string;
+  sha256: string;
+  originalSha256?: string;
+  size?: number;
+  payloadUrl?: string | null;
+}
+
+export interface WorkshopInstallRequestPayload {
+  installationId: string;
+  apiBase: string;
+  modId: string;
+  name: string;
+  installKind: string;
+  gameVersion?: string;
+  platforms?: string[];
+  downloadUrl?: string | null;
+  sha256?: string;
+  sizeBytes?: number;
+  files?: WorkshopDownloadFilePayload[];
+}
+
+export interface WorkshopLocalItemState {
+  modId: string;
+  phase: string;
+  installKind: string;
+  transactionId?: string | null;
+  downloadedPath?: string | null;
+  canRestore: boolean;
+}
+
+export interface WorkshopInstallResult {
+  modId: string;
+  phase: string;
+  message: string;
+  downloadedPath?: string | null;
+  transactionId?: string | null;
+}
 
 export const getSpectatorHandPayload = api.getSpectatorHandPayload;
 export const getRuntimeSessions = api.getRuntimeSessions;

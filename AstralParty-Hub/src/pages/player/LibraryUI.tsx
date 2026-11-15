@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke, isTauri } from '@tauri-apps/api/core';
+import { assetUrl, isTauriRuntime } from '../../shared/runtime';
 import { api } from '../../shared/api/tauri';
 import { accountKey, defaultLibraryKey, gameCatalog, plainGameText, platformName, sessionKey } from '../../shared/gameLibrary';
 import type { LibraryAccount, LibrarySession } from '../../shared/gameLibrary';
@@ -101,6 +102,12 @@ export function useGameLibrary() {
 export type LibraryState = ReturnType<typeof useGameLibrary>;
 
 export function LibraryHeader({ title, description, state }: { title: string; description: string; state: LibraryState }) {
+  if (!isTauriRuntime()) {
+    return <>
+      <header className="library-header"><div><h1 className="aurora-sheen-text">{title}</h1><p>{description}</p></div></header>
+      <div className="library-source"><span>图鉴：官方配置 {gameCatalog.version}</span><span className="library-online">网页版 · 云端接口与静态图鉴已就绪</span></div>
+    </>;
+  }
   const options = new Map(state.accounts.map(a => [accountKey(a), `${platformName(a.platform)} · ${a.snapshot.name || a.snapshot.playerId} (${a.snapshot.playerId})`]));
   if(state.cloud.identity&&!options.has(state.cloudKey))options.set(state.cloudKey,`手机号账号 · ${state.cloud.identity.nick} (${state.cloud.identity.uid}) · 待同步`);
   state.sessions.filter(s => s.livePlayerId).forEach(s => { if (!options.has(sessionKey(s))) options.set(sessionKey(s), `${platformName(s.platformId)} · ${s.livePlayerId} · 待同步`); });
@@ -119,7 +126,8 @@ export function LibraryHeader({ title, description, state }: { title: string; de
 }
 
 export function GameImage({ asset, name, className = '' }: { asset: string; name: string; className?: string }) {
-  const src = gameCatalog.assets[asset];
+  const raw = gameCatalog.assets[asset];
+  const src = raw ? assetUrl(raw) : '';
   return src ? <img className={`library-image ${className}`} src={src} alt={name} loading="lazy" /> : <div className={`library-image library-image-missing ${className}`}>暂无图片</div>;
 }
 export function GameText({ text }: { text?: string }) { return <p className="library-text">{plainGameText(text || '官方配置暂未提供说明。')}</p>; }

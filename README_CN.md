@@ -1,71 +1,71 @@
-# 星枢 (XingShu)
+<h1 align="center">AstralParty-XingShu</h1>
 
-[项目文档与验证记录](docs/README.md)
+<h3 align="center">感谢您选择 AstralParty-XingShu（星枢）！</h3>
 
 <p align="center">
-  <strong>AstralParty（吉星派对）多端游戏增强运行时与跨进程控制枢纽</strong>
+  <strong>反馈问题与建议：QQ 群 <code>540929823</code> &nbsp;|&nbsp; <a href="https://discord.gg/dxVS6ZF393">Discord</a></strong>
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README_CN.md">简体中文</a>
+  <img src="AstralParty-Hub/public/brand/xingshu.svg" width="128" alt="AstralParty-XingShu" />
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" />
+  回放复盘 · 手牌联动 · 模组工坊 · 离线图鉴 · 游戏内辅助
+</p>
+
+<p align="center">
+  <a href="https://github.com/Breezecaresses/AstralParty-XingShu/releases"><img src="https://img.shields.io/github/v/release/Breezecaresses/AstralParty-XingShu?include_prereleases&label=release&color=3b82f6" alt="Release" /></a>
   <img src="https://img.shields.io/badge/Hub-Tauri%202%20%7C%20Rust-orange.svg" alt="Tauri Rust" />
   <img src="https://img.shields.io/badge/Frontend-React%2019%20%7C%20TypeScript-blue.svg" alt="React TS" />
   <img src="https://img.shields.io/badge/Runtime-C%23%20%7C%20.NET-purple.svg" alt="C# .NET" />
-  <img src="https://img.shields.io/badge/Platform-Windows-lightgrey.svg" alt="Windows" />
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Android%20%7C%20Web-lightgrey.svg" alt="Platform" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Breezecaresses/AstralParty-XingShu/releases">下载最新版</a> ·
+  <a href="https://astralparty-xingshu.lanxichaxu.cn/xingshu-hub/">在线网页版</a> ·
+  <a href="docs/README.md">文档与验证记录</a> ·
+  <a href="README.md">English</a> · <a href="README_CN.md">简体中文</a>
 </p>
 
 ---
 
 ## 正式版本
 
-[下载星枢 v0.1.3](https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.3)，电脑与安卓手机一起更新，适配《吉星派对》3.3.0／资源 152。
+[下载星枢 v0.1.3](https://github.com/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.3)，电脑端与安卓手机端同步适配《吉星派对》`3.3.0`（资源版本 `152`）。
 
-- **电脑端 ZIP**包含星枢 Hub、安装助手和 Steam 国服、TapTap 电脑版、哔哩哔哩、WeGame 四个渠道的插件。完整解压后运行 `星枢安装助手.exe`。
-- **安卓手机 ZIP**包含手机安装助手 APK、手动替换文件和原版还原文件。助手顶部增加安装／使用说明，并可在确认后备份整理同位置覆盖冲突，再安装星枢。安装步骤见[手机安装说明](docs/guides/ANDROID_PHONE_INSTALL.md)。
+| 平台 | 获取方式 | 说明 |
+| --- | --- | --- |
+| **Windows 桌面端** | `XingShu_Desktop_*.zip` | 包含星枢 Hub、`星枢安装助手.exe` 及 Steam 国服、TapTap 电脑版、哔哩哔哩、WeGame 四渠道插件；支持**模组工坊** SHA-256 校验与原子备份后一键安装/还原。 |
+| **在线网页版** | [astralparty-xingshu.lanxichaxu.cn/xingshu-hub](https://astralparty-xingshu.lanxichaxu.cn/xingshu-hub/) | 免安装打开即用：支持玩家 UID 战绩查询、`.rep` / 对局编号回放深度分析、棋盘步进复盘、全量图鉴以及社区**模组 / 卡牌 / 皮肤工坊**下载与投稿。 |
+| **安卓手机端** | `XingShu_Android_*.zip` / `.apk` | 含手机安装助手 APK、手动替换与官方还原文件，支持本机无线调试与同路径覆盖前备份整理。详见[手机安装说明](docs/guides/ANDROID_PHONE_INSTALL.md)。 |
 
-本版更新 Hub 浅色界面、卡片与页面交互，刷新资源 152 的离线图鉴，并合入 r8.29 左侧防御参考及闪避建议。防御提示位置与建议已获人工验收；星币商店自动购买默认关闭，实际购买及跨日执行仍待验证。保留资源 152 悬浮球热修与官方更新；直播隐私试用继续封存。详情见[本次发布记录](docs/records/RELEASE_20261113_0.1.3.md)。
-
-本次沿用原有双端签名更新清单，Hub 和手机助手继续从原入口检查更新；独立更新 APK 与安卓 ZIP 内的 APK 相同。软件更新后仍需正常退出游戏，再用安装助手更新游戏内插件。详见[发布下载项](docs/guides/RELEASE_PACKAGING.md)。
-
----
-
-## 📖 项目简介
-
-**星枢 (XingShu)** 是针对《AstralParty》（吉星派对）开发的本地多进程协同工作站与游戏增强运行时套件。
-
-项目由两大部分构成：
-1. **AstralParty-Hub（星枢控制台）**：基于 Tauri 2 + Rust + React 19 构建的现代化桌面管理中枢。提供账号隔离管理、运行时生命周期监管、本地回环通信中继以及自动化观战跟房控制。
-2. **XingShu Runtime（游戏增强运行时）**：注入游戏进程的 C# Unity 增强模块。提供浮动状态卡牌悬浮窗、HUD 挂件、对局统计、自适应生命周期调和以及基于权威数据源的手牌真值镜像。
+> [!NOTE]
+> 软件自更新不会自动替换游戏内插件。应用更新完成后，请正常退出游戏，再通过安装助手重装或校验游戏内运行时插件。详见[本次发布记录](docs/records/RELEASE_20261113_0.1.3.md)与[发布下载项](docs/guides/RELEASE_PACKAGING.md)。
 
 ---
 
-## 当前运行状态
+## 项目简介
 
-电脑在允许观战的合作局中可显示队友实时手牌。使用同一游戏账号登录 Hub 并保持 Hub 运行，进局后展开角色头像旁的「手牌」。Steam 国服已实测四人真人合作局，TapTap、哔哩哔哩和 WeGame 已通过安装文件校验。
+**AstralParty-XingShu（星枢）** 是面向《Astral Party》（吉星派对）的多端工作站、回放分析平台、模组工坊与游戏增强运行时套件：
 
-使用本地观战时，需要单独登录官方观战端。详情见[本机观战说明](AstralParty-Hub/docs/local-managed-watcher.md)。
+1. **AstralParty-Hub（桌面控制台 & 网页版）**：基于 Tauri 2 + Rust + React 19 + TypeScript 构建。提供多平台账号隔离与自动跟房调度、对局 `.rep` 回放帧级复盘、实时棋盘格网还原、全角色静态表情/高清立绘/卡牌/筹码/地图攻略离线图鉴，以及社区**游戏内优化 Mod / 卡牌替换 / 角色皮肤工坊**。
+2. **XingShu Runtime（游戏内 C# 运行时）**：注入游戏客户端的辅助模块，提供队友手牌悬浮窗、左侧防御与闪避建议、怪物技能冷却追踪、自由缩放选目标镜头以及确定性 FairyGUI 生命周期调和。
 
-## 本次 Hub 与运行时更新
+---
 
-- 角色中心收录 38 条官方配置（36 个已发布角色与 2 条预更新配置），包含 2 条未完整发布的预更新角色；尚缺的名称、技能与立绘标明待更新。
-- 角色、皮肤、羁绊与成长详情；完整竖版卡面和原生动态异画；筹码图鉴与地图、场地效果详情。
-- 对局历史和单场结算按账号保存；PVE 显示胜负、PVP 显示名次。评分提高辅助转账贡献，结算金币不参与评分。
-- 运行时、包管理器、插件与模组按五个渠道和实际安装目录管理，支持同渠道多个位置；手动文件仅展示检测状态。
-- 运行时页分别展示文件校验、实际进程与已确认连接上报的版本。本版提供 Steam 国服、TapTap 电脑版、哔哩哔哩和 WeGame 的已校验安装文件。
-- Hub 侧栏、设置页与插件 F1 功能中心均附项目来源。当前桌面运行时版本为 r8.29；离线图鉴已从官方资源 152 重新导出，含 75 张卡牌、93 项筹码及 26 条地图／模式配置。
-- 游戏内功能中心采用半透明无条纹框架、游戏字体与官方星形滑块，修复彩色浮字预览；选目标时保留原版平移及自定义缩放，拉远后名字与指向线缩小。实测范围及仍待确认的项目见[界面与镜头验证记录](docs/records/GAME_UI_R1.md)。
+## 核心功能亮点
 
-扩展渠道声明、目录映射及管理边界见[扩展包说明](AstralParty-Hub/docs/specs/extension_channels.md)。游戏美术、配置及资源版权归原权利人所有，不随本项目代码的 MIT 许可证重新授权。
+- **对局回放复盘与实时棋盘**：输入对局编号或导入本地 `.rep` 文件，即可查看逐轮伤害/星币趋势、打怪击杀金币统计、筹码三选一、前 6 轮代付意愿、可交互图表筛选、可排序详表以及逐事件步进棋盘拓扑。
+- **游戏内 Mod / 卡牌 / 皮肤工坊**：集中收录优化 Mod、卡牌贴图替换、角色皮肤与语音特效包。网页版支持预览、筛选、下载及社区投稿审核；桌面版支持 SHA-256 校验与 `.xingshu-mods` 原子备份后一键安装与无损还原。
+- **静态表情与全角色图鉴**：同步资源 `152` 完整资料，收录 38 条角色配置（36 已发布角色 + 2 条预更新槽位）、75 张卡牌、93 项筹码与 26 条地图配置；图鉴、对局、UID 查询与机器人战绩卡统一采用无重复随机静态表情头像，并在角色展示页完整保留竖版全身立绘与动态皮肤。
+- **权威手牌联动与多渠道兼容**：在允许观战的合作局中保持同一账号登录 Hub（或配合独立观战端，详见[本机观战说明](AstralParty-Hub/docs/local-managed-watcher.md)），可在角色旁实时显示队友手牌。Steam 国服已实测四人真人合作局，TapTap、Bilibili 与 WeGame 已通过安装文件校验。
 
-## 安卓
+---
 
-手机安装助手支持 Android 11 及以上的本机无线调试。小米 14 Pro 已验证助手 0.1.2 覆盖升级，以及 r8.25 启动、悬浮球、功能中心和手牌页；本版沿用已安装核对的 r8.29 插件；0.1.3 助手已构建、签名并通过单元检查。真人合作云端手牌全流程仍待实机验证。详见[安卓兼容说明](docs/guides/ANDROID_COMPATIBILITY.md)。
-
-## 🏗️ 架构概览
+## 架构概览
 
 ```mermaid
 flowchart TD
@@ -74,7 +74,9 @@ flowchart TD
         FSM["Auto-Follow 自动跟房状态机 (11 状态)"]
         TCPServer["Bridge TCP Server (127.0.0.1:25890)"]
         AccountMgr["多平台账号与会话调度器"]
+        Workshop["工坊安装器 (SHA-256 + 原子备份)"]
         UI <--> TCPServer
+        UI <--> Workshop
         FSM <--> TCPServer
         AccountMgr <--> FSM
     end
@@ -103,119 +105,80 @@ flowchart TD
 
 ---
 
-## ✨ 核心特性
+## 核心技术机制
 
-- **权威手牌真值体系 (HandTruthSource)**：
-  - 完整手牌镜像经 Hub 使用 `127.0.0.1` 本地回环通信；官方游戏登录及观战仍使用游戏自身的服务器连接。
-  - **绝不伪造虚假卡牌**：严禁渲染伪造的占位卡牌 (`CardId = -1`)，手牌数据严格与对局英雄名单校验。
-  - 观战端获得完整权威数据后，通过本地 Hub 实时镜像推送给主玩客户端。
-- **确定性挂件生命周期调和 (Overlay Lifecycle Reconciliation)**：
-  - 解决 FairyGUI 节点未挂载、场景切换重构导致的挂件丢失或无法自启问题。
-  - 涵盖 10 类生命周期事件驱动触发，采用自适应两级轮询重试机制，确保手牌卡框始终精准对齐头像。
-- **安全隔离的自动跟房控制 (Auto-Follow Protocol)**：
-  - 11 状态严格有限状态机调度，自动发现主游戏对局并引导观战端进房。
-  - **绑定账号路由**：跟房指令发送至设置好的观战角色、平台与当前玩家身份，通过连接和对局检查与主账号分离。
-- **多平台账号绑定与调度**：
-  - 支持 Steam / TapTap 等多渠道账户并行管理与路由启动。
-  - 支持跨局自动清理挂件状态、释放观战房间、重置对局指纹。
+- **权威手牌真值 (`HandTruthSource`)**：手牌镜像仅经由本机 `127.0.0.1` 回环传递，严禁渲染伪造占位卡牌 (`CardId = -1`)，严格与对局英雄名单校验。
+- **确定性挂件生命周期调和**：基于 10 类生命周期事件触发自适应两级轮询，解决过场与重连导致的 FairyGUI 挂件脱离问题。
+- **11 状态自动跟房与多账号隔离**：精准分离主玩账号与观战账号会话，跨局自动清理状态、退出房间并重置指纹。
+- **工坊与更新链路安全**：强制 HTTPS 与 RSA 签名/SHA-256 校验，上传 ZIP 严格拦截路径穿越、符号链接与可执行扩展名，安装前强制保存原版基线备份。
 
 ---
 
-## 📁 目录结构
+## 目录结构
 
 ```text
-星枢源码/
-├── AstralParty-Hub/            # 星枢桌面控制台
-│   ├── src/                    # 前端代码 (React 19, TypeScript, TailwindCSS)
-│   │   ├── pages/              # 各功能页面 (观战、账号中心、运行时、诊断等)
-│   │   ├── services/           # 核心服务 (自动跟房、真值决策、账号管理)
-│   │   └── shared/             # 共享卡牌注册表与数据模型
-│   ├── src-tauri/              # Tauri Rust 后端
-│   │   ├── src/xing_shu/       # 本地 TCP Bridge 服务端、协议编解码、观战流
-│   │   └── Cargo.toml          # Rust 依赖配置
-│   └── package.json            # 前端依赖配置
-├── XingShu-Dev/                    # 游戏内 C# 运行时模块
-│   ├── src/XingShu.Runtime/          # XingShu 核心逻辑 (HandTruthSource, UI 挂件, 协议客户端)
-│   ├── tools/                  # MSBuild 构建脚本、生命周期测试与引导工具
-│   └── assets/                 # 游戏内 UI 资产与图标 (vanilla-ui-r3)
-├── tools/                      # 自动化工具集 (注册表生成、补丁脚本、源码同步)
-├── AUTO_FOLLOW_PROTOCOL.md     # 自动跟房本地控制协议规范文档
-├── AUTO_FOLLOW_STATE_MACHINE.md# 自动跟房 11 状态有限状态机技术规范
-├── HAND_TRUTH_SOURCE_ARCHITECTURE.md # 手牌真值来源与单真理源架构规范
-├── OVERLAY_LIFECYCLE_RECONCILIATION.md # 挂件生命周期确定性调和规范
-├── runtime_card_registry.generated.json # 权威卡牌定义注册表
-└── LICENSE                     # 开源许可协议 (MIT)
+AstralParty-XingShu/
+├── AstralParty-Hub/                      # Tauri 2 + React 19 桌面与网页控制台
+│   ├── src/                              # 前端源码（回放分析、模组工坊、图鉴、账号）
+│   ├── src-tauri/                        # Rust 后端（TCP 中继、工坊校验与原子安装）
+│   └── public/                           # 静态图鉴资源与站点 SEO 文件
+├── XingShu-Dev/                          # 游戏内 C# Unity 运行时模块
+│   ├── src/XingShu.Runtime/              # 核心运行时、FairyGUI 挂件、F1 功能中心
+│   └── tools/                            # 编译与一致性验证脚本
+├── AndroidInstaller/                     # 安卓无线调试安装助手源码
+├── tools/                                # 图鉴导出、打包脚本、更新器与导出测试
+├── docs/                                 # 使用指南与历史验证记录
+└── LICENSE                               # MIT 开源许可证
 ```
 
 ---
 
-## 🛠️ 构建与部署说明
+## 本地构建
 
 > [!NOTE]
-> 本仓库遵循合规开源原则，**不包含**任何游戏原始专有二进制程序集（DLL）、账号敏感信息或专有资产。
+> 本仓库遵循合规开源原则，**不包含**任何游戏专有 DLL、原版商业资源包或敏感凭据。
 
-### 1. AstralParty-Hub (控制台)
+### 1. AstralParty-Hub（桌面端与网页版）
 
-#### 环境要求
-- Node.js (推荐 v18 及以上 LTS)
-- Rust 与 Cargo (最新 stable 工具链)
-- Visual Studio C++ 生成工具 (Windows C++ Build Tools)
-- Microsoft Edge WebView2
+- 环境要求：Node.js 18+、Rust & Cargo（最新 stable）、Visual Studio C++ 生成工具、Microsoft Edge WebView2。
 
-#### 构建步骤
 ```bash
-# 进入 Hub 目录
 cd AstralParty-Hub
-
-# 安装依赖
 npm ci
 
-# 构建 Tauri 桌面程序 (免打包模式)
+# 构建在线网页版静态产物
+npm run build:web
+
+# 构建 Tauri 桌面端程序（免安装包模式）
 npm run tauri -- build --no-bundle
 ```
 
----
+### 2. XingShu Runtime（C# 游戏插件）
 
-### 2. XingShu Runtime (C# 游戏运行时)
+- 环境要求：支持 C# 11 的 Visual Studio MSBuild（目标 `.NET Framework 4.0`）、Python 3.x、`XingShu-Dev/tools/lib` 下的 Mono.Cecil。
+- 从合法拥有的客户端提取 `AstralParty.Runtime.dll` 放入 `XingShu-Dev/references/updated_20261019_verified/`（或指定 `AstralPartyRuntimePath`）。
 
-#### 环境要求
-- 支持 C# 11 的 Visual Studio MSBuild；项目使用游戏引用程序集，目标框架为 .NET Framework 4.0
-- Python 3.x
-- Mono.Cecil 及 Mono.Cecil.Rocks（放置于 `XingShu-Dev/tools/lib`）
-
-#### 依赖准备
-从合法的自身游戏客户端提取对应版本的 `AstralParty.Runtime.dll`，放置于项目默认路径：
-`XingShu-Dev/references/updated_20261019_verified/`（或在生成配置中通过 `AstralPartyRuntimePath` MSBuild 属性指定）。
-其余依赖程序集按需要配置于 `XingShu-Dev/references/{unity,framework,thirdparty}`。
-
-#### 构建步骤
 ```powershell
-# 执行编译脚本
 .\XingShu-Dev\tools\build.ps1 -Configuration Release
 ```
 
 ---
 
-从开发工作区刷新此仓库时，在开发工作区执行 `python tools/export_source_repo.py <源码仓库路径>`，然后检查差异。现有 README 与 `.gitignore` 在源码仓库中维护，同步工具会保留这些文件。
+## 详细文档与验证记录
 
-## 📚 详细设计文档
-
-- [AUTO_FOLLOW_PROTOCOL.md](docs/guides/AUTO_FOLLOW_PROTOCOL.md) — 自动跟房本地 TCP 通信协议详细规范
-- [AUTO_FOLLOW_STATE_MACHINE.md](docs/guides/AUTO_FOLLOW_STATE_MACHINE.md) — 自动跟房 11 状态机设计与转移矩阵
-- [HAND_TRUTH_SOURCE_ARCHITECTURE.md](docs/guides/HAND_TRUTH_SOURCE_ARCHITECTURE.md) — 手牌真值单源架构与防伪造卡牌设计
+- [项目文档与验证记录](docs/README.md) — 文档总索引与历史发布验证记录
+- [AUTO_FOLLOW_PROTOCOL.md](docs/guides/AUTO_FOLLOW_PROTOCOL.md) — 自动跟房本地 TCP 通信协议规范
+- [AUTO_FOLLOW_STATE_MACHINE.md](docs/guides/AUTO_FOLLOW_STATE_MACHINE.md) — 自动跟房 11 状态机设计说明
+- [HAND_TRUTH_SOURCE_ARCHITECTURE.md](docs/guides/HAND_TRUTH_SOURCE_ARCHITECTURE.md) — 手牌真值单源架构与防伪造设计
 - [OVERLAY_LIFECYCLE_RECONCILIATION.md](docs/guides/OVERLAY_LIFECYCLE_RECONCILIATION.md) — 浮动挂件生命周期自适应调和规范
-- [local-managed-watcher.md](AstralParty-Hub/docs/local-managed-watcher.md) — 本机托管观战工作单元技术说明
+- [local-managed-watcher.md](AstralParty-Hub/docs/local-managed-watcher.md) — 本机托管观战说明
+- [extension_channels.md](AstralParty-Hub/docs/specs/extension_channels.md) — 扩展包渠道声明与目录映射边界
 
 ---
 
-## ⚠️ 免责声明与使用边界
+## 免责声明与开源许可
 
-1. 本项目仅供技术研究、本地自动化测试与开发学习使用。
-2. 本项目不提供、不分发任何原游戏的专有程序集、反编译产物或商业数据。使用本项目需自行提供合法获取的游戏程序。
-3. 请合理合规使用辅助工具，严格遵守游戏官方的使用条款与用户协议。开发者不对因不当使用所造成的任何账号风险或损失承担责任。
-
----
-
-## 📄 开源许可证
-
-本项目基于 [MIT 许可证](LICENSE) 开源。
+1. 本项目仅供技术研究、本地测试、模组管理与社区交流学习使用。
+2. 原游戏美术、文本、配置与音画资产版权均归原权利人所有，不随本项目代码许可证重新授权。
+3. 请合理合规使用辅助功能并遵守游戏官方服务条款；开发者不对不当使用引发的账号风险承担责任。
+4. 本仓库代码基于 [MIT 许可证](LICENSE) 开源。

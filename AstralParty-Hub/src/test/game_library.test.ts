@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { accountKey, defaultLibraryKey, gameCatalog, plainGameText, isPreviewCharacter, libraryCharacterName, matchDetailRefreshComplete } from '../shared/gameLibrary.ts';
+import { accountKey, characterStaticEmoteAssets, defaultLibraryKey, gameCatalog, pickStaticEmoteAsset, plainGameText, isPreviewCharacter, libraryCharacterName, matchDetailRefreshComplete } from '../shared/gameLibrary.ts';
 import type { LibraryAccount, LibrarySession, MatchDetail } from '../shared/gameLibrary.ts';
 
 const saved: MatchDetail = {requestId:'old',playerId:1,index:0,time:1,heroId:101,mapId:81003,status:'ready',error:'',participants:[],observedAt:'2026-10-24',statsSource:'replay_settlement',statsError:''};
@@ -71,4 +71,18 @@ for(const art of gameCatalog.altArts){
   assert.ok(gameCatalog.assets[art.image]);
 }
 assert.equal(gameCatalog.favorLevels.length,7);
+for(const character of gameCatalog.characters){
+  const staticEmotes=characterStaticEmoteAssets(character.id);
+  const picked=pickStaticEmoteAsset(character.id,`unit:${character.id}`);
+  if(isPreviewCharacter(character)){
+    assert.deepEqual(staticEmotes,[],`Preview character ${character.id} must have no static emotes`);
+    assert.equal(picked,'',`Preview character ${character.id} picked emote must remain empty`);
+  }else{
+    assert.ok(staticEmotes.length>0,`Released character ${character.id} should have static emotes`);
+    assert.ok(staticEmotes.every(asset=>Boolean(gameCatalog.assets[asset])),`All static emotes for ${character.id} must exist in assets`);
+    assert.ok(staticEmotes.includes(picked),`Picked avatar for ${character.id} must be a static emote`);
+    const animatedSet=new Set((character.emotes||[]).filter(e=>e.animated).map(e=>e.image));
+    assert.ok(!animatedSet.has(picked),`Picked avatar for ${character.id} must not be animated`);
+  }
+}
 console.log('Game library: account isolation, unknown state, real catalog effects and images passed.');

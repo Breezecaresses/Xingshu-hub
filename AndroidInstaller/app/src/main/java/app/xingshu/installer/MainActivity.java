@@ -22,7 +22,9 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import android.os.SystemClock;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.TextWatcher;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -51,11 +53,14 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import io.github.muntashirakon.adb.android.AdbMdns;
 import rikka.shizuku.Shizuku;
 
 public final class MainActivity extends Activity {
@@ -116,8 +121,14 @@ public final class MainActivity extends Activity {
 
     // UI references
     private TextView connBadge, connSummary, pkgSummaryView, logView, updateStatus, updateDetails, bannerText;
-    private TextView authSummaryView, tokenStatusView, webAuthStatusView;
+    private TextView authSummaryView, tokenStatusView, webAuthStatusView, wirelessStatusView;
     private LinearLayout packageChipsRow, tokenListRow;
+    private AdbMdns connectMdns, pairingMdns;
+    private volatile int discoveredConnectPort = -1, discoveredPairingPort = -1;
+    private volatile String discoveredConnectHost, discoveredPairingHost;
+    private volatile CountDownLatch connectDiscoveryLatch;
+    private boolean updatingPortFields, connectionPortEdited, pairingPortEdited;
+    private final Runnable startPairingMdnsTask = this::startPairingMdnsIfActive;
     private ProgressBar updateProgress;
     private View updateBanner;
     private View[] tabContainers = new View[4];
@@ -577,20 +588,31 @@ public final class MainActivity extends Activity {
 
         LinearLayout devCard = AuroraUi.card(this);
         devCard.addView(AuroraUi.cardTitle(this, "第一步 · 开启系统无线调试"));
-        devCard.addView(AuroraUi.caption(this, "在系统“开发者选项 → 无线调试”中开启开关；建议配合分屏或小窗查看配对码。"));
+        devCard.addView(AuroraUi.caption(this, "在系统“开发者选项 → 无线调试”中开启开关；建议配合分屏或小窗查看配对码。开启后助手会自动识别端口，无需手抄刷新后的新端口。"));
+        wirelessStatusView = AuroraUi.callout(this, Build.VERSION.SDK_INT >= 30
+            ? "正在自动监听本机无线调试端口… 开启系统「无线调试」后会自动填入。"
+            : "当前系统低于 Android 11，请改用 Shizuku 方式接入。");
+        devCard.addView(wirelessStatusView);
         devCard.addView(AuroraUi.button(this, "打开系统开发者选项", AuroraUi.BtnStyle.ACCENT, v -> {
             try { startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)); }
-            catch (Exception e) { write("请手动打开系统设置 → 开发者选项 → 无线调试。"); selectTab(0); }
+            catch (Exception e) { write("请手动打开系统设置 → 开发者选项 → 无线调试。"); }
         }));
         col.addView(devCard);
 
         LinearLayout pairCard = AuroraUi.card(this);
         pairCard.addView(AuroraUi.cardTitle(this, "第二步 · ① 首次配对手机"));
-        pairCard.addView(AuroraUi.caption(this, "点击系统的“使用配对码配对设备”，保持弹窗不关闭，将端口（或完整 IP:端口）与 6 位配对码填入下方："));
+        pairCard.addView(AuroraUi.caption(this, "点击系统的“使用配对码配对设备”，保持弹窗不关闭，配对端口会自动识别（也可手动粘贴 IP:端口），再填入 6 位配对码："));
 
         LinearLayout inputs = new LinearLayout(this);
         inputs.setOrientation(LinearLayout.HORIZONTAL);
-        pairingPort = AuroraUi.input(this, "配对端口 / IP:端口", false);
+        pairingPort = AuroraUi.input(this, "配对端口（可自动识别）", false);
+        pairingPort.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
+            @Override public void afterTextChanged(Editable s) {
+                if (!updatingPortFields) pairingPortEdited = !s.toString().trim().isEmpty();
+            }
+        });
         pairingCode = AuroraUi.input(this, "6 位配对码", true);
         LinearLayout.LayoutParams p1 = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.35f);
         p1.rightMargin = AuroraUi.dp(this, 6);
@@ -609,15 +631,32 @@ public final class MainActivity extends Activity {
 
         LinearLayout connCard = AuroraUi.card(this);
         connCard.addView(AuroraUi.cardTitle(this, "第三步 · ② 连接本机无线调试"));
-        connCard.addView(AuroraUi.caption(this, "配对成功后关闭弹窗，填写“无线调试”主页面显示的连接端口（每次重开无线调试端口可能会变化）："));
-        connectionPort = AuroraUi.input(this, "连接端口或 IP:端口（无线调试主页面）", false);
+        connCard.addView(AuroraUi.caption(this, "配对成功后关闭弹窗，直接点击连接即可；若开启系统无线调试会自动识别最新连接端口（也可留空自动扫描或手动填写）："));
+        connectionPort = AuroraUi.input(this, "连接端口（自动识别或留空一键扫描）", false);
+        updatingPortFields = true;
         connectionPort.setText(getPreferences(0).getString("connectionPort", ""));
+        updatingPortFields = false;
+        connectionPort.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
+            @Override public void afterTextChanged(Editable s) {
+                if (!updatingPortFields) connectionPortEdited = !s.toString().trim().isEmpty();
+            }
+        });
         LinearLayout.LayoutParams cpLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         cpLp.topMargin = AuroraUi.dp(this, 6);
         cpLp.bottomMargin = AuroraUi.dp(this, 8);
         connCard.addView(connectionPort, cpLp);
         connectBtn = AuroraUi.button(this, "连接本机无线调试并检测", AuroraUi.BtnStyle.PRIMARY, v -> connectLocal());
         connCard.addView(connectBtn);
+        connCard.addView(AuroraUi.button(this, "重新自动扫描无线调试端口", AuroraUi.BtnStyle.SECONDARY, v -> {
+            connectionPortEdited = false;
+            pairingPortEdited = false;
+            discoveredConnectPort = -1;
+            discoveredPairingPort = -1;
+            restartMdnsDiscovery();
+            updateWirelessStatusText();
+        }));
         col.addView(connCard);
 
         LinearLayout shizukuCard = AuroraUi.card(this);
@@ -771,41 +810,219 @@ public final class MainActivity extends Activity {
 
     private void pairLocal() {
         try {
-            final int p = port(pairingPort);
+            final int p;
+            String rawPort = pairingPort.getText().toString().trim();
+            if (rawPort.isEmpty() && discoveredPairingPort >= 1024) {
+                p = discoveredPairingPort;
+                setPortFieldText(pairingPort, String.valueOf(p));
+            } else {
+                p = LocalPort.parse(rawPort);
+            }
             final String code = pairingCode.getText().toString().trim();
             if (!code.matches("[0-9]{6}")) {
-                write("请输入系统弹窗中的 6 位数字配对码。");
-                selectTab(TAB_INSTALL);
+                showWirelessError("请输入系统配对弹窗中的 6 位数字配对码。");
                 return;
             }
-            selectTab(TAB_INSTALL);
-            runWorker("正在配对本机无线调试…", () -> {
-                local().pair(p, code);
+            final String hintHost = discoveredPairingHost;
+            runWorker("正在配对本机无线调试（端口 " + p + "）…", () -> {
+                local().pair(hintHost, p, code);
                 useShizuku = false;
-                return "配对成功！请关闭系统配对码弹窗，在“无线配对”页填写主页面连接端口后点击“连接本机无线调试并检测”。";
+                runOnUiThread(() -> {
+                    pairingCode.setText("");
+                    connectionPortEdited = false;
+                    restartMdnsDiscovery();
+                });
+                return "配对成功！请关闭系统配对码弹窗，再点击下方“连接本机无线调试并检测”。";
             });
         } catch (Exception e) {
-            write(e.getMessage());
-            selectTab(TAB_INSTALL);
+            showWirelessError(e.getMessage());
         }
     }
 
     private void connectLocal() {
-        try {
-            final int p = port(connectionPort);
-            getPreferences(0).edit().putString("connectionPort", String.valueOf(p)).apply();
-            selectTab(TAB_INSTALL);
-            runWorker("正在连接本机无线调试并扫描已装渠道包…", () -> {
-                local().connect(p);
-                useShizuku = false;
-                String scanJson = local().scanPackages();
-                String resolvedPkg = applyScannedPackagesFromBg(scanJson);
-                return "已连接本机无线调试。\n" + local().inspect(resolvedPkg);
-            });
-        } catch (Exception e) {
-            write(e.getMessage());
-            selectTab(TAB_INSTALL);
+        String raw = connectionPort.getText().toString().trim();
+        Integer parsedInput = null;
+        if (!raw.isEmpty()) {
+            try {
+                parsedInput = LocalPort.parse(raw);
+            } catch (Exception e) {
+                showWirelessError(e.getMessage());
+                return;
+            }
         }
+        final Integer userPort = parsedInput;
+        final boolean editedByUser = connectionPortEdited;
+        runWorker("正在自动查找并连接本机无线调试…", () -> {
+            int livePort = discoveredConnectPort;
+            String liveHost = discoveredConnectHost;
+            int targetPort = -1;
+            String targetHost = null;
+            if (!editedByUser && livePort >= 1024) {
+                targetPort = livePort;
+                targetHost = liveHost;
+            } else if (userPort != null) {
+                targetPort = userPort;
+                targetHost = liveHost;
+            } else if (livePort >= 1024) {
+                targetPort = livePort;
+                targetHost = liveHost;
+            } else {
+                CountDownLatch latch = new CountDownLatch(1);
+                connectDiscoveryLatch = latch;
+                runOnUiThread(this::restartMdnsDiscovery);
+                try { latch.await(2800, TimeUnit.MILLISECONDS); } catch (InterruptedException ignored) { }
+                connectDiscoveryLatch = null;
+                livePort = discoveredConnectPort;
+                liveHost = discoveredConnectHost;
+                if (livePort >= 1024) {
+                    targetPort = livePort;
+                    targetHost = liveHost;
+                }
+            }
+
+            if (targetPort < 1024) {
+                throw new IOException("未自动发现无线调试端口：请确认系统「开发者选项 → 无线调试」开关已打开，或在上方输入框手动填写最新连接端口。");
+            }
+
+            try {
+                local().connect(targetHost, targetPort);
+            } catch (Exception firstErr) {
+                String msg = firstErr.getMessage() == null ? "" : firstErr.getMessage();
+                if (msg.contains("未配对") || msg.contains("重置授权")) {
+                    throw firstErr;
+                }
+                int retryPort = discoveredConnectPort;
+                String retryHost = discoveredConnectHost;
+                if (retryPort < 1024 || retryPort == targetPort) {
+                    CountDownLatch latch = new CountDownLatch(1);
+                    connectDiscoveryLatch = latch;
+                    runOnUiThread(this::restartMdnsDiscovery);
+                    try { latch.await(2200, TimeUnit.MILLISECONDS); } catch (InterruptedException ignored) { }
+                    connectDiscoveryLatch = null;
+                    retryPort = discoveredConnectPort;
+                    retryHost = discoveredConnectHost;
+                }
+                if (retryPort >= 1024 && retryPort != targetPort) {
+                    targetPort = retryPort;
+                    targetHost = retryHost;
+                    local().connect(targetHost, targetPort);
+                } else {
+                    throw firstErr;
+                }
+            }
+
+            final int finalPort = targetPort;
+            getPreferences(0).edit().putString("connectionPort", String.valueOf(finalPort)).apply();
+            useShizuku = false;
+            runOnUiThread(() -> {
+                setPortFieldText(connectionPort, String.valueOf(finalPort));
+                connectionPortEdited = false;
+                updateWirelessStatusText();
+                selectTab(TAB_INSTALL);
+            });
+            String scanJson = local().scanPackages();
+            String resolvedPkg = applyScannedPackagesFromBg(scanJson);
+            return "已连接本机无线调试（" + local().connectedHost() + ":" + finalPort + "）。\n" + local().inspect(resolvedPkg);
+        });
+    }
+
+    private void showWirelessError(String message) {
+        String text = (message == null || message.trim().isEmpty()) ? "操作未完成，请核对无线调试设置后重试。" : message.trim();
+        write(text);
+        if (wirelessStatusView != null) {
+            wirelessStatusView.setText("⚠ " + text);
+        }
+        if (!isFinishing() && !destroyed) {
+            new AlertDialog.Builder(this).setTitle("无线调试提示").setMessage(text).setPositiveButton("知道了", null).show();
+        }
+    }
+
+    private void setPortFieldText(EditText field, String text) {
+        if (field == null) return;
+        updatingPortFields = true;
+        try {
+            field.setText(text);
+            field.setSelection(text.length());
+        } finally {
+            updatingPortFields = false;
+        }
+    }
+
+    private void startMdnsDiscovery() {
+        if (destroyed || Build.VERSION.SDK_INT < 30) return;
+        if (connectMdns == null) {
+            connectMdns = new AdbMdns(this, AdbMdns.SERVICE_TYPE_ADB, (hostAddress, port) -> {
+                String host = hostAddress != null ? hostAddress.getHostAddress() : null;
+                discoveredConnectHost = host;
+                discoveredConnectPort = port;
+                CountDownLatch latch = connectDiscoveryLatch;
+                if (latch != null) latch.countDown();
+                runOnUiThread(() -> {
+                    if (destroyed) return;
+                    if (port >= 1024 && (!connectionPortEdited || connectionPort.getText().toString().trim().isEmpty())) {
+                        setPortFieldText(connectionPort, String.valueOf(port));
+                        connectionPortEdited = false;
+                    }
+                    updateWirelessStatusText();
+                });
+            });
+            try { connectMdns.start(); } catch (Exception ignored) { }
+        }
+        progressHandler.removeCallbacks(startPairingMdnsTask);
+        progressHandler.postDelayed(startPairingMdnsTask, 350);
+        updateWirelessStatusText();
+    }
+
+    private void startPairingMdnsIfActive() {
+        if (destroyed || Build.VERSION.SDK_INT < 30 || pairingMdns != null) return;
+        pairingMdns = new AdbMdns(this, AdbMdns.SERVICE_TYPE_TLS_PAIRING, (hostAddress, port) -> {
+            String host = hostAddress != null ? hostAddress.getHostAddress() : null;
+            discoveredPairingHost = host;
+            discoveredPairingPort = port;
+            runOnUiThread(() -> {
+                if (destroyed) return;
+                if (port >= 1024 && (!pairingPortEdited || pairingPort.getText().toString().trim().isEmpty())) {
+                    setPortFieldText(pairingPort, String.valueOf(port));
+                    pairingPortEdited = false;
+                }
+                updateWirelessStatusText();
+            });
+        });
+        try { pairingMdns.start(); } catch (Exception ignored) { }
+    }
+
+    private void stopMdnsDiscovery() {
+        progressHandler.removeCallbacks(startPairingMdnsTask);
+        if (connectMdns != null) {
+            try { connectMdns.stop(); } catch (Exception ignored) { }
+            connectMdns = null;
+        }
+        if (pairingMdns != null) {
+            try { pairingMdns.stop(); } catch (Exception ignored) { }
+            pairingMdns = null;
+        }
+    }
+
+    private void restartMdnsDiscovery() {
+        stopMdnsDiscovery();
+        startMdnsDiscovery();
+    }
+
+    private void updateWirelessStatusText() {
+        if (wirelessStatusView == null || Build.VERSION.SDK_INT < 30) return;
+        StringBuilder sb = new StringBuilder();
+        if (discoveredConnectPort >= 1024) {
+            sb.append("✅ 已自动识别连接端口：").append(discoveredConnectPort);
+            if (discoveredConnectHost != null && !discoveredConnectHost.isEmpty()) {
+                sb.append("（").append(discoveredConnectHost).append("）");
+            }
+        } else {
+            sb.append("🔍 正在监听系统“无线调试”连接端口（开启系统开关后会自动填入）");
+        }
+        if (discoveredPairingPort >= 1024) {
+            sb.append("\n✅ 已自动识别配对弹窗端口：").append(discoveredPairingPort);
+        }
+        wirelessStatusView.setText(sb.toString());
     }
 
     private void scanPackagesAndInspect() {
@@ -970,7 +1187,8 @@ public final class MainActivity extends Activity {
         } else if (localReady) {
             connBadge.setText("无线调试已连接");
             AuroraUi.tintPill(connBadge, AuroraUi.OK_SOFT, AuroraUi.OK_BORDER, AuroraUi.OK_INK, this);
-            connSummary.setText("当前通道：本机无线调试 (127.0.0.1) 已就绪 · 可多渠道检测、安装或扫描登录票据。");
+            String hostLabel = (local != null && local.connectedHost() != null) ? local.connectedHost() : "127.0.0.1";
+            connSummary.setText("当前通道：本机无线调试 (" + hostLabel + ") 已就绪 · 可多渠道检测、安装或扫描登录票据。");
         } else if (binding) {
             connBadge.setText("正在连接…");
             AuroraUi.tintPill(connBadge, AuroraUi.ACCENT_SOFT, AuroraUi.ACCENT_BORDER, AuroraUi.ACCENT_INK, this);
@@ -1922,6 +2140,7 @@ public final class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        startMdnsDiscovery();
         if (connBadge != null) refresh();
         if (waitingInstallPermission) {
             waitingInstallPermission = false;
@@ -1931,8 +2150,14 @@ public final class MainActivity extends Activity {
         }
     }
 
+    @Override protected void onPause() {
+        stopMdnsDiscovery();
+        super.onPause();
+    }
+
     @Override protected void onDestroy() {
         destroyed = true;
+        stopMdnsDiscovery();
         checkStage = null;
         progressHandler.removeCallbacks(checkTick);
         stopDownloadProgress();

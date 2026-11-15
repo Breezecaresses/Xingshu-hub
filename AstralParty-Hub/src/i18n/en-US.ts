@@ -45,7 +45,7 @@ export const enUS: TranslationSchema = {
     packagesAndExtensions: 'Packages & Extensions',
     packageManager: 'XingShu Package Manager',
     runtimePlugins: 'Runtime Plugins',
-    gameMods: 'Game Mods',
+    gameMods: 'Mod Workshop',
     importPackage: 'Import Package',
     operations: 'Operations & Diagnostics',
     transactions: 'Transactions',

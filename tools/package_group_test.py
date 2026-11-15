@@ -360,7 +360,7 @@ Windows 便携程序未附 Authenticode 代码签名；应用更新清单和手�
 ''', encoding='utf-8-sig')
     shutil.copy2(ROOT / 'AstralParty-Hub/docs/specs/extension_channels.md', stage / '扩展包格式说明.md')
     shutil.copy2(ROOT / 'LICENSE', stage / 'LICENSE.txt')
-    (stage / '项目来源.txt').write_text('星枢 Hub 与游戏内运行时\nhttps://github.com/Breezecaresses/Xingshu-hub\n\n代码许可见 LICENSE.txt。角色、卡面、配置及游戏资源版权归吉星派对原权利人所有，不随本项目代码许可证重新授权。\n', encoding='utf-8-sig')
+    (stage / '项目来源.txt').write_text('星枢 Hub 与游戏内运行时\nhttps://github.com/Breezecaresses/AstralParty-XingShu\n\n代码许可见 LICENSE.txt。角色、卡面、配置及游戏资源版权归吉星派对原权利人所有，不随本项目代码许可证重新授权。\n', encoding='utf-8-sig')
     verify_installer(stage, profiles, release, deployment, args.official_baselines)
     entries = sorted(p for p in stage.rglob('*') if p.is_file())
     (stage / 'SHA256SUMS.txt').write_text(''.join(f'{sha(p)}  {p.relative_to(stage).as_posix()}\n' for p in entries), encoding='utf-8')
@@ -389,7 +389,7 @@ Windows 便携程序未附 Authenticode 代码签名；应用更新清单和手�
 使用反馈：同房／换房连续两局换牌、观战退房再跟房、自然结算退出、收牌／星币／治疗致谢。
 合作局云端手牌需 Hub 同账号授权；本地观战需登录官方观战端。十倍计时受服务端限制。
 反馈附版本、渠道、步骤、时间及截图；日志隐藏个人信息。
-源码：https://github.com/Breezecaresses/Xingshu-hub
+源码：https://github.com/Breezecaresses/AstralParty-XingShu
 '''
     if len(group_note) > 600:
         raise RuntimeError(f'Release announcement exceeds 600 characters: {len(group_note)}')

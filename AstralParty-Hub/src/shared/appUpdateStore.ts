@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import { invoke, isTauri } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core';
+import { isTauriRuntime } from './runtime.ts';
 import {
   AppUpdateController,
   type AppUpdateCheckResult,
@@ -26,14 +27,9 @@ function safeLocalStorage(): Storage | null {
 }
 
 export const appUpdateStore = new AppUpdateController({
-  invoke: (command, args) => invoke(command, args),
-  isDesktopRuntime: () => {
-    try {
-      return isTauri();
-    } catch {
-      return false;
-    }
-  },
+  invoke: (command, args) =>
+    isTauriRuntime() ? invoke(command, args) : Promise.reject(new Error('Desktop-only update command')),
+  isDesktopRuntime: () => isTauriRuntime(),
   storage: safeLocalStorage(),
 });
 

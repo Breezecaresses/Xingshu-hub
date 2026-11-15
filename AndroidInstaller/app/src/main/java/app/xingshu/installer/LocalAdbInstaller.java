@@ -49,22 +49,104 @@ final class LocalAdbInstaller implements Closeable {
 
     boolean connected() { return manager.isConnected(); }
 
+    private volatile String connectedHost = "127.0.0.1";
+
+    String connectedHost() {
+        return connectedHost;
+    }
+
     void pair(int port, String code) throws Exception {
+        pair(null, port, code);
+    }
+
+    void pair(String preferredLocalHost, int port, String code) throws Exception {
         requireAndroid11();
-        if (!manager.pair("127.0.0.1", port, code)) throw new IOException("配对未成功，请重新打开配对码弹窗");
+        java.util.List<String> hosts = verifiedLocalHosts(preferredLocalHost);
+        Exception lastError = null;
+        for (String host : hosts) {
+            try {
+                if (manager.pair(host, port, code)) {
+                    return;
+                }
+            } catch (Exception e) {
+                lastError = e;
+                String msg = e.getMessage() == null ? "" : e.getMessage();
+                String kind = e.getClass().getSimpleName();
+                if (kind.contains("Pairing") || msg.toLowerCase(java.util.Locale.ROOT).contains("bad password")
+                        || msg.toLowerCase(java.util.Locale.ROOT).contains("wrong")
+                        || msg.toLowerCase(java.util.Locale.ROOT).contains("secret")) {
+                    throw new IOException("配对码不正确或已过期，请重新点击系统“使用配对码配对设备”再试");
+                }
+            }
+        }
+        String suffix = (lastError != null && lastError.getMessage() != null && !lastError.getMessage().isEmpty())
+            ? "（" + lastError.getMessage() + "）" : "";
+        throw new IOException("配对未成功：请保持系统配对弹窗不关闭并核对端口与 6 位配对码" + suffix);
     }
 
     void connect(int port) throws Exception {
+        connect(null, port);
+    }
+
+    void connect(String preferredLocalHost, int port) throws Exception {
         requireAndroid11();
         manager.disconnect();
-        try {
-            if (!manager.connect("127.0.0.1", port)) throw new IOException("连接超时，请核对连接端口");
-            String uid = shell("id -u", 20000).trim();
-            if (!uid.equals("2000")) throw new IOException("未取得本机调试权限");
-        } catch (Exception e) {
-            manager.disconnect();
-            throw e;
+        java.util.List<String> hosts = verifiedLocalHosts(preferredLocalHost);
+        Exception lastError = null;
+        for (String host : hosts) {
+            try {
+                if (!manager.connect(host, port)) {
+                    manager.disconnect();
+                    continue;
+                }
+                String uid = shell("id -u", 20000).trim();
+                if (!uid.equals("2000")) {
+                    manager.disconnect();
+                    throw new IOException("未取得本机调试权限");
+                }
+                connectedHost = host;
+                return;
+            } catch (Exception e) {
+                manager.disconnect();
+                String kind = e.getClass().getSimpleName();
+                if (kind.contains("Pairing") || kind.contains("Authentication")) {
+                    throw new IOException("本机尚未配对或系统已重置授权，请先点击系统“使用配对码配对设备”完成第二步配对");
+                }
+                lastError = e;
+            }
         }
+        String detail = (lastError != null && lastError.getMessage() != null && !lastError.getMessage().isEmpty())
+            ? "（" + lastError.getMessage() + "）" : "";
+        throw new IOException("无法连接本机无线调试端口 " + port + "：请确认系统“无线调试”开关保持开启，且端口为最新显示端口" + detail);
+    }
+
+    static java.util.List<String> verifiedLocalHosts(String preferredLocalHost) {
+        java.util.LinkedHashSet<String> deviceIps = new java.util.LinkedHashSet<>();
+        deviceIps.add("127.0.0.1");
+        try {
+            java.util.Enumeration<java.net.NetworkInterface> interfaces = java.net.NetworkInterface.getNetworkInterfaces();
+            if (interfaces != null) {
+                for (java.net.NetworkInterface ni : java.util.Collections.list(interfaces)) {
+                    if (ni == null || !ni.isUp()) continue;
+                    for (java.net.InetAddress addr : java.util.Collections.list(ni.getInetAddresses())) {
+                        if (addr instanceof java.net.Inet4Address && !addr.isLoopbackAddress()) {
+                            String host = addr.getHostAddress();
+                            if (host != null && !host.isEmpty()) deviceIps.add(host);
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        java.util.List<String> ordered = new java.util.ArrayList<>();
+        ordered.add("127.0.0.1");
+        if (preferredLocalHost != null && deviceIps.contains(preferredLocalHost) && !ordered.contains(preferredLocalHost)) {
+            ordered.add(preferredLocalHost);
+        }
+        for (String ip : deviceIps) {
+            if (!ordered.contains(ip)) ordered.add(ip);
+        }
+        return ordered;
     }
 
     String scanPackages() throws Exception {

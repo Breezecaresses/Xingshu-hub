@@ -38,6 +38,7 @@ export class SpectatorService {
    */
   public async initListeners(): Promise<void> {
     if (this.isListening) return;
+    if (typeof window !== 'undefined' && !(globalThis as Record<string, unknown>).__TAURI_INTERNALS__ && !(globalThis as Record<string, unknown>).isTauri) return;
     this.isListening = true;
 
     try {

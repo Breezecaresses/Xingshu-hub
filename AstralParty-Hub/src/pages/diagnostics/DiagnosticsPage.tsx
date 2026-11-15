@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { api } from '../../shared/api/tauri';
+import { isTauriRuntime } from '../../shared/runtime';
+import { DesktopOnlyBanner } from '../../components/DesktopOnlyBanner';
 import type { DiagnosticReport, SpectatorHandPayload, BridgeConnectionState } from '../../shared/types';
 import { Activity, RefreshCw, CheckCircle2, AlertTriangle, AlertCircle, Info, Cpu, HardDrive, Eye, Radio, Archive, History } from 'lucide-react';
 import { useTranslation } from '../../i18n';
@@ -40,6 +42,7 @@ export const DiagnosticsPage: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!isTauriRuntime()) return;
     fetchSpectatorData();
     if (!pollingActive) return;
     const interval = setInterval(fetchSpectatorData, 1000);
@@ -47,6 +50,7 @@ export const DiagnosticsPage: React.FC = () => {
   }, [pollingActive, fetchSpectatorData]);
 
   useEffect(() => {
+    if (!isTauriRuntime()) return;
     let unlisten: (() => void) | undefined;
     listen<SpectatorHandPayload>('spectator://hand-snapshot', (event) => {
       if (event.payload) {
@@ -98,6 +102,7 @@ export const DiagnosticsPage: React.FC = () => {
 
   return (
     <div>
+      <DesktopOnlyBanner feature="diagnostics" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700 }}>{t('diagnostics.title')}</h1>

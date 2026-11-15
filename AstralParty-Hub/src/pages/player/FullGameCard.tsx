@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { cardTypes, gameCatalog, plainGameText } from '../../shared/gameLibrary';
 import type { LibraryAltArt, LibraryCard } from '../../shared/gameLibrary';
+import { assetUrl } from '../../shared/runtime';
 import { GameImage } from './LibraryUI';
 import type { SpineCardAsset } from './SpineCardArt';
 
@@ -9,17 +10,20 @@ const SpineCardArt = lazy(() => import('./SpineCardArt'));
 export type AnimatedAltArt = LibraryAltArt & { video?: string; spine?: string; front?: string; animationKind?: 'video' | 'spine' | 'none' };
 
 export function AltArtImage({ card, art }: { card: LibraryCard; art?: AnimatedAltArt | null }) {
-  const poster = art?.spine ? (gameCatalog as unknown as { spineAssets?: Record<string, SpineCardAsset & { poster?: string }> }).spineAssets?.[art.spine]?.poster : undefined;
-  return poster ? <img className="library-image" src={poster} alt={art?.name || card.name} loading="lazy" style={{ backgroundImage: art?.image && gameCatalog.assets[art.image] ? `url("${gameCatalog.assets[art.image]}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }} /> : <GameImage asset={art?.image || card.image} name={art?.name || card.name} />;
+  const posterRaw = art?.spine ? (gameCatalog as unknown as { spineAssets?: Record<string, SpineCardAsset & { poster?: string }> }).spineAssets?.[art.spine]?.poster : undefined;
+  const poster = posterRaw ? assetUrl(posterRaw) : undefined;
+  const bg = art?.image && gameCatalog.assets[art.image] ? assetUrl(gameCatalog.assets[art.image]) : undefined;
+  return poster ? <img className="library-image" src={poster} alt={art?.name || card.name} loading="lazy" style={{ backgroundImage: bg ? `url("${bg}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }} /> : <GameImage asset={art?.image || card.image} name={art?.name || card.name} />;
 }
 
 export function FullGameCard({ card, art, motion = false, allowSpine = false }: { card: LibraryCard; art?: AnimatedAltArt | null; motion?: boolean; allowSpine?: boolean }) {
   const [videoFailed, setVideoFailed] = useState(false);
   const [spineReady, setSpineReady] = useState(false);
   const [spineFailed, setSpineFailed] = useState(false);
-  const video = art?.video ? gameCatalog.assets[art.video] : undefined;
+  const video = art?.video && gameCatalog.assets[art.video] ? assetUrl(gameCatalog.assets[art.video]) : undefined;
   const spineAssets = (gameCatalog as unknown as { spineAssets?: Record<string, SpineCardAsset> }).spineAssets;
-  const spine = art?.spine ? spineAssets?.[art.spine] : undefined;
+  const rawSpine = art?.spine ? spineAssets?.[art.spine] : undefined;
+  const spine = rawSpine ? { ...rawSpine, skeleton: assetUrl(rawSpine.skeleton), atlas: assetUrl(rawSpine.atlas) } : undefined;
   useEffect(() => { setVideoFailed(false); setSpineReady(false); setSpineFailed(false); }, [video, art?.spine, motion]);
   return <article className={`full-game-card card-type-${card.type}${art ? ' alt-art-card' : ''}`}>
     <div className="full-card-art">

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Download, FileText, RefreshCw, Smartphone, Wifi } from 'lucide-react';
+import { isTauriRuntime } from '../../shared/runtime';
 import './android-install.css';
 
 interface Device { serial: string; state: string; model: string }
@@ -106,6 +107,7 @@ export function AndroidInstallPanel() {
     } catch { /* 浏览器下载已完成 */ }
   };
   const ready = status?.available && status.devices.some(d => d.serial === serial && d.state === 'device');
+  if (!isTauriRuntime()) return null;
   return <section className="panel android-install" aria-label="安卓手机安装">
     <div className="android-install-heading"><Smartphone size={25} /><div><h2>安卓手机安装 / 更新</h2><p>连接手机，在电脑上安装星枢；支持检测并备份删除 APX 等冲突插件，安装失败可导出日志。</p></div>
       <button className={`btn ${expanded ? 'btn-secondary' : 'btn-primary'}`} aria-expanded={expanded} aria-controls="android-install-body" disabled={!!busy} onClick={() => setExpanded(!expanded)}>{expanded ? '收起' : '连接手机'}</button>

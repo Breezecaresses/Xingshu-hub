@@ -3,10 +3,12 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { api } from '../../shared/api/tauri';
 import type { DiagnosticReport } from '../../shared/types';
-import { ShieldCheck, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Menu } from 'lucide-react';
 import { useTranslation, LanguageSwitcher } from '../../i18n';
 import { UpdatePromptController } from '../../components/UpdatePromptModal';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { isTauriRuntime } from '../../shared/runtime';
+import { GitHubRepoLink } from '../../components/GitHubRepoLink';
 
 export const Layout: React.FC = () => {
   const [report, setReport] = useState<DiagnosticReport | null>(null);
@@ -14,9 +16,11 @@ export const Layout: React.FC = () => {
   const shellRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLElement>(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { pathname } = useLocation();
 
   useEffect(() => {
+    setMobileNavOpen(false);
     const el = contentRef.current;
     if (el) {
       el.scrollTo(0, 0);
@@ -24,6 +28,15 @@ export const Layout: React.FC = () => {
       shellRef.current?.style.setProperty('--page-progress', '0');
     }
   }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileNavOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mobileNavOpen]);
 
   useEffect(() => {
     const scroller = contentRef.current;
@@ -113,6 +126,10 @@ export const Layout: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (!isTauriRuntime()) {
+      setReport(null);
+      return;
+    }
     const refresh = () => api.getDiagnosticReport()
       .then(setReport)
       .catch(() => setReport(null));
@@ -122,11 +139,13 @@ export const Layout: React.FC = () => {
   }, []);
 
   const appTitle = locale === 'zh-CN' ? '星枢 Hub' : 'XingShu Hub';
+  const webMode = !isTauriRuntime();
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      document.title = appTitle;
+      document.title = webMode ? `${appTitle} Web` : appTitle;
     }
+    if (!isTauriRuntime()) return;
     try {
       const appWin = getCurrentWebviewWindow();
       appWin.setTitle(appTitle).catch((err) => {
@@ -135,7 +154,7 @@ export const Layout: React.FC = () => {
     } catch {
       // Ignored in non-Tauri environment
     }
-  }, [appTitle]);
+  }, [appTitle, webMode]);
 
   const statusClass =
     report?.overall_status === 'HEALTHY'
@@ -162,29 +181,46 @@ export const Layout: React.FC = () => {
         <i />
         <div className="xingshu-stage-grain" />
       </div>
-      <Sidebar />
+      <Sidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      <div
+        className={`mobile-sidebar-backdrop ${mobileNavOpen ? 'is-open' : ''}`}
+        aria-hidden="true"
+        onClick={() => setMobileNavOpen(false)}
+      />
       <div className="main-wrapper">
         <header className={`top-bar ${isScrolled ? 'is-scrolled' : ''}`}>
           <div className="top-bar-title">
-            <span>{appTitle}</span>
-            <span style={{ color: 'var(--text-muted)' }}>/</span>
-            <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>
-              {report?.snapshot.primary_game ? report.snapshot.primary_game.install_path : t('common.scanningGameDir')}
+            <button
+              type="button"
+              className="mobile-nav-btn"
+              aria-label={locale === 'zh-CN' ? '打开导航菜单' : 'Open navigation menu'}
+              aria-expanded={mobileNavOpen}
+              onClick={() => setMobileNavOpen((prev) => !prev)}
+            >
+              <Menu size={18} />
+            </button>
+            <span className="top-bar-app">{appTitle}</span>
+            <span className="top-bar-divider" style={{ color: 'var(--text-muted)' }}>/</span>
+            <span className="top-bar-subtitle" style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>
+              {webMode
+                ? (locale === 'zh-CN' ? '网页版 · 回放分析与公开资料查询' : 'Web Edition · Cloud Replay & Lookup')
+                : (report?.snapshot.primary_game ? report.snapshot.primary_game.install_path : t('common.scanningGameDir'))}
             </span>
           </div>
 
           <div className="top-bar-status">
             <LanguageSwitcher />
-            <div className={`status-pill ${statusClass}`}>
+            <GitHubRepoLink variant="pill" label="GitHub" hideLabelOnMobile />
+            <div className={`status-pill ${webMode ? 'healthy' : statusClass}`}>
               <span className="pulse-dot" />
-              <span>{statusLabel}</span>
+              <span>{webMode ? (locale === 'zh-CN' ? '网页版在线' : 'Web Ready') : statusLabel}</span>
             </div>
-            {report?.snapshot.running_processes && report.snapshot.running_processes.length > 0 ? (
+            {!webMode && report?.snapshot.running_processes && report.snapshot.running_processes.length > 0 ? (
               <div className="status-pill warning" title={t('common.gameActive')}>
                 <AlertTriangle size={13} />
                 <span>{t('common.gameActive')} ({report.snapshot.running_processes.length})</span>
               </div>
-            ) : report ? (
+            ) : !webMode && report ? (
               <div className="status-pill ok" title={t('common.safeToModify')}>
                 <ShieldCheck size={13} />
                 <span>{t('common.safeToModify')}</span>
@@ -193,7 +229,7 @@ export const Layout: React.FC = () => {
           </div>
         </header>
 
-        <UpdatePromptController />
+        {!webMode && <UpdatePromptController />}
 
         <main className="content-area" ref={contentRef}>
           <div className="aurora-route-stage" key={pathname}>

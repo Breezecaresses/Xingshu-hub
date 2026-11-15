@@ -49,6 +49,7 @@ lerna-debug.log*
 # Rust & Cargo & Tauri (src-tauri)
 # ------------------------------------------
 **/target/
+**/src-tauri/gen/
 **/*.rs.bk
 *.pdb
 

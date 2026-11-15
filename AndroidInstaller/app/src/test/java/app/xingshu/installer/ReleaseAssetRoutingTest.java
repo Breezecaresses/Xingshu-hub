@@ -11,7 +11,7 @@ public final class ReleaseAssetRoutingTest {
     private static final String BROWSER="https://github.com/"+ReleaseUpdates.REPO+"/releases/download/v1/file.apk";
 
     @Test public void locatorUsesOnlyFixedRepositoryAndPositiveId() {
-        assertEquals("https://api.github.com/repos/Breezecaresses/Xingshu-hub/releases/assets/669387880",ReleaseUpdates.assetApiAddress(669387880));
+        assertEquals("https://api.github.com/repos/Breezecaresses/AstralParty-XingShu/releases/assets/669387880",ReleaseUpdates.assetApiAddress(669387880));
         for(long id:new long[]{0,-1,Long.MIN_VALUE}) {
             try { ReleaseUpdates.assetApiAddress(id); fail("Invalid asset ID accepted"); }
             catch(IllegalArgumentException expected) { assertTrue(expected.getMessage().contains("编号")); }
@@ -56,8 +56,8 @@ public final class ReleaseAssetRoutingTest {
         assertEquals(1,calls.size()); assertEquals(BROWSER,calls.get(0));
     }
     @Test public void atomTagParserFiltersPreviewWhenDisabled() {
-        String xml="<entry><link href=\"https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.4-test.1\"/></entry>"
-            +"<entry><link href=\"https://github.com/Breezecaresses/Xingshu-hub/releases/tag/v0.1.3\"/></entry>";
+        String xml="<entry><link href=\"https://github.com/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.4-test.1\"/></entry>"
+            +"<entry><link href=\"https://github.com/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.3\"/></entry>";
         assertEquals(java.util.Collections.singletonList("v0.1.3"),ReleaseUpdates.parseAtomTags(xml,false,8));
         assertEquals(java.util.Arrays.asList("v0.1.4-test.1","v0.1.3"),ReleaseUpdates.parseAtomTags(xml,true,8));
     }

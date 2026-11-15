@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { isTauriRuntime, assetUrl } from '../../shared/runtime';
+import { DesktopOnlyBanner } from '../../components/DesktopOnlyBanner';
 import { useNavigate } from 'react-router-dom';
 import {
   Eye,
@@ -85,7 +87,7 @@ export const SpectatorPage: React.FC = () => {
   const [cloudHands, setCloudHands] = useState<CloudHandState>({ enabled: false, status: 'disabled' });
   const [cloudHandPending, setCloudHandPending] = useState(false);
   React.useEffect(() => {
-    if (cloudHandPending) return;
+    if (!isTauriRuntime() || cloudHandPending) return;
     let active = true;
     const refresh = () => invoke<CloudHandState>('cloud_hand_sync_status')
       .then(state => { if (active) setCloudHands(state); }).catch(() => {});
@@ -95,6 +97,7 @@ export const SpectatorPage: React.FC = () => {
   }, [cloudHandPending]);
 
   async function toggleCloudHands() {
+    if (!isTauriRuntime()) return;
     setCloudHandPending(true);
     try {
       setCloudHands(await invoke<CloudHandState>('set_cloud_hand_sync', { enabled: !cloudHands.enabled }));
@@ -278,6 +281,7 @@ export const SpectatorPage: React.FC = () => {
 
   return (
     <div style={{ maxWidth: 1440, margin: '0 auto', paddingBottom: 40 }}>
+      <DesktopOnlyBanner feature="spectator" />
       <section className="card" style={{ padding: 16, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
@@ -1080,7 +1084,7 @@ export const SpectatorPage: React.FC = () => {
                               }}
                             >
                               <img
-                                src={item.card.icon}
+                                src={assetUrl(item.card.icon)}
                                 alt={item.card.name}
                                 style={{
                                   width: '100%',
@@ -1090,7 +1094,7 @@ export const SpectatorPage: React.FC = () => {
                                 onError={(e) => {
                                   // Fallback to uniform grey card fallback on load error
                                   (e.currentTarget as HTMLImageElement).src =
-                                    '/cards/card_fallback.svg';
+                                    assetUrl('/cards/card_fallback.svg');
                                 }}
                               />
                             </div>

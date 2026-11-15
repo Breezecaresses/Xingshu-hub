@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { openUrl } from '@tauri-apps/plugin-opener';
+import { openExternalUrl, isTauriRuntime } from '../../shared/runtime';
+import { DesktopOnlyBanner } from '../../components/DesktopOnlyBanner';
 import { PROJECT_SOURCE, PROJECT_SOURCE_LABEL } from '../../shared/projectSource';
 import { api } from '../../shared/api/tauri';
 import type { GameInstallation, ProbeResult, ProviderMetadata } from '../../shared/types';
@@ -54,6 +55,7 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <DesktopOnlyBanner feature="diagnostics" compact />
         <AppUpdatePanel />
         {/* Language Selection Card */}
         <div className="panel">
@@ -111,7 +113,7 @@ export const SettingsPage: React.FC = () => {
               onChange={(e) => setManualPath(e.target.value)}
               placeholder={t('settings.pathPlaceholder')}
             />
-            <button className="btn btn-primary" onClick={handleSavePath} disabled={saving}>
+            <button className="btn btn-primary" onClick={handleSavePath} disabled={saving || !isTauriRuntime()}>
               <Save size={14} />
               <span>{saving ? t('settings.saving') : t('settings.validateAndSave')}</span>
             </button>
@@ -185,7 +187,7 @@ export const SettingsPage: React.FC = () => {
         <div className="panel">
           <h2 className="panel-title" style={{ marginBottom: 12 }}>星枢项目来源</h2>
           <p style={{ color: 'var(--text-secondary)', lineHeight: 1.8 }}>Hub 与游戏内运行时源码：{PROJECT_SOURCE_LABEL}</p>
-          <button type="button" className="btn btn-secondary" onClick={() => void openUrl(PROJECT_SOURCE)}>{PROJECT_SOURCE} ↗</button>
+          <button type="button" className="btn btn-secondary" onClick={() => void openExternalUrl(PROJECT_SOURCE)}>{PROJECT_SOURCE} ↗</button>
           <p style={{ color: 'var(--text-muted)', marginTop: 12 }}>代码许可见项目仓库的 LICENSE；角色、卡面及游戏配置素材来源于吉星派对，相关权利归原权利人所有。</p>
         </div>
 

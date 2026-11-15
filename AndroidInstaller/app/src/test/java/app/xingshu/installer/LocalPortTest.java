@@ -14,4 +14,11 @@ public final class LocalPortTest {
             try { LocalPort.parse(value); fail("accepted "+value); } catch(IllegalArgumentException expected) { }
         }
     }
+
+    @Test public void verifiedLocalHostsAlwaysStartsWithLoopbackAndRejectsRemoteIps() {
+        java.util.List<String> hosts = LocalAdbInstaller.verifiedLocalHosts("8.8.8.8");
+        assertEquals("127.0.0.1", hosts.get(0));
+        assertFalse(hosts.contains("8.8.8.8"));
+        assertFalse(hosts.contains("evil.example.com"));
+    }
 }

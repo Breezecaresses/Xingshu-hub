@@ -12,11 +12,18 @@ export interface PreviewCharacterData {
   unavailableAssets: string[]; skinSlots: number; emoteSlots: number;
   growthDescriptionIds: number[]; notes: string[];
 }
+export interface LibraryEmote {
+  id: number;
+  name: string;
+  image: string;
+  default?: boolean;
+  animated?: boolean;
+}
 export interface LibrarySkin { id: number; index: number; default: boolean; name: string; description: string; image: string }
 export interface LibraryCharacter {
   id: number; name: string; title: string; biography: string; comment: string; gallery: boolean;
   hasBond: boolean; hp: number; attack: number; defense: number; image: string;
-  skills: LibrarySkill[]; pveSkills: LibrarySkill[]; skins: LibrarySkin[];
+  skills: LibrarySkill[]; pveSkills: LibrarySkill[]; skins: LibrarySkin[]; emotes?: LibraryEmote[];
   bondRewards: { FavorLevel: number; Rewards?: Record<string, number> }[];
   breakthrough: { NeedMaterials?: Record<string, number>; Rewards?: Record<string, number> };
   isLinkage?: boolean; category?: string; preview?: PreviewCharacterData;
@@ -71,6 +78,31 @@ export const characterName = (id: number) => gameCatalog.characters.find(c => c.
 export const isPreviewCharacter = (c: LibraryCharacter) => !!c.preview || !c.name.trim();
 export const libraryCharacterName = (c: LibraryCharacter) => c.name.trim() || `预更新角色 #${c.id}`;
 export const platformName = (platform: string) => ({ STEAM: 'Steam', STEAM_CN: 'Steam 国服', STEAM_GLOBAL: 'Steam 国际服', TAPTAP: 'TapTap', BILIBILI: '哔哩哔哩', WEGAME: 'WeGame', PHONE_CN: '手机号账号 · 云端' }[platform] || platform);
+
+const SESSION_EMOTE_SALT = Math.floor(Math.random() * 0x7fffffff);
+
+export function characterStaticEmoteAssets(heroId: number): string[] {
+  const c = gameCatalog.characters.find(ch => ch.id === heroId);
+  if (!c || isPreviewCharacter(c) || !Array.isArray(c.emotes)) return [];
+  return c.emotes
+    .filter(e => !e.animated && !!e.image && Boolean(gameCatalog.assets[e.image]))
+    .map(e => e.image);
+}
+
+/** Rotate through static character emotes per session/slot while keeping preview characters blank. */
+export function pickStaticEmoteAsset(heroId: number, seed: number | string = 0): string {
+  const pool = characterStaticEmoteAssets(heroId);
+  if (pool.length === 0) {
+    const c = gameCatalog.characters.find(ch => ch.id === heroId);
+    return !c || isPreviewCharacter(c) ? '' : (c.image || '');
+  }
+  const s = `${heroId}:${seed}`;
+  let hash = SESSION_EMOTE_SALT ^ (heroId * 2654435761);
+  for (let i = 0; i < s.length; i++) {
+    hash = Math.imul(hash ^ s.charCodeAt(i), 16777619);
+  }
+  return pool[(hash >>> 0) % pool.length];
+}
 
 /** Never silently use a spectator's data for an unsynchronized live main account. */
 export function defaultLibraryKey(accounts: LibraryAccount[], sessions: LibrarySession[], saved: string | null) {

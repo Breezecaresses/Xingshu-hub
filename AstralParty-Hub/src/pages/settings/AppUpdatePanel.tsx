@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { openUrl } from '@tauri-apps/plugin-opener';
+import { openExternalUrl } from '../../shared/runtime';
 import { CheckCircle2, Download, RefreshCw } from 'lucide-react';
 import { useTranslation } from '../../i18n';
 import { appUpdateStore, useAppUpdateState } from '../../shared/appUpdateStore';
@@ -241,7 +241,7 @@ export function AppUpdatePanel() {
         type="button"
         className="btn btn-secondary btn-sm"
         style={{ marginTop: 14 }}
-        onClick={() => void openUrl(PROJECT_SOURCE + '/releases')}
+        onClick={() => void openExternalUrl(PROJECT_SOURCE + '/releases')}
       >
         {isZh ? '打开官方发布页 ↗' : 'Open Official Releases ↗'}
       </button>

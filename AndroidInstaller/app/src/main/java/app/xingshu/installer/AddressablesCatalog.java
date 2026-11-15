@@ -50,6 +50,77 @@ final class AddressablesCatalog {
         return relativeBundlePath(managedBundleId(catalogFile));
     }
 
+    static String resolveManagedRuntimeRelativePath(File filesRoot, File catalogFile) throws IOException {
+        return resolveManagedRuntimeRelativePath(filesRoot, catalogFile, PayloadSpec.RELATIVE);
+    }
+
+    static String resolveManagedRuntimeRelativePath(File filesRoot, File catalogFile, String defaultRelativePath) throws IOException {
+        String bundleId = managedBundleId(catalogFile);
+        String preferredBucket = extractAssetBundleBucket(defaultRelativePath);
+        File assetBundlesDir = filesRoot == null ? null : new File(filesRoot, "com.unity.addressables/AssetBundles");
+        if (assetBundlesDir != null && assetBundlesDir.isDirectory()) {
+            File[] children = assetBundlesDir.listFiles();
+            if (children != null) {
+                String canonicalRoot = assetBundlesDir.getCanonicalPath() + File.separator;
+                java.util.List<String> matchedBuckets = new java.util.ArrayList<>();
+                java.util.Map<String, Long> modifiedByBucket = new java.util.HashMap<>();
+                for (File bucketDir : children) {
+                    if (bucketDir == null || !bucketDir.isDirectory()) continue;
+                    String bucket = bucketDir.getName();
+                    if (!isSafeBucketName(bucket)) continue;
+                    File candidate = new File(new File(bucketDir, bundleId), "__data");
+                    if (!candidate.isFile()) continue;
+                    if (!candidate.getCanonicalPath().startsWith(canonicalRoot)) continue;
+                    matchedBuckets.add(bucket);
+                    modifiedByBucket.put(bucket, candidate.lastModified());
+                }
+                if (matchedBuckets.size() == 1) {
+                    return "com.unity.addressables/AssetBundles/" + matchedBuckets.get(0) + "/" + bundleId + "/__data";
+                }
+                if (matchedBuckets.size() > 1) {
+                    if (preferredBucket != null && matchedBuckets.contains(preferredBucket)) {
+                        return "com.unity.addressables/AssetBundles/" + preferredBucket + "/" + bundleId + "/__data";
+                    }
+                    String twoHex = bundleId.substring(0, 2);
+                    if (matchedBuckets.contains(twoHex)) {
+                        return "com.unity.addressables/AssetBundles/" + twoHex + "/" + bundleId + "/__data";
+                    }
+                    java.util.Collections.sort(matchedBuckets, (a, b) -> {
+                        int cmp = Long.compare(modifiedByBucket.get(b), modifiedByBucket.get(a));
+                        return cmp != 0 ? cmp : a.compareTo(b);
+                    });
+                    return "com.unity.addressables/AssetBundles/" + matchedBuckets.get(0) + "/" + bundleId + "/__data";
+                }
+                File flatCandidate = new File(new File(assetBundlesDir, bundleId), "__data");
+                if (flatCandidate.isFile() && flatCandidate.getCanonicalPath().startsWith(canonicalRoot)) {
+                    return "com.unity.addressables/AssetBundles/" + bundleId + "/__data";
+                }
+            }
+        }
+        if (preferredBucket != null) {
+            return "com.unity.addressables/AssetBundles/" + preferredBucket + "/" + bundleId + "/__data";
+        }
+        return relativeBundlePath(bundleId);
+    }
+
+    static String extractAssetBundleBucket(String relativePath) {
+        if (relativePath == null) return null;
+        String prefix = "com.unity.addressables/AssetBundles/";
+        String suffix = "/__data";
+        if (!relativePath.startsWith(prefix) || !relativePath.endsWith(suffix)) return null;
+        String mid = relativePath.substring(prefix.length(), relativePath.length() - suffix.length());
+        int slash = mid.indexOf('/');
+        if (slash <= 0) return null;
+        String bucket = mid.substring(0, slash);
+        String tail = mid.substring(slash + 1);
+        if (tail.indexOf('/') >= 0 || tail.isEmpty()) return null;
+        return isSafeBucketName(bucket) ? bucket : null;
+    }
+
+    private static boolean isSafeBucketName(String name) {
+        return name != null && !name.equals(".") && !name.equals("..") && name.matches("[A-Za-z0-9._-]+");
+    }
+
     static String relativeBundlePath(String bundleId) throws IOException {
         if (bundleId == null || !bundleId.matches("[0-9a-f]{32}")) {
             throw new IOException("非法的资源包标识");

@@ -11,6 +11,7 @@
     "test:match-results": "node --experimental-strip-types src/test/match_results.test.ts",
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:web": "node scripts/build-web.mjs",
     "test": "node --experimental-strip-types src/test/platform_profile_conformance.test.ts",
     "test:conformance": "node --experimental-strip-types src/test/platform_profile_conformance.test.ts",
     "test:managed-provider": "node --experimental-strip-types src/test/managed_account_provider.test.ts",

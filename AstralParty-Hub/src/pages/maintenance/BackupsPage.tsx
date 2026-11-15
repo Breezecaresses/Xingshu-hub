@@ -3,6 +3,7 @@ import { api } from '../../shared/api/tauri';
 import type { Backup } from '../../shared/types';
 import { Archive, RefreshCw, Folder } from 'lucide-react';
 import { useTranslation } from '../../i18n';
+import { DesktopOnlyBanner } from '../../components/DesktopOnlyBanner';
 
 export const BackupsPage: React.FC = () => {
   const { locale, t } = useTranslation();
@@ -24,6 +25,7 @@ export const BackupsPage: React.FC = () => {
 
   return (
     <div>
+      <DesktopOnlyBanner feature="maintenance" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700 }}>{t('maintenance.backupsTitle')}</h1>

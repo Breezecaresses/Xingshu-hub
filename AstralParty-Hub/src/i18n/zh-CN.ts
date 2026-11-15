@@ -45,7 +45,7 @@ export const zhCN: TranslationSchema = {
     packagesAndExtensions: '包与扩展',
     packageManager: '星枢包管理器',
     runtimePlugins: '运行时插件',
-    gameMods: '游戏模组',
+    gameMods: '模组工坊',
     importPackage: '导入安装包',
     operations: '运维与诊断',
     transactions: '安装事务',

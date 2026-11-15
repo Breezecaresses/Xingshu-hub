@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../../shared/api/tauri';
+import { isTauriRuntime } from '../../shared/runtime';
+import { DesktopOnlyBanner } from '../../components/DesktopOnlyBanner';
 import type { BridgeConnectionState, BridgeLogEntry } from '../../shared/types';
 import {
   Terminal,
@@ -34,6 +36,7 @@ export const BridgePage: React.FC = () => {
   const timerRef = useRef<number | null>(null);
 
   const fetchStatus = async () => {
+    if (!isTauriRuntime()) return;
     try {
       const s = await api.getBridgeStatus();
       setStatus(s);
@@ -43,6 +46,7 @@ export const BridgePage: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!isTauriRuntime()) return;
     fetchStatus();
     if (autoRefresh) {
       timerRef.current = window.setInterval(fetchStatus, 1500);
@@ -106,6 +110,7 @@ export const BridgePage: React.FC = () => {
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: 40 }}>
+      <DesktopOnlyBanner feature="bridge" />
       {/* Top Header */}
       <div
         style={{

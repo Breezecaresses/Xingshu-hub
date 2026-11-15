@@ -6,6 +6,7 @@ const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
+  base: process.env.VITE_BASE || '/',
   plugins: [react()],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
@@ -16,6 +17,11 @@ export default defineConfig(() => ({
   server: {
     port: 1420,
     strictPort: true,
+    proxy: {
+      '/api': 'http://127.0.0.1:8769',
+      '/auth': 'http://127.0.0.1:8769',
+      '/account': 'http://127.0.0.1:8769',
+    },
     host: host || false,
     hmr: host
       ? {

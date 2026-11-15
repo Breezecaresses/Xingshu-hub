@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Heart, Sparkles, Sword, Shield, Users } from 'lucide-react';
-import { gameCatalog, libraryCharacterName, isPreviewCharacter } from '../../shared/gameLibrary';
+import { gameCatalog, libraryCharacterName, isPreviewCharacter, pickStaticEmoteAsset } from '../../shared/gameLibrary';
 import type { HeroProgress, LibraryCharacter, LibrarySkin } from '../../shared/gameLibrary';
 import { GameImage, GameText, LibraryHeader, RewardItems, useGameLibrary } from './LibraryUI';
 
@@ -59,7 +59,7 @@ export function CharactersPage() {
             <div className="character-roster">{visible.map(c => {
               const hero = progress?.find(h => h.id === c.id);
               return <button className={`character-roster-card ${detail.id === c.id ? 'selected' : ''}`} key={c.id} onClick={() => selectCharacter(c.id)} aria-pressed={detail.id === c.id}>
-                <GameImage asset={c.skins.find(s => s.default)?.image || c.image} name={libraryCharacterName(c)} />
+                <GameImage asset={pickStaticEmoteAsset(c.id, `roster:${c.id}`)} name={libraryCharacterName(c)} />
                 <div><strong>{libraryCharacterName(c)}</strong><small>{isPreviewCharacter(c) ? '官方预更新 · 资料待补全' : !progress ? '持有未知' : hero ? `羁绊 Lv.${hero.level}` : '未持有'}</small></div>
               </button>;
             })}</div>

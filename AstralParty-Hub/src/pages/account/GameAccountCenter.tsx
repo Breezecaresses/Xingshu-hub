@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ShieldCheck,
   User,
@@ -22,6 +23,8 @@ import type { RuntimeSession } from '../../types/runtimeSession';
 import { api } from '../../shared/api/tauri';
 import { useTranslation } from '../../i18n';
 import { CloudLoginCard } from './CloudLoginCard';
+import { WebCloudLoginCard } from '../../components/WebCloudLoginCard';
+import { isTauriRuntime } from '../../shared/runtime';
 
 export const GameAccountCenter: React.FC = () => {
   const { locale } = useTranslation();
@@ -63,8 +66,9 @@ export const GameAccountCenter: React.FC = () => {
     }
   }, [runtimeSessions]);
 
-  // Poll runtime session status
+  // Poll runtime session status (desktop only)
   const pollRuntimeSession = useCallback(async () => {
+    if (!isTauriRuntime()) return;
     try {
       const [payload, bridge, sessions] = await Promise.all([
         api.getSpectatorHandPayload().catch(() => null),
@@ -112,6 +116,7 @@ export const GameAccountCenter: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (!isTauriRuntime()) return;
     pollRuntimeSession();
     const interval = setInterval(pollRuntimeSession, 2000);
     return () => clearInterval(interval);
@@ -235,6 +240,65 @@ export const GameAccountCenter: React.FC = () => {
       return iso;
     }
   };
+
+  if (!isTauriRuntime()) {
+    return (
+      <div style={{ maxWidth: 1080, margin: '0 auto', paddingBottom: 40 }}>
+        <div style={{ marginBottom: 20 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+            {isZh ? '星枢云端账号' : 'XingShu Cloud Account'}
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
+            {isZh
+              ? '扫码登录星枢云端后，可在网页端同步并查看个人档案、通行证进度与私人历史战绩。公开 UID 查询与回放分析无需登录。'
+              : 'Sign in with XingShu Cloud to view your private synced profile, battle pass, and match history on the web.'}
+          </p>
+        </div>
+
+        <WebCloudLoginCard isZh={isZh} />
+
+        <div
+          style={{
+            padding: '12px 18px',
+            marginBottom: 20,
+            borderRadius: 8,
+            backgroundColor: 'rgba(16, 185, 129, 0.08)',
+            border: '1px solid rgba(16, 185, 129, 0.25)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 12,
+          }}
+        >
+          <ShieldCheck size={20} color="#10b981" style={{ flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            <strong style={{ color: '#10b981' }}>
+              {isZh ? '云端账号与隐私保护' : 'Account Privacy'}
+            </strong>
+            <div style={{ marginTop: 2 }}>
+              {isZh
+                ? '手机号和短信验证码只用于授权服务签发凭据，不写入网页或日志；浏览器本地仅保留加密会话令牌用于读取个人资料与对战记录。'
+                : 'SMS login is handled on the authorization page; the browser only keeps a scoped session token.'}
+            </div>
+          </div>
+        </div>
+
+        <div className="library-links">
+          <Link to="/player/profile">
+            玩家资料
+            <small>公开 UID 查询与已登录个人收藏</small>
+          </Link>
+          <Link to="/player/matches">
+            对战记录
+            <small>查看个人云端战绩与公开战绩入口</small>
+          </Link>
+          <Link to="/player/replay">
+            回放分析
+            <small>对局编号与 .rep 深度复盘工作台</small>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: 40 }}>

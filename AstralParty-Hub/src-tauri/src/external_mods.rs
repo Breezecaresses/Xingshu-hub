@@ -438,6 +438,15 @@ fn restore(root: &Path, item: &ModItem) -> HubResult<()> {
     }
     save_receipt(root, item, "restored")
 }
+pub(crate) fn restore_item_by_id(root: &Path, item_id: &str) -> HubResult<()> {
+    let c = catalog()?;
+    let item = c
+        .items
+        .iter()
+        .find(|x| x.id == item_id)
+        .ok_or_else(|| HubError::invalid_manifest("未知内置模组条目。"))?;
+    restore(root, item)
+}
 fn install(
     game: &GameInstallation,
     root: &Path,

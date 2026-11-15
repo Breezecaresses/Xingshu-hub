@@ -20,6 +20,8 @@ pub mod android_installer;
 #[cfg(feature = "web-ui")]
 pub mod external_mods;
 #[cfg(feature = "web-ui")]
+pub mod workshop;
+#[cfg(feature = "web-ui")]
 pub mod app_update;
 #[cfg(feature = "web-ui")]
 pub mod account_login;
@@ -214,6 +216,9 @@ pub fn run() {
             external_mods::get_external_mod_report,
             external_mods::external_mod_action,
             external_mods::archive_external_mod_report,
+            workshop::workshop_list_local_state,
+            workshop::workshop_download_and_install,
+            workshop::workshop_restore_mod,
             app_update::get_app_build,
             app_update::check_app_update,
             app_update::prepare_app_update,

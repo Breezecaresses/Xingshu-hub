@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { Layout } from './layout/Layout';
 import { DashboardPage } from '../pages/dashboard/DashboardPage';
@@ -7,6 +8,8 @@ import { CharactersPage } from '../pages/player/CharactersPage';
 import { CardsPage } from '../pages/player/CardsPage';
 import { ChipsPage, MapsPage } from '../pages/player/EncyclopediaPage';
 import { MatchesPage } from '../pages/player/MatchesPage';
+import { ReplayAnalyzerPage } from '../pages/player/ReplayAnalyzerPage';
+import { isTauriRuntime, routerBasename } from '../shared/runtime';
 import { ModsPage } from '../pages/extensions/ModsPage';
 import { PackagesPage } from '../pages/packages/PackagesPage';
 import { SpectatorPage } from '../pages/spectator/SpectatorPage';
@@ -15,6 +18,9 @@ import { TransactionsPage } from '../pages/maintenance/TransactionsPage';
 import { BackupsPage } from '../pages/maintenance/BackupsPage';
 import { DiagnosticsPage } from '../pages/diagnostics/DiagnosticsPage';
 import { SettingsPage } from '../pages/settings/SettingsPage';
+
+const desktopOnly = (element: ReactNode) =>
+  isTauriRuntime() ? element : <Navigate to="/dashboard" replace />;
 
 export const router = createBrowserRouter([
   {
@@ -26,10 +32,12 @@ export const router = createBrowserRouter([
         element: (
           <Navigate
             to={
+              isTauriRuntime() &&
               typeof window !== 'undefined' &&
               (window.location.search.includes('spectator') || window.location.hash.includes('spectator'))
                 ? '/spectator'
-                : typeof window !== 'undefined' &&
+                : isTauriRuntime() &&
+                  typeof window !== 'undefined' &&
                   (window.location.search.includes('diagnostics') || window.location.hash.includes('diagnostics'))
                 ? '/diagnostics'
                 : '/dashboard'
@@ -79,23 +87,27 @@ export const router = createBrowserRouter([
         path: 'player/matches',
         element: <MatchesPage />,
       },
-      // XingShu Core Integration
+      {
+        path: 'player/replay',
+        element: <ReplayAnalyzerPage />,
+      },
+      // XingShu Core Integration (desktop-only)
       {
         path: 'runtime',
-        element: <Navigate to="/diagnostics?section=runtime" replace />,
+        element: desktopOnly(<Navigate to="/diagnostics?section=runtime" replace />),
       },
       {
         path: 'spectator',
-        element: <SpectatorPage />,
+        element: desktopOnly(<SpectatorPage />),
       },
       {
         path: 'bridge',
-        element: <BridgePage />,
+        element: desktopOnly(<BridgePage />),
       },
-      // Extensions & Packages
+      // Extensions & Packages (desktop-only)
       {
         path: 'extensions/plugins',
-        element: <Navigate to="/diagnostics?section=runtime" replace />,
+        element: desktopOnly(<Navigate to="/diagnostics?section=runtime" replace />),
       },
       {
         path: 'extensions/mods',
@@ -103,28 +115,28 @@ export const router = createBrowserRouter([
       },
       {
         path: 'extensions/packages',
-        element: <PackagesPage />,
+        element: desktopOnly(<PackagesPage />),
       },
       {
         path: 'extensions/import',
-        element: <Navigate to="/extensions/mods" replace />,
+        element: desktopOnly(<Navigate to="/extensions/mods" replace />),
       },
-      // Maintenance & System
+      // Maintenance & System (desktop-only)
       {
         path: 'maintenance/transactions',
-        element: <TransactionsPage />,
+        element: desktopOnly(<TransactionsPage />),
       },
       {
         path: 'maintenance/backups',
-        element: <BackupsPage />,
+        element: desktopOnly(<BackupsPage />),
       },
       {
         path: 'diagnostics',
-        element: <DiagnosticsPage />,
+        element: desktopOnly(<DiagnosticsPage />),
       },
       {
         path: 'settings',
-        element: <SettingsPage />,
+        element: desktopOnly(<SettingsPage />),
       },
       {
         path: '*',
@@ -132,4 +144,4 @@ export const router = createBrowserRouter([
       },
     ],
   },
-]);
+], { basename: routerBasename() });

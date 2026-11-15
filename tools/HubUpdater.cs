@@ -18,9 +18,10 @@ using System.Windows.Forms;
 using System.Xml;
 
 internal static class HubUpdater {
-    internal const string Repo = "Breezecaresses/Xingshu-hub";
+    internal const string Repo = "Breezecaresses/AstralParty-XingShu";
     internal const string Releases = "https://github.com/" + Repo + "/releases";
     internal static readonly string[] DomesticMirrors = new[] {
+        "https://gh-proxy.com/",
         "https://edgeone.gh-proxy.org/",
         "https://gh-proxy.org/",
         "https://ghfast.top/",
@@ -43,7 +44,7 @@ internal static class HubUpdater {
         if(String.IsNullOrEmpty(host))return false;
         string h=host.ToLowerInvariant();
         return h=="api.github.com" || h=="github.com" || h=="release-assets.githubusercontent.com" || h=="objects.githubusercontent.com"
-            || h=="edgeone.gh-proxy.org" || h=="gh-proxy.org" || h=="ghfast.top";
+            || IsDomesticHost(h);
     }
 
     internal static void ValidateEndpoint(Uri u) {
@@ -206,7 +207,7 @@ internal static class HubUpdater {
     static bool IsDomesticHost(string host) {
         if(String.IsNullOrEmpty(host))return false;
         string h=host.ToLowerInvariant();
-        return h=="edgeone.gh-proxy.org" || h=="gh-proxy.org" || h=="ghfast.top";
+        return DomesticMirrors.Any(m => new Uri(m).Host==h);
     }
     sealed class ReleaseCandidate {
         internal string Tag,Manifest;
@@ -315,9 +316,19 @@ internal static class HubUpdater {
         return new CheckResult { Result=result,DesktopAssetId=best==null?0:best.DesktopAssetId,Domestic=domestic };
       }
     }
-    const int DownloadProbeBytes=65536;
-    internal delegate Task DownloadProber(string url,long size,CancellationToken cancellation);
+    const int DownloadProbeBytes=1024*1024;
+    const int DownloadSampleMs=2000;
+    const int DownloadSelectionGraceMs=600;
+    internal sealed class DownloadSource {
+        internal string Url,ResolvedUrl;
+        internal bool Ranges;
+        internal double BytesPerSecond;
+        internal long Downloaded;
+        internal bool Failed;
+    }
+    internal delegate Task<DownloadSource> DownloadProber(string url,long size,CancellationToken cancellation);
     internal delegate void PackageDownloader(string url,string destination,long size,string hash);
+    internal delegate Task<byte[]> RangeDownloader(string url,long offset,int count,long size,CancellationToken cancellation);
     internal static void ValidateDownloadProbe(int status,long length,string contentRange,long size) {
         if(status==206) {
             string expected="bytes 0-"+(Math.Min(size,DownloadProbeBytes)-1)+"/"+size;
@@ -327,7 +338,8 @@ internal static class HubUpdater {
             throw new TransportException("下载通道返回的文件大小不符",0,null);
         }
     }
-    static async Task ProbeDownloadAsync(string url,long size,CancellationToken cancellation) {
+    static async Task<DownloadSource> ProbeDownloadAsync(string url,long size,CancellationToken cancellation) {
+        string original=url;
         for(int redirects=0;redirects<6;redirects++) {
             var u=new Uri(url); var request=UpdateRequest(u,SourceTimeoutMs,SourceTimeoutMs);
             request.AddRange(0,Math.Min(size,DownloadProbeBytes)-1);
@@ -337,14 +349,25 @@ internal static class HubUpdater {
                 using(var response=(HttpWebResponse)await request.GetResponseAsync().ConfigureAwait(false)) {
                     if((int)response.StatusCode>=300 && (int)response.StatusCode<400) { url=new Uri(u,response.Headers["Location"]).AbsoluteUri; continue; }
                     ValidateDownloadProbe((int)response.StatusCode,response.ContentLength,response.Headers["Content-Range"],size);
-                    // Test actual bytes, rather than selecting a fast HEAD response whose body may stall.
+                    long total=0; bool sampled=false;
+                    var timer=Stopwatch.StartNew();
+                    using(var sample=CancellationTokenSource.CreateLinkedTokenSource(cancellation))
+                    using(sample.Token.Register(request.Abort))
                     using(var source=response.GetResponseStream()) {
-                        byte[] buffer=new byte[(int)Math.Min(size,DownloadProbeBytes)]; int total=0,n;
-                        while(total<buffer.Length && (n=await source.ReadAsync(buffer,total,buffer.Length-total,cancellation).ConfigureAwait(false))>0)total+=n;
-                        if(total!=buffer.Length)throw new TransportException("下载通道未返回完整探测数据",0,null);
-                        request.Abort(); // A server may ignore Range; never drain the rest of a large probe response.
+                        sample.CancelAfter(DownloadSampleMs);
+                        byte[] buffer=new byte[65536]; long target=Math.Min(size,DownloadProbeBytes);
+                        try {
+                            int n;
+                            while(total<target && (n=await source.ReadAsync(buffer,0,(int)Math.Min(buffer.Length,target-total),sample.Token).ConfigureAwait(false))>0)total+=n;
+                        } catch(Exception) {
+                            if(sample.IsCancellationRequested && !cancellation.IsCancellationRequested)sampled=true;
+                            else throw;
+                        }
+                        if((!sampled && total!=target) || total<Math.Min(size,32768))throw new TransportException("下载通道未返回有效测速数据",0,null);
+                        request.Abort(); // Never drain a full file when a server ignores Range.
                     }
-                    return;
+                    return new DownloadSource { Url=original,ResolvedUrl=u.AbsoluteUri,Ranges=(int)response.StatusCode==206,
+                        BytesPerSecond=total*1000.0/Math.Max(1,timer.ElapsedMilliseconds) };
                 }
             } catch(WebException ex) { cancellation.ThrowIfCancellationRequested(); throw ToTransportException(ex); }
               catch(IOException ex) { throw new TransportException(ex.Message,0,ex); }
@@ -352,12 +375,139 @@ internal static class HubUpdater {
         }
         throw new TransportException("更新下载重定向次数过多",0,null);
     }
-    static async Task<MetadataResponse<string>> TryProbeDownloadAsync(string url,long size,DownloadProber probe,CancellationToken cancellation) {
+    static async Task<MetadataResponse<DownloadSource>> TryProbeDownloadAsync(string url,long size,DownloadProber probe,CancellationToken cancellation) {
         try {
-            await probe(url,size,cancellation).ConfigureAwait(false);
+            var source=await probe(url,size,cancellation).ConfigureAwait(false);
             cancellation.ThrowIfCancellationRequested();
-            return new MetadataResponse<string> { Value=url,Host=new Uri(url).Host };
-        } catch(Exception ex) { return new MetadataResponse<string> { Error=ex }; }
+            if(source==null || source.BytesPerSecond<=0)throw new TransportException("下载通道测速失败",0,null);
+            source.Url=url;
+            return new MetadataResponse<DownloadSource> { Value=source,Host=new Uri(url).Host };
+        } catch(Exception ex) { return new MetadataResponse<DownloadSource> { Error=ex }; }
+    }
+    static async Task<List<DownloadSource>> SelectDownloadSourcesAsync(IList<string> urls,long size,DownloadProber probe) {
+        using(var budget=new CancellationTokenSource(SourceTimeoutMs)) {
+            var pending=urls.Select(url => TryProbeDownloadAsync(url,size,probe,budget.Token)).ToList();
+            Task expired=Task.Delay(Timeout.Infinite,budget.Token),grace=null;
+            var sources=new List<DownloadSource>(); TransportException last=null;
+            try {
+                while(pending.Count>0) {
+                    var waits=pending.Cast<Task>().Concat(new[]{expired});
+                    if(grace!=null)waits=waits.Concat(new[]{grace});
+                    Task completed=await Task.WhenAny(waits).ConfigureAwait(false);
+                    if(completed==expired || completed==grace)break;
+                    var task=(Task<MetadataResponse<DownloadSource>>)completed; pending.Remove(task);
+                    var response=await task.ConfigureAwait(false);
+                    if(response.Error==null) {
+                        sources.Add(response.Value);
+                        if(grace==null)grace=Task.Delay(DownloadSelectionGraceMs,budget.Token);
+                    } else if(response.Error is TransportException)last=(TransportException)response.Error;
+                    else if(!(response.Error is OperationCanceledException))throw response.Error;
+                }
+                if(sources.Count==0)throw last??new TransportException("下载通道响应超时，请重试",0,null);
+                return sources.OrderByDescending(s => s.BytesPerSecond).ToList();
+            } finally { budget.Cancel(); }
+        }
+    }
+    internal static void ValidateDownloadRange(int status,long length,string contentRange,long offset,int count,long size) {
+        if(status!=206 || contentRange!="bytes "+offset+"-"+(offset+count-1)+"/"+size || (length>=0 && length!=count))
+            throw new TransportException("下载通道未返回所需的文件分段",status,null);
+    }
+    static async Task<byte[]> DownloadRangeAsync(string url,long offset,int count,long size,CancellationToken cancellation) {
+        using(var deadline=CancellationTokenSource.CreateLinkedTokenSource(cancellation)) {
+            deadline.CancelAfter(30000);
+            for(int redirects=0;redirects<6;redirects++) {
+                var u=new Uri(url);var request=UpdateRequest(u,SourceTimeoutMs,10000);
+                request.AddRange(offset,offset+count-1);
+                try {
+                    deadline.Token.ThrowIfCancellationRequested();
+                    using(var progress=CancellationTokenSource.CreateLinkedTokenSource(deadline.Token)) {
+                    progress.CancelAfter(SourceTimeoutMs);
+                    using(progress.Token.Register(request.Abort))
+                    using(var response=(HttpWebResponse)await request.GetResponseAsync().ConfigureAwait(false)) {
+                        if((int)response.StatusCode>=300 && (int)response.StatusCode<400) {url=new Uri(u,response.Headers["Location"]).AbsoluteUri;continue;}
+                        ValidateDownloadRange((int)response.StatusCode,response.ContentLength,response.Headers["Content-Range"],offset,count,size);
+                        using(var stream=response.GetResponseStream()) {
+                            var bytes=new byte[count];int read=0,n;
+                            while(read<count) {
+                                progress.CancelAfter(SourceTimeoutMs);
+                                n=await stream.ReadAsync(bytes,read,count-read,progress.Token).ConfigureAwait(false);
+                                if(n==0)break;
+                                read+=n;
+                            }
+                            if(read!=count)throw new TransportException("更新分段传输中断",0,null);
+                            return bytes;
+                        }
+                    }
+                    }
+                } catch(WebException ex) {cancellation.ThrowIfCancellationRequested();throw ToTransportException(ex);}
+                  catch(IOException ex) {throw new TransportException(ex.Message,0,ex);}
+                  catch(OperationCanceledException ex) {cancellation.ThrowIfCancellationRequested();throw new TransportException("更新分段传输超时",0,ex);}
+            }
+        }
+        throw new TransportException("更新下载重定向次数过多",0,null);
+    }
+    internal static async Task<string> DownloadParallelAsync(IList<DownloadSource> sources,string destination,long size,string hash,RangeDownloader download) {
+        string partial=destination+".partial-"+Guid.NewGuid().ToString("N");
+        var gate=new object();long next=0;Exception failure=null;
+        using(var stop=new CancellationTokenSource()) {
+            try {
+                using(var file=new FileStream(partial,FileMode.CreateNew,FileAccess.Write,FileShare.ReadWrite))file.SetLength(size);
+                var workers=Enumerable.Range(0,4).Select(async worker => {
+                    try {
+                        using(var file=new FileStream(partial,FileMode.Open,FileAccess.Write,FileShare.ReadWrite,65536,true)) {
+                            while(true) {
+                                long offset;int count;
+                                lock(gate) {
+                                    if(next>=size)return;
+                                    var available=sources.Where(s => !s.Failed).OrderByDescending(s => s.BytesPerSecond).FirstOrDefault();
+                                    if(available==null)throw new TransportException("分段下载通道暂不可用",0,null);
+                                    // Cache-hot prefixes can overstate speed. Start with <=1 MiB chunks;
+                                    // grow only after real completed ranges confirm sustained throughput.
+                                    long limit=available.Downloaded>=4194304?4194304:1048576;
+                                    long chunk=(long)Math.Max(262144,Math.Min(limit,available.BytesPerSecond*4));
+                                    chunk=Math.Min(chunk,Math.Max(262144,(size+3)/4));
+                                    offset=next;count=(int)Math.Min(chunk,size-next);next+=count;
+                                }
+                                var tried=new HashSet<string>(StringComparer.Ordinal);int round=0;
+                                while(true) {
+                                    stop.Token.ThrowIfCancellationRequested();DownloadSource source;
+                                    lock(gate)source=sources.Where(s => !s.Failed && !tried.Contains(s.Url)).OrderByDescending(s => s.BytesPerSecond).FirstOrDefault();
+                                    if(source==null) {
+                                        bool retry;lock(gate)retry=round==0 && sources.Any(s => !s.Failed);
+                                        if(!retry)throw new TransportException("更新分段无法从可用通道完成",0,null);
+                                        round++;tried.Clear();await Task.Delay(150,stop.Token).ConfigureAwait(false);continue;
+                                    }
+                                    tried.Add(source.Url);var timer=Stopwatch.StartNew();byte[] bytes=null;
+                                    try { bytes=await download(source.ResolvedUrl??source.Url,offset,count,size,stop.Token).ConfigureAwait(false); }
+                                    catch(TransportException ex) {
+                                        lock(gate) {
+                                            source.BytesPerSecond*=0.25;
+                                            // One reset must not permanently eliminate the sole usable source.
+                                            source.Failed=ex.StatusCode==200 || ex.StatusCode==206 || ex.StatusCode==403 || ex.StatusCode==404 || ex.StatusCode==416;
+                                        }
+                                    }
+                                    if(bytes==null)continue;
+                                    if(bytes.Length!=count)throw new Exception("更新分段大小不符");
+                                    file.Position=offset;await file.WriteAsync(bytes,0,bytes.Length,stop.Token).ConfigureAwait(false);
+                                    lock(gate) {
+                                        source.Downloaded+=count;
+                                        source.BytesPerSecond=source.BytesPerSecond*0.25+(count*1000.0/Math.Max(1,timer.ElapsedMilliseconds))*0.75;
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    } catch(Exception ex) {lock(gate)if(failure==null)failure=ex;stop.Cancel();throw;}
+                }).ToArray();
+                try { await Task.WhenAll(workers).ConfigureAwait(false); }
+                catch(Exception) { throw failure??new TransportException("分段下载未完成",0,null); }
+                using(var file=new FileStream(partial,FileMode.Open,FileAccess.Write))file.Flush(true);
+                if(Hash(partial)!=hash)throw new Exception("更新文件 SHA256 校验失败");
+                if(File.Exists(destination))File.Delete(destination);
+                File.Move(partial,destination);
+                return new Uri(sources.OrderByDescending(s => s.Downloaded).First().Url).Host;
+            } finally { if(File.Exists(partial))File.Delete(partial); }
+        }
     }
     static void DownloadOnce(string url,string destination,long size,string hash) {
         for(int redirects=0;redirects<6;redirects++) {
@@ -382,18 +532,33 @@ internal static class HubUpdater {
         throw new TransportException("更新下载重定向次数过多",0,null);
     }
     static string DownloadWithFallback(IList<string> candidates,string destination,long size,string hash) {
-        return DownloadWithFallback(candidates,destination,size,hash,ProbeDownloadAsync,DownloadOnce);
+        var sources=SelectDownloadSourcesAsync(candidates,size,ProbeDownloadAsync).GetAwaiter().GetResult();
+        var ranged=sources.Where(s => s.Ranges).ToList();
+        if(ShouldDownloadParallel(sources,size)) {
+            try { return DownloadParallelAsync(ranged,destination,size,hash,DownloadRangeAsync).GetAwaiter().GetResult(); }
+            catch(TransportException) {} // Servers can change Range support; retain a streaming fallback.
+        }
+        return DownloadStreamingFallback(candidates,destination,size,hash,ProbeDownloadAsync,DownloadOnce,sources);
+    }
+    internal static bool ShouldDownloadParallel(IList<DownloadSource> sources,long size) {
+        var ranged=sources.Where(s => s.Ranges).ToList();
+        return size>=4L*1024*1024 && ranged.Count>0 && ranged.Max(s => s.BytesPerSecond)*4>sources.Max(s => s.BytesPerSecond);
     }
     internal static string DownloadWithFallback(IList<string> candidates,string destination,long size,string hash,DownloadProber probe,PackageDownloader download) {
+        return DownloadStreamingFallback(candidates,destination,size,hash,probe,download,null);
+    }
+    static string DownloadStreamingFallback(IList<string> candidates,string destination,long size,string hash,DownloadProber probe,PackageDownloader download,IList<DownloadSource> measured) {
         TransportException last=null;
         var remaining=candidates.Distinct(StringComparer.Ordinal).ToList();
         while(remaining.Count>0) {
-            var source=RaceSourcesAsync(remaining,(url,cancellation) => TryProbeDownloadAsync(url,size,probe,cancellation),CancellationToken.None).GetAwaiter().GetResult();
-            remaining.Remove(source.Value);
+            if(measured==null || !measured.Any(s => remaining.Contains(s.Url)))
+                measured=SelectDownloadSourcesAsync(remaining,size,probe).GetAwaiter().GetResult();
+            var source=measured.Where(s => remaining.Contains(s.Url)).OrderByDescending(s => s.BytesPerSecond).First();
+            remaining.Remove(source.Url);
             try {
                 if(File.Exists(destination))File.Delete(destination);
-                download(source.Value,destination,size,hash);
-                return source.Host;
+                download(source.Url,destination,size,hash);
+                return new Uri(source.Url).Host;
             } catch(TransportException ex) {
                 last=ex;
             }

@@ -110,26 +110,46 @@ public class AdbMdns {
     }
 
     private void onServiceResolved(NsdServiceInfo serviceInfo) {
-        if (!mRunning) return;
+        if (!mRunning || serviceInfo == null) return;
+        InetAddress resolvedHost = serviceInfo.getHost();
+        int port = serviceInfo.getPort();
+        if (resolvedHost == null || port <= 0) return;
+        byte[] resolvedBytes = resolvedHost.getAddress();
         try {
             for (NetworkInterface networkInterface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
                 for (InetAddress inetAddress : Collections.list(networkInterface.getInetAddresses())) {
-                    String inetHost = inetAddress.getHostAddress();
-                    if (Objects.equals(inetHost, serviceInfo.getHost().getHostAddress())
-                            && isPortAvailable(serviceInfo.getPort())) {
+                    if (resolvedBytes != null && inetAddress.getAddress() != null
+                            && java.util.Arrays.equals(resolvedBytes, inetAddress.getAddress())
+                            && isPortInUse(resolvedHost, port)) {
                         mServiceName = serviceInfo.getServiceName();
-                        mAdbDaemonDiscoveredListener.onPortChanged(serviceInfo.getHost(), serviceInfo.getPort());
+                        mAdbDaemonDiscoveredListener.onPortChanged(resolvedHost, port);
+                        return;
                     }
                 }
+            }
+            if (resolvedHost.isLoopbackAddress() && isPortInUse(resolvedHost, port)) {
+                mServiceName = serviceInfo.getServiceName();
+                mAdbDaemonDiscoveredListener.onPortChanged(resolvedHost, port);
             }
         } catch (SocketException e) {
             e.printStackTrace();
         }
     }
 
-    private boolean isPortAvailable(int port) {
+    private boolean isPortInUse(InetAddress resolvedHost, int port) {
+        if (isBoundOn(resolvedHost, port)) return true;
+        try {
+            InetAddress fallback = InetAddress.getByName(AndroidUtils.getHostIpAddress(mContext));
+            return isBoundOn(fallback, port);
+        } catch (IOException ignored) {
+            return false;
+        }
+    }
+
+    private static boolean isBoundOn(InetAddress host, int port) {
+        if (host == null) return false;
         try (ServerSocket socket = new ServerSocket()) {
-            socket.bind(new InetSocketAddress(AndroidUtils.getHostIpAddress(mContext), port), 1);
+            socket.bind(new InetSocketAddress(host, port), 1);
             return false;
         } catch (IOException e) {
             return true;

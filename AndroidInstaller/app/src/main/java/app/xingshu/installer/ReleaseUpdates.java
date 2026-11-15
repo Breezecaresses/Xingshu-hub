@@ -11,7 +11,7 @@ import javax.net.ssl.HttpsURLConnection;
 
 /** Signed metadata is shared with the desktop updater; URLs are constructed from a fixed repository. */
 final class ReleaseUpdates {
-    static final String REPO="Breezecaresses/Xingshu-hub", RELEASES="https://github.com/"+REPO+"/releases";
+    static final String REPO="Breezecaresses/AstralParty-XingShu", RELEASES="https://github.com/"+REPO+"/releases";
     static final String[] DOMESTIC_MIRRORS={"https://edgeone.gh-proxy.org/","https://gh-proxy.org/","https://ghfast.top/"};
     static final class Update {
         final JSONObject manifest;

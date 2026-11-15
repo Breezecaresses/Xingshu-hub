@@ -3,10 +3,13 @@ import { invoke } from '@tauri-apps/api/core';
 import { Link } from 'react-router-dom';
 import { FileText, FolderOpen, Package, Puzzle, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { api } from '../../shared/api/tauri';
+import { isTauriRuntime } from '../../shared/runtime';
+import { DesktopOnlyBanner } from '../../components/DesktopOnlyBanner';
 import type { GameInstallation } from '../../shared/types';
 import { AndroidInstallPanel } from './AndroidInstallPanel';
 import { ExternalModsPanel } from './ExternalModsPanel';
 import { ImportPackagePage } from './ImportPackagePage';
+import { WorkshopPanel } from './WorkshopPanel';
 import './extensions.css';
 
 export const extensionChannels = [['STEAM_CN', 'Steam 国服'], ['STEAM_GLOBAL', 'Steam 国际服'], ['TAPTAP', 'TapTap Windows'], ['BILIBILI', '哔哩哔哩'], ['WEGAME', 'WeGame']] as const;
@@ -23,11 +26,12 @@ export function useExtensionTarget() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const refresh = useCallback(async () => {
+    if (!isTauriRuntime()) return;
     setBusy(true);
     try { setTargets(await invoke<GameInstallation[]>('list_extension_targets')); setError(''); }
     catch (e) { setError(message(e)); } finally { setBusy(false); }
   }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { if (isTauriRuntime()) void refresh(); }, [refresh]);
   const options = targets.filter(g => g.platform === channel);
   const selected = options.find(g => g.id === id) || options[0];
   const select = (value: string) => { setId(value); localStorage.setItem(`extensions.target.${channel}`, value); };
@@ -115,10 +119,20 @@ export function ExtensionManager({ view }: { view: 'packages' | 'mods' }) {
   const packages = view === 'packages';
   const runtimeSupported = ['STEAM_CN', 'TAPTAP', 'BILIBILI', 'WEGAME'].includes(target.channel);
   return <div>
+    <DesktopOnlyBanner feature="extensions" />
     <header className="extension-header"><div><h1>{packages ? '星枢包管理器' : '游戏模组'}</h1><p>{packages ? '安装、更新和还原电脑端或安卓端的星枢' : '统一管理外部 DLL、加速组件、立绘、模型、卡面与语音替换'}</p></div><div><button className="btn btn-secondary" onClick={() => void refresh()} disabled={busy || actionBusy}><RefreshCw size={14} />刷新</button>{!packages && <button className="btn btn-primary" disabled={actionBusy} onClick={() => setImportOpen(v => !v)}><Upload size={14} />{importOpen ? '收起模组包安装' : '安装模组包'}</button>}</div></header>
     {packages && <AndroidInstallPanel />}
     {packages && <h2 className="extension-section-title">电脑端星枢</h2>}
     <ExtensionTargetPicker target={target} disabled={actionBusy} />
+    {!packages && (
+      <WorkshopPanel
+        installationId={target.selected?.id ?? null}
+        installation={target.selected ?? null}
+        onBusy={setActionBusy}
+        disabled={actionBusy}
+        onInstalled={() => void refresh()}
+      />
+    )}
     {target.selected && packages && <>
       <section className="panel extension-runtime"><Puzzle size={25} /><div><h2>安装 / 更新 / 还原</h2><p>{runtimeSupported ? '打开配套助手，自动带入所选渠道和目录。写入前需关闭游戏，安装与还原保留备份。' : '此渠道尚未提供经过验证的星枢安装文件。'}</p><p>{busy ? '正在检查当前文件…' : runtime ? `当前文件：${runtime.version || '已识别星枢'} · ${runtime.status}` : '当前文件未识别为本版星枢，请使用助手检查。'}</p></div>{runtimeSupported && <button className="btn btn-primary" disabled={actionBusy || !current?.installerAvailable} onClick={() => void openInstaller()}>打开安装助手</button>}</section>
       {runtimeSupported && current && !current.installerAvailable && <p className="extension-hint">请完整解压发布 ZIP，并从其中的 Hub 文件夹启动，以使用配套安装助手。</p>}

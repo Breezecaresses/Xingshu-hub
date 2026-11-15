@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, CheckCircle2, Keyboard, ShieldCheck, Wrench, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { isTauriRuntime } from '../../shared/runtime';
 
 type GuideTab = 'usage' | 'install';
 
@@ -99,6 +100,10 @@ export function DashboardHelpCard() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [activeTab]);
+
+  if (!isTauriRuntime()) {
+    return null;
+  }
 
   const currentDoc = activeTab === 'install' ? INSTALL_GUIDE : USAGE_GUIDE;
 

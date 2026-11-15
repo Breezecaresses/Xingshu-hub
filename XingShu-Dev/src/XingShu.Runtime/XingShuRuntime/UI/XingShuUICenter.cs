@@ -802,7 +802,7 @@ namespace XingShuRuntime.UI
             _dragHandle.SetExcludedRects(closeRt, backRt);
             _dragHandle.BindEvents();
 
-            Text footer = XingShuUIFactory.CreateText(parent, "ProjectSource", "项目来源  github.com/Breezecaresses/Xingshu-hub", 13, new Color(0.82f,0.80f,0.87f), TextAnchor.MiddleLeft);
+            Text footer = XingShuUIFactory.CreateText(parent, "ProjectSource", "项目来源  github.com/Breezecaresses/AstralParty-XingShu", 13, new Color(0.82f,0.80f,0.87f), TextAnchor.MiddleLeft);
             Place(footer.gameObject, Vector2.zero, Vector2.right, Vector2.zero, new Vector2(282f,12f), new Vector2(-540f,24f));
             footer.raycastTarget = false;
             Text version = XingShuUIFactory.CreateText(parent, "RuntimeVersion", XingShu.Runtime.XingShuRuntimeHost.RuntimeVersion, 12, new Color(0.82f,0.80f,0.87f), TextAnchor.MiddleRight);

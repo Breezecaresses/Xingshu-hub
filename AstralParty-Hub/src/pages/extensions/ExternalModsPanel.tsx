@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Archive, RefreshCw, ShieldCheck } from 'lucide-react';
+import { isTauriRuntime } from '../../shared/runtime';
 
 interface ModFile { target: string; assets: string[]; size: number }
 interface LibraryEntry { id: string; name: string; author: string; archive: string; files: ModFile[]; unmappedCount: number; conflicts: string[]; status: string; canInstall: boolean; canRestore: boolean }
@@ -18,6 +19,7 @@ export function ExternalModsPanel({ installationId, onBusy, disabled = false }: 
   const acting = useRef(false);
   const alive = useRef(true);
   const load = useCallback(async () => {
+    if (!isTauriRuntime()) return;
     const ticket = ++request.current;
     setBusy(true); setError('');
     try {

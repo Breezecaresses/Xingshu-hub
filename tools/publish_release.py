@@ -15,7 +15,7 @@ def main():
     parser.add_argument('--package', type=Path, required=True)
     parser.add_argument('--source', type=Path, required=True)
     parser.add_argument('--body', type=Path, required=True)
-    parser.add_argument('--repo', default='Breezecaresses/Xingshu-hub')
+    parser.add_argument('--repo', default='Breezecaresses/AstralParty-XingShu')
     parser.add_argument('--tag', default='v0.1.0-test.20261021.3')
     parser.add_argument('--stable', action='store_true',
                         help='Publish as the latest regular release, discoverable without opting into previews')

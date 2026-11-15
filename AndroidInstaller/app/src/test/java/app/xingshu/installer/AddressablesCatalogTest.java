@@ -89,6 +89,37 @@ public class AddressablesCatalogTest {
     }
 
     @Test
+    public void resolvesActualHashBucketDirectoryOnDisk() throws Exception {
+        String bundleId = "0c6650c5e9eccffde61b8397d4694f72";
+        String realBucket = "4da1f23c112208b0f8df2a1327b4e4ce";
+        File filesRoot = temporary.newFolder("files_root");
+        File cat = new File(filesRoot, "catalog_3.3.0.json");
+        Files.write(cat.toPath(), buildCatalogJson("AstralParty.Runtime.dll", "{App.WebServerConfig.Path}/" + bundleId + ".bundle", false));
+
+        File dataDir = new File(filesRoot, "com.unity.addressables/AssetBundles/" + realBucket + "/" + bundleId);
+        assertTrue(dataDir.mkdirs());
+        File dataFile = new File(dataDir, "__data");
+        Files.write(dataFile.toPath(), new byte[]{1, 2, 3, 4});
+
+        String defaultRel = "com.unity.addressables/AssetBundles/" + realBucket + "/" + bundleId + "/__data";
+        assertEquals(defaultRel, AddressablesCatalog.resolveManagedRuntimeRelativePath(filesRoot, cat, defaultRel));
+        // Even if defaultRelativePath had another bucket, disk scan discovers the live 32-hex bucket dir.
+        assertEquals(defaultRel, AddressablesCatalog.resolveManagedRuntimeRelativePath(filesRoot, cat, "com.unity.addressables/AssetBundles/otherbucket/" + bundleId + "/__data"));
+    }
+
+    @Test
+    public void fallsBackToDefaultRelativeBucketBeforeTwoHexPrefixWhenMissing() throws Exception {
+        String bundleId = "0c6650c5e9eccffde61b8397d4694f72";
+        String realBucket = "4da1f23c112208b0f8df2a1327b4e4ce";
+        File filesRoot = temporary.newFolder("empty_files_root");
+        File cat = temporary.newFile("catalog_missing.json");
+        Files.write(cat.toPath(), buildCatalogJson("AstralParty.Runtime.dll", "{App.WebServerConfig.Path}/" + bundleId + ".bundle", false));
+
+        String defaultRel = "com.unity.addressables/AssetBundles/" + realBucket + "/" + bundleId + "/__data";
+        assertEquals(defaultRel, AddressablesCatalog.resolveManagedRuntimeRelativePath(filesRoot, cat, defaultRel));
+    }
+
+    @Test
     public void rejectsExternalUrlLocation() throws Exception {
         File cat = temporary.newFile("bad.json");
         Files.write(cat.toPath(), buildCatalogJson("AstralParty.Runtime.dll", "https://evil.example/aabbccdd00112233445566778899aabb.bundle", false));
