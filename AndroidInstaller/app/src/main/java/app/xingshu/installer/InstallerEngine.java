@@ -1,23 +1,31 @@
 package app.xingshu.installer;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /** Multi-channel privileged installer engine running under ADB (UID 2000) or Shizuku. */
@@ -248,15 +256,69 @@ final class InstallerEngine {
         }
     }
 
+    private static final Pattern PS_LINE_PATTERN = Pattern.compile(
+        "^\\S+\\s+([0-9]{1,7})\\s+.*\\s(\\S+)\\s*$"
+    );
+    private static final Pattern APPID_IN_NAME_PATTERN = Pattern.compile("^(?:java|native)_(1100[0-9]{5})\\.log$");
+
     String readChannelTokensJson() {
         try {
-            String raw;
-            try {
-                raw = command("/system/bin/logcat", "-d", "-t", "4000", "-s", "BN_DEBUG:V", "Unity:V");
-            } catch (Exception ignored) {
-                raw = command("/system/bin/logcat", "-d", "-t", "4000", "-s", "BN_DEBUG:V");
+            StringBuilder combined = new StringBuilder();
+
+            // Source 1: query full logcat ring buffer for BnSdk tags without -t 4000 / Unity:V noise.
+            String tagLogs = commandBestEffort(1500 * 1024,
+                "/system/bin/logcat", "-d", "-b", "main", "-s",
+                "BN_DEBUG:V", "BN_UNITY:V", "BN_WARN:V", "Ev_CRASH_OS:V");
+            if (!hasSdkSignalLine(tagLogs)) {
+                String defaultBufLogs = commandBestEffort(1500 * 1024,
+                    "/system/bin/logcat", "-d", "-s",
+                    "BN_DEBUG:V", "BN_UNITY:V", "BN_WARN:V", "Ev_CRASH_OS:V");
+                if (!defaultBufLogs.isEmpty()) {
+                    combined.append(defaultBufLogs).append('\n');
+                }
+            } else {
+                combined.append(tagLogs).append('\n');
             }
-            List<BnSdkTokenExtractor.ChannelToken> tokens = BnSdkTokenExtractor.extractFromLogcat(raw);
+
+            // Source 2: scan running candidate game PIDs with --pid filtering (fallback for ROMs with tag quirks).
+            String psOut = commandBestEffort(512 * 1024, "/system/bin/ps", "-A");
+            if (psOut.trim().isEmpty()) {
+                psOut = commandBestEffort(512 * 1024, "/system/bin/ps");
+            }
+            Map<String, String> runningPidToPkg = findRunningCandidatePids(psOut);
+            Set<String> runningAppIds = new LinkedHashSet<>();
+            for (Map.Entry<String, String> entry : runningPidToPkg.entrySet()) {
+                String pid = entry.getKey();
+                String pkg = entry.getValue();
+                String appId = BnSdkTokenExtractor.appIdForPackage(pkg);
+                if (!appId.isEmpty()) runningAppIds.add(appId);
+                combined.append("D/XINGSHU_PS(").append(pid).append("): package=").append(pkg).append('\n');
+                String pidLogs = readPidRelevantLogcat(pid);
+                if (!pidLogs.isEmpty()) {
+                    combined.append(pidLogs).append('\n');
+                }
+            }
+
+            // Source 3: installed package list + on-disk BnSdk/ibingniao hints & logs.
+            String pmOut = commandBestEffort(128 * 1024, "/system/bin/pm", "list", "packages", "-3");
+            List<String> installedPkgs = GamePackageCatalog.parseThirdPartyPackages(pmOut);
+            Set<String> installedNativeAppIds = new LinkedHashSet<>();
+            for (String pkg : installedPkgs) {
+                String appId = BnSdkTokenExtractor.appIdForPackage(pkg);
+                if (!appId.isEmpty()) installedNativeAppIds.add(appId);
+                appendOnDiskBnSdkEvidence(pkg, combined);
+            }
+            appendIbingniaoPeriodHints(combined);
+
+            String fallbackAppId = "";
+            if (runningAppIds.size() == 1) {
+                fallbackAppId = runningAppIds.iterator().next();
+            } else if (installedNativeAppIds.size() == 1) {
+                fallbackAppId = installedNativeAppIds.iterator().next();
+            }
+
+            List<BnSdkTokenExtractor.ChannelToken> tokens =
+                BnSdkTokenExtractor.extractFromLogcat(combined.toString(), fallbackAppId);
             List<Map<String, Object>> out = new ArrayList<>(tokens.size());
             for (BnSdkTokenExtractor.ChannelToken tok : tokens) {
                 Map<String, Object> item = new LinkedHashMap<>();
@@ -272,6 +334,151 @@ final class InstallerEngine {
         } catch (Exception e) {
             return MiniJson.stringify(Collections.singletonMap("error", friendly(e)));
         }
+    }
+
+    private static boolean hasSdkSignalLine(String text) {
+        if (text == null || text.isEmpty()) return false;
+        return text.contains("BN_DEBUG")
+            || text.contains("BN_UNITY")
+            || text.contains("BN_WARN")
+            || text.contains("accessToken")
+            || text.contains("userSqlEntity");
+    }
+
+    private static boolean isRelevantSdkLogLine(String line) {
+        if (line == null || line.isEmpty()) return false;
+        return line.contains("BN_")
+            || line.contains("accessToken")
+            || line.contains("access_token")
+            || line.contains("userSqlEntity")
+            || line.contains("[LoginSDK]")
+            || line.contains("RoleInfo")
+            || line.contains("11000")
+            || line.contains("feimogames")
+            || line.contains("com.feimo.");
+    }
+
+    private static Map<String, String> findRunningCandidatePids(String psOut) {
+        Map<String, String> result = new LinkedHashMap<>();
+        if (psOut == null || psOut.isEmpty()) return result;
+        for (String rawLine : psOut.split("[\\r\\n]+")) {
+            Matcher m = PS_LINE_PATTERN.matcher(rawLine.trim());
+            if (!m.matches()) continue;
+            String pid = m.group(1);
+            String procName = m.group(2);
+            int colon = procName.indexOf(':');
+            String basePkg = colon > 0 ? procName.substring(0, colon) : procName;
+            if (GamePackageCatalog.isCandidatePackageName(basePkg) && colon < 0) {
+                result.put(pid, basePkg);
+            }
+        }
+        return result;
+    }
+
+    private static String readPidRelevantLogcat(String pid) {
+        if (pid == null || !pid.matches("[0-9]{1,7}")) return "";
+        StringBuilder out = new StringBuilder();
+        try {
+            Process p = new ProcessBuilder("/system/bin/logcat", "-d", "--pid=" + pid)
+                .redirectErrorStream(true)
+                .start();
+            final int maxChars = 256 * 1024;
+            Thread reader = new Thread(() -> {
+                try (BufferedReader br = new BufferedReader(
+                        new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        if (isRelevantSdkLogLine(line) && out.length() < maxChars) {
+                            out.append(line).append('\n');
+                        }
+                    }
+                } catch (IOException ignored) { }
+            });
+            reader.start();
+            if (!p.waitFor(10, TimeUnit.SECONDS)) {
+                p.destroyForcibly();
+            }
+            reader.join(2000);
+        } catch (Exception ignored) { }
+        return out.toString();
+    }
+
+    private static void appendOnDiskBnSdkEvidence(String pkg, StringBuilder combined) {
+        try {
+            File filesRoot = GamePackageCatalog.filesRoot(pkg);
+            if (!filesRoot.isDirectory()) return;
+            File[] rootEntries = filesRoot.listFiles();
+            if (rootEntries != null) {
+                for (File f : rootEntries) {
+                    if (!f.isFile()) continue;
+                    Matcher m = APPID_IN_NAME_PATTERN.matcher(f.getName());
+                    if (m.matches()) {
+                        combined.append("D/XINGSHU_DISK: ")
+                            .append(f.getPath())
+                            .append(" package=").append(pkg)
+                            .append('\n');
+                    }
+                }
+            }
+            File bnSdkDir = new File(filesRoot, "BnSdk");
+            if (!bnSdkDir.isDirectory()) return;
+            List<File> logFiles = new ArrayList<>();
+            collectBnSdkLogs(bnSdkDir, 0, logFiles);
+            logFiles.sort((a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+            int scanned = 0;
+            for (File logFile : logFiles) {
+                if (scanned >= 8) break;
+                if (logFile.length() <= 0 || logFile.length() > 512 * 1024) continue;
+                scanned++;
+                appendFilteredLogFile(logFile, combined);
+            }
+        } catch (Exception ignored) { }
+    }
+
+    private static void collectBnSdkLogs(File dir, int depth, List<File> out) {
+        if (dir == null || depth > 3 || out.size() >= 32) return;
+        File[] children = dir.listFiles();
+        if (children == null) return;
+        for (File child : children) {
+            if (child.isDirectory()) {
+                collectBnSdkLogs(child, depth + 1, out);
+            } else if (child.isFile() && child.getName().toLowerCase(Locale.ROOT).endsWith(".log")) {
+                out.add(child);
+                if (out.size() >= 32) return;
+            }
+        }
+    }
+
+    private static void appendFilteredLogFile(File file, StringBuilder combined) {
+        combined.append("D/XINGSHU_DISK_FILE: ").append(file.getPath()).append('\n');
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+            String line;
+            int budget = 128 * 1024;
+            while ((line = br.readLine()) != null && budget > 0) {
+                if (isRelevantSdkLogLine(line)) {
+                    combined.append(line).append('\n');
+                    budget -= line.length() + 1;
+                }
+            }
+        } catch (IOException ignored) { }
+    }
+
+    private static void appendIbingniaoPeriodHints(StringBuilder combined) {
+        try {
+            File periodRoot = new File("/sdcard/ibingniao/period");
+            if (!periodRoot.isDirectory()) return;
+            File[] appDirs = periodRoot.listFiles();
+            if (appDirs == null) return;
+            for (File appDir : appDirs) {
+                if (!appDir.isDirectory() || !appDir.getName().matches("1100[0-9]{5}")) continue;
+                File[] uidEntries = appDir.listFiles();
+                if (uidEntries != null && uidEntries.length > 0) {
+                    combined.append("D/XINGSHU_DISK: /period/")
+                        .append(appDir.getName()).append('/').append(uidEntries[0].getName()).append('\n');
+                }
+            }
+        } catch (Exception ignored) { }
     }
 
     String launchGame(String packageName) {
@@ -342,6 +549,40 @@ final class InstallerEngine {
         reader.join(2000);
         if (p.exitValue() != 0) throw new IOException("系统拒绝检查游戏权限");
         return bytes.toString("UTF-8");
+    }
+
+    private static String commandBestEffort(int maxTailBytes, String... args) {
+        try {
+            Process p = new ProcessBuilder(args).redirectErrorStream(true).start();
+            Deque<byte[]> chunks = new ArrayDeque<>();
+            final int[] total = { 0 };
+            Thread reader = new Thread(() -> {
+                try {
+                    byte[] b = new byte[8192];
+                    int n;
+                    while ((n = p.getInputStream().read(b)) != -1) {
+                        chunks.addLast(Arrays.copyOf(b, n));
+                        total[0] += n;
+                        while (total[0] > maxTailBytes && chunks.size() > 1) {
+                            total[0] -= chunks.removeFirst().length;
+                        }
+                    }
+                } catch (IOException ignored) { }
+            });
+            reader.start();
+            if (!p.waitFor(12, TimeUnit.SECONDS)) {
+                p.destroyForcibly();
+            }
+            reader.join(2000);
+            if (reader.isAlive()) return "";
+            ByteArrayOutputStream out = new ByteArrayOutputStream(Math.max(256, total[0]));
+            for (byte[] chunk : chunks) {
+                out.write(chunk, 0, chunk.length);
+            }
+            return out.toString("UTF-8");
+        } catch (Exception ignored) {
+            return "";
+        }
     }
 
     private static void receive(InputStream fd, File target, String sha) throws Exception {
