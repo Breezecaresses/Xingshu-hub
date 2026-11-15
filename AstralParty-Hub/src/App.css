@@ -153,6 +153,28 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
+}
+
+.sidebar-footer .github-repo-link {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.sidebar-footer .github-repo-link svg {
+  flex-shrink: 0;
+}
+
+.sidebar-footer .github-repo-link span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-footer-status {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Main Content Area */

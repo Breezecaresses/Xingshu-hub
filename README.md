@@ -34,7 +34,7 @@
 
 ## Stable Release
 
-[Download AstralParty-XingShu v0.1.3](https://github.com/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.3). Both the Windows and Android packages target *Astral Party* `3.3.0` (`resource 152`).
+[Download AstralParty-XingShu v0.1.4](https://github.com/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.4). Both the Windows and Android packages target *Astral Party* `3.3.0` (`resource 152`).
 
 | Target | Package / Access | Highlights |
 | --- | --- | --- |
@@ -43,7 +43,7 @@
 | **Android Installer** | `XingShu_Android_*.zip` & `.apk` | Includes the phone installer APK, manual replacement files, and official recovery files with interactive guides and conflict backup. See the [phone installation guide](docs/guides/ANDROID_PHONE_INSTALL.md). |
 
 > [!NOTE]
-> Updating the Hub or Android installer app does not overwrite the in-game plugin. After an app self-update, close the game cleanly and re-apply the plugin with the installer. See the [release record](docs/records/RELEASE_20261113_0.1.3.md) and [packaging guide](docs/guides/RELEASE_PACKAGING.md).
+> Updating the Hub or Android installer app does not overwrite the in-game plugin. After an app self-update, close the game cleanly and re-apply the plugin with the installer. See the [release record](docs/records/RELEASE_20261115_0.1.4.md) and [packaging guide](docs/guides/RELEASE_PACKAGING.md).
 
 ---
 

@@ -46,7 +46,7 @@
 
 收尾构建位于本地 `XingShu-Dev/build/android-compatibility/preview3-final/`，候选缓存 SHA-256 为 `b1bdb4c411b9599b764c3e2a9b9a60e2f23af95695e0da2665fab50200d90016`，插件 SHA-256 为 `1219d689184f328ed011ba8d0b46a7ece20d0b02932f91336cd041f7ec3179a2`。该构建已核对设备缓存并安装，冷启动后正常关闭公告、触屏点击“开始游戏”进入大厅，60% 大小设置保留，旧局手牌与统计窗未残留。收尾构建的 2,652 个插件方法体与前述触屏实测构建一致；重建文件哈希不同不作为行为变化的证据。
 
-参考本地 APMM 0.3.35 的安卓缓存路径与官方还原包，核对后从设备原版程序集构建。APMM 目录是已编译发行包，不应称为已审阅其完整源码。游戏数据与素材归游戏原作者所有；星枢源码来源为 [Breezecaresses/Xingshu-hub](https://github.com/Breezecaresses/Xingshu-hub)。
+参考本地 APMM 0.3.35 的安卓缓存路径与官方还原包，核对后从设备原版程序集构建。APMM 目录是已编译发行包，不应称为已审阅其完整源码。游戏数据与素材归游戏原作者所有；星枢源码来源为 [Breezecaresses/AstralParty-XingShu](https://github.com/Breezecaresses/AstralParty-XingShu)。
 
 本轮分别提供 Windows 群发测试包与安卓预览包，均未标为稳定版。设备原版备份与安装回执保存在本地独立目录，可按下面步骤还原。
 

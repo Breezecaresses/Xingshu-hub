@@ -1,7 +1,6 @@
 import React from 'react';
 import { assetUrl, isTauriRuntime } from '../../shared/runtime';
 import { Sparkles as ReplayIcon } from 'lucide-react';
-import { PROJECT_SOURCE_LABEL } from '../../shared/projectSource';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -189,9 +188,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onClose })
       <div className="sidebar-footer">
         <GitHubRepoLink
           variant="inline"
-          label={isDesktop ? `GitHub · ${PROJECT_SOURCE_LABEL}` : 'AstralParty-XingShu'}
+          label={isDesktop ? 'GitHub · XingShu' : 'AstralParty-XingShu'}
         />
-        <span style={{ color: 'var(--success)', fontWeight: 600 }}>{isDesktop ? t('common.versionReady') : 'Web'}</span>
+        <span className="sidebar-footer-status" style={{ color: 'var(--success)', fontWeight: 600 }}>{isDesktop ? t('common.versionReady') : 'Web'}</span>
       </div>
     </aside>
   );
