@@ -149,6 +149,26 @@ final class LocalAdbInstaller implements Closeable {
         return ordered;
     }
 
+    static int tryDiscoverSystemAdbPort() {
+        String[] props = { "service.adb.tls.port", "service.adb.tcp.port" };
+        try {
+            Class<?> sp = Class.forName("android.os.SystemProperties");
+            java.lang.reflect.Method get = sp.getMethod("get", String.class, String.class);
+            for (String prop : props) {
+                Object raw = get.invoke(null, prop, "");
+                if (raw instanceof String) {
+                    String s = ((String) raw).trim();
+                    if (s.matches("[0-9]{4,5}")) {
+                        int p = Integer.parseInt(s);
+                        if (p >= 1024 && p <= 65535) return p;
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return -1;
+    }
+
     String scanPackages() throws Exception {
         return operation("scan", null);
     }

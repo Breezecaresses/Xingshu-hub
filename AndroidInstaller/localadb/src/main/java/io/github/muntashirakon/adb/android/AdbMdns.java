@@ -19,8 +19,11 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.SocketException;
+import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.Objects;
 
 /**
@@ -91,6 +94,22 @@ public class AdbMdns {
         return mRunning;
     }
 
+    private static final Object sResolveLock = new Object();
+    private static final Deque<PendingResolve> sResolveQueue = new ArrayDeque<>();
+    private static boolean sResolving = false;
+
+    private static final class PendingResolve {
+        final AdbMdns owner;
+        final NsdServiceInfo serviceInfo;
+        final int attempt;
+
+        PendingResolve(AdbMdns owner, NsdServiceInfo serviceInfo, int attempt) {
+            this.owner = owner;
+            this.serviceInfo = serviceInfo;
+            this.attempt = attempt;
+        }
+    }
+
     private void onDiscoveryStart() {
         mRegistered = true;
     }
@@ -100,11 +119,44 @@ public class AdbMdns {
     }
 
     private void onServiceFound(NsdServiceInfo serviceInfo) {
-        mNsdManager.resolveService(serviceInfo, new ResolveListener(this));
+        if (!mRunning || serviceInfo == null) return;
+        enqueueResolve(this, serviceInfo, 0);
+    }
+
+    private static void enqueueResolve(AdbMdns owner, NsdServiceInfo serviceInfo, int attempt) {
+        synchronized (sResolveLock) {
+            sResolveQueue.addLast(new PendingResolve(owner, serviceInfo, attempt));
+            drainResolveQueueLocked();
+        }
+    }
+
+    private static void onResolveComplete() {
+        synchronized (sResolveLock) {
+            sResolving = false;
+            drainResolveQueueLocked();
+        }
+    }
+
+    private static void drainResolveQueueLocked() {
+        while (!sResolving && !sResolveQueue.isEmpty()) {
+            PendingResolve next = sResolveQueue.removeFirst();
+            if (!next.owner.mRunning) {
+                continue;
+            }
+            sResolving = true;
+            try {
+                next.owner.mNsdManager.resolveService(
+                        next.serviceInfo,
+                        new ResolveListener(next.owner, next.attempt));
+                return;
+            } catch (Exception ignored) {
+                sResolving = false;
+            }
+        }
     }
 
     private void onServiceLost(NsdServiceInfo serviceInfo) {
-        if (mServiceName != null && mServiceName.equals(serviceInfo.getServiceName())) {
+        if (serviceInfo != null && mServiceName != null && mServiceName.equals(serviceInfo.getServiceName())) {
             mAdbDaemonDiscoveredListener.onPortChanged(serviceInfo.getHost(), -1);
         }
     }
@@ -113,37 +165,70 @@ public class AdbMdns {
         if (!mRunning || serviceInfo == null) return;
         InetAddress resolvedHost = serviceInfo.getHost();
         int port = serviceInfo.getPort();
-        if (resolvedHost == null || port <= 0) return;
+        if (port <= 0) return;
+        boolean pairingService = mServiceType.contains(SERVICE_TYPE_TLS_PAIRING);
+        if (resolvedHost != null && isLocalInterfaceAddress(resolvedHost)
+                && isPortInUse(resolvedHost, port, !pairingService)) {
+            mServiceName = serviceInfo.getServiceName();
+            mAdbDaemonDiscoveredListener.onPortChanged(resolvedHost, port);
+            return;
+        }
+        try {
+            InetAddress loopback = InetAddress.getByName(AndroidUtils.getHostIpAddress(mContext));
+            if (isPortInUse(loopback, port, !pairingService)) {
+                mServiceName = serviceInfo.getServiceName();
+                mAdbDaemonDiscoveredListener.onPortChanged(resolvedHost != null ? resolvedHost : loopback, port);
+            }
+        } catch (IOException ignored) {
+        }
+    }
+
+    private static boolean isLocalInterfaceAddress(@Nullable InetAddress resolvedHost) {
+        if (resolvedHost == null) return false;
+        if (resolvedHost.isLoopbackAddress()) return true;
+        try {
+            if (NetworkInterface.getByInetAddress(resolvedHost) != null) {
+                return true;
+            }
+        } catch (SocketException ignored) {
+        }
         byte[] resolvedBytes = resolvedHost.getAddress();
+        String resolvedText = stripScopeId(resolvedHost.getHostAddress());
         try {
             for (NetworkInterface networkInterface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
                 for (InetAddress inetAddress : Collections.list(networkInterface.getInetAddresses())) {
                     if (resolvedBytes != null && inetAddress.getAddress() != null
-                            && java.util.Arrays.equals(resolvedBytes, inetAddress.getAddress())
-                            && isPortInUse(resolvedHost, port)) {
-                        mServiceName = serviceInfo.getServiceName();
-                        mAdbDaemonDiscoveredListener.onPortChanged(resolvedHost, port);
-                        return;
+                            && java.util.Arrays.equals(resolvedBytes, inetAddress.getAddress())) {
+                        return true;
+                    }
+                    String candidateText = stripScopeId(inetAddress.getHostAddress());
+                    if (!resolvedText.isEmpty() && resolvedText.equalsIgnoreCase(candidateText)) {
+                        return true;
                     }
                 }
             }
-            if (resolvedHost.isLoopbackAddress() && isPortInUse(resolvedHost, port)) {
-                mServiceName = serviceInfo.getServiceName();
-                mAdbDaemonDiscoveredListener.onPortChanged(resolvedHost, port);
-            }
-        } catch (SocketException e) {
-            e.printStackTrace();
+        } catch (SocketException ignored) {
         }
+        return false;
     }
 
-    private boolean isPortInUse(InetAddress resolvedHost, int port) {
+    private static String stripScopeId(@Nullable String hostAddress) {
+        if (hostAddress == null) return "";
+        int pct = hostAddress.indexOf('%');
+        return pct >= 0 ? hostAddress.substring(0, pct) : hostAddress;
+    }
+
+    private boolean isPortInUse(InetAddress resolvedHost, int port, boolean allowTcpProbe) {
         if (isBoundOn(resolvedHost, port)) return true;
         try {
             InetAddress fallback = InetAddress.getByName(AndroidUtils.getHostIpAddress(mContext));
-            return isBoundOn(fallback, port);
+            if (isBoundOn(fallback, port)) return true;
+            if (allowTcpProbe) {
+                return canConnectTcp(fallback, port) || canConnectTcp(resolvedHost, port);
+            }
         } catch (IOException ignored) {
-            return false;
         }
+        return false;
     }
 
     private static boolean isBoundOn(InetAddress host, int port) {
@@ -153,6 +238,16 @@ public class AdbMdns {
             return false;
         } catch (IOException e) {
             return true;
+        }
+    }
+
+    private static boolean canConnectTcp(InetAddress host, int port) {
+        if (host == null) return false;
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(host, port), 200);
+            return true;
+        } catch (IOException e) {
+            return false;
         }
     }
 
@@ -196,18 +291,28 @@ public class AdbMdns {
     private static class ResolveListener implements NsdManager.ResolveListener {
         @NonNull
         private final AdbMdns mAdbMdns;
+        private final int mAttempt;
 
-        private ResolveListener(@NonNull AdbMdns adbMdns) {
+        private ResolveListener(@NonNull AdbMdns adbMdns, int attempt) {
             mAdbMdns = adbMdns;
+            mAttempt = attempt;
         }
 
         @Override
         public void onResolveFailed(NsdServiceInfo serviceInfo, int errorCode) {
+            onResolveComplete();
+            if (errorCode == NsdManager.FAILURE_ALREADY_ACTIVE && mAttempt < 2 && mAdbMdns.mRunning) {
+                enqueueResolve(mAdbMdns, serviceInfo, mAttempt + 1);
+            }
         }
 
         @Override
         public void onServiceResolved(NsdServiceInfo serviceInfo) {
-            mAdbMdns.onServiceResolved(serviceInfo);
+            try {
+                mAdbMdns.onServiceResolved(serviceInfo);
+            } finally {
+                onResolveComplete();
+            }
         }
     }
 }

@@ -123,8 +123,8 @@ public final class MainActivity extends Activity {
     private TextView connBadge, connSummary, pkgSummaryView, logView, updateStatus, updateDetails, bannerText;
     private TextView authSummaryView, tokenStatusView, webAuthStatusView, wirelessStatusView;
     private LinearLayout packageChipsRow, tokenListRow;
-    private AdbMdns connectMdns, pairingMdns;
-    private volatile int discoveredConnectPort = -1, discoveredPairingPort = -1;
+    private AdbMdns connectMdns, legacyConnectMdns, pairingMdns;
+    private volatile int discoveredConnectPort = -1, discoveredPairingPort = -1, lastAutoTriedPort = -1;
     private volatile String discoveredConnectHost, discoveredPairingHost;
     private volatile CountDownLatch connectDiscoveryLatch;
     private boolean updatingPortFields, connectionPortEdited, pairingPortEdited;
@@ -653,7 +653,7 @@ public final class MainActivity extends Activity {
             connectionPortEdited = false;
             pairingPortEdited = false;
             discoveredConnectPort = -1;
-            discoveredPairingPort = -1;
+            lastAutoTriedPort = -1;
             restartMdnsDiscovery();
             updateWirelessStatusText();
         }));
@@ -827,11 +827,44 @@ public final class MainActivity extends Activity {
             runWorker("正在配对本机无线调试（端口 " + p + "）…", () -> {
                 local().pair(hintHost, p, code);
                 useShizuku = false;
+                lastAutoTriedPort = -1;
+                getPreferences(0).edit().putBoolean("wirelessPaired", true).apply();
                 runOnUiThread(() -> {
                     pairingCode.setText("");
                     connectionPortEdited = false;
                     restartMdnsDiscovery();
                 });
+                int connPort = discoveredConnectPort;
+                String connHost = discoveredConnectHost;
+                if (connPort < 1024) {
+                    CountDownLatch latch = new CountDownLatch(1);
+                    connectDiscoveryLatch = latch;
+                    try { latch.await(2400, TimeUnit.MILLISECONDS); } catch (InterruptedException ignored) { }
+                    connectDiscoveryLatch = null;
+                    connPort = discoveredConnectPort;
+                    connHost = discoveredConnectHost;
+                }
+                if (connPort >= 1024) {
+                    final int foundPort = connPort;
+                    getPreferences(0).edit().putString("connectionPort", String.valueOf(foundPort)).apply();
+                    runOnUiThread(() -> {
+                        setPortFieldText(connectionPort, String.valueOf(foundPort));
+                        connectionPortEdited = false;
+                        updateWirelessStatusText();
+                    });
+                    try {
+                        local().connect(connHost, foundPort);
+                        runOnUiThread(() -> {
+                            updateWirelessStatusText();
+                            selectTab(TAB_INSTALL);
+                        });
+                        String scanJson = local().scanPackages();
+                        String resolvedPkg = applyScannedPackagesFromBg(scanJson);
+                        return "配对并自动连接本机无线调试成功（" + local().connectedHost() + ":" + foundPort + "）。\n" + local().inspect(resolvedPkg);
+                    } catch (Exception ignored) {
+                        return "配对成功！已自动识别连接端口 " + foundPort + "，请关闭系统配对码弹窗后点击下方“连接本机无线调试并检测”。";
+                    }
+                }
                 return "配对成功！请关闭系统配对码弹窗，再点击下方“连接本机无线调试并检测”。";
             });
         } catch (Exception e) {
@@ -881,6 +914,13 @@ public final class MainActivity extends Activity {
             }
 
             if (targetPort < 1024) {
+                int propPort = LocalAdbInstaller.tryDiscoverSystemAdbPort();
+                if (propPort >= 1024) {
+                    targetPort = propPort;
+                }
+            }
+
+            if (targetPort < 1024) {
                 throw new IOException("未自动发现无线调试端口：请确认系统「开发者选项 → 无线调试」开关已打开，或在上方输入框手动填写最新连接端口。");
             }
 
@@ -912,7 +952,10 @@ public final class MainActivity extends Activity {
             }
 
             final int finalPort = targetPort;
-            getPreferences(0).edit().putString("connectionPort", String.valueOf(finalPort)).apply();
+            getPreferences(0).edit()
+                .putString("connectionPort", String.valueOf(finalPort))
+                .putBoolean("wirelessPaired", true)
+                .apply();
             useShizuku = false;
             runOnUiThread(() -> {
                 setPortFieldText(connectionPort, String.valueOf(finalPort));
@@ -950,38 +993,89 @@ public final class MainActivity extends Activity {
 
     private void startMdnsDiscovery() {
         if (destroyed || Build.VERSION.SDK_INT < 30) return;
+        if (discoveredConnectPort < 1024) {
+            int propPort = LocalAdbInstaller.tryDiscoverSystemAdbPort();
+            if (propPort >= 1024) {
+                onConnectPortDiscovered(null, propPort);
+            }
+        }
         if (connectMdns == null) {
-            connectMdns = new AdbMdns(this, AdbMdns.SERVICE_TYPE_ADB, (hostAddress, port) -> {
-                String host = hostAddress != null ? hostAddress.getHostAddress() : null;
-                discoveredConnectHost = host;
-                discoveredConnectPort = port;
-                CountDownLatch latch = connectDiscoveryLatch;
-                if (latch != null) latch.countDown();
-                runOnUiThread(() -> {
-                    if (destroyed) return;
-                    if (port >= 1024 && (!connectionPortEdited || connectionPort.getText().toString().trim().isEmpty())) {
-                        setPortFieldText(connectionPort, String.valueOf(port));
-                        connectionPortEdited = false;
-                    }
-                    updateWirelessStatusText();
-                });
-            });
+            connectMdns = new AdbMdns(this, AdbMdns.SERVICE_TYPE_TLS_CONNECT, this::onConnectPortDiscovered);
             try { connectMdns.start(); } catch (Exception ignored) { }
         }
+        if (legacyConnectMdns == null) {
+            legacyConnectMdns = new AdbMdns(this, AdbMdns.SERVICE_TYPE_ADB, this::onConnectPortDiscovered);
+            try { legacyConnectMdns.start(); } catch (Exception ignored) { }
+        }
         progressHandler.removeCallbacks(startPairingMdnsTask);
-        progressHandler.postDelayed(startPairingMdnsTask, 350);
+        progressHandler.postDelayed(startPairingMdnsTask, 280);
         updateWirelessStatusText();
+    }
+
+    private void onConnectPortDiscovered(java.net.InetAddress hostAddress, int port) {
+        if (port < 1024) return;
+        String host = (hostAddress instanceof java.net.Inet4Address) ? hostAddress.getHostAddress() : null;
+        discoveredConnectHost = host;
+        discoveredConnectPort = port;
+        CountDownLatch latch = connectDiscoveryLatch;
+        if (latch != null) latch.countDown();
+        runOnUiThread(() -> {
+            if (destroyed) return;
+            if (!connectionPortEdited || connectionPort.getText().toString().trim().isEmpty()) {
+                setPortFieldText(connectionPort, String.valueOf(port));
+                connectionPortEdited = false;
+            }
+            updateWirelessStatusText();
+            boolean previouslyPaired = getPreferences(0).getBoolean("wirelessPaired", false)
+                || !getPreferences(0).getString("connectionPort", "").isEmpty();
+            if (previouslyPaired && discoveredPairingPort < 1024) {
+                trySilentAutoConnect(host, port);
+            }
+        });
+    }
+
+    private void trySilentAutoConnect(String host, int port) {
+        if (destroyed || busy || binding || useShizuku || port < 1024) return;
+        if (local != null && local.connected()) return;
+        if (lastAutoTriedPort == port) return;
+        lastAutoTriedPort = port;
+        worker.execute(() -> {
+            if (destroyed || busy || useShizuku) return;
+            try {
+                if (local != null && local.connected()) return;
+                local().connect(host, port);
+                useShizuku = false;
+                getPreferences(0).edit()
+                    .putString("connectionPort", String.valueOf(port))
+                    .putBoolean("wirelessPaired", true)
+                    .apply();
+                String scanJson = local().scanPackages();
+                String resolvedPkg = applyScannedPackagesFromBg(scanJson);
+                String inspectOut = local().inspect(resolvedPkg);
+                final String msg = "已自动连接本机无线调试（" + local().connectedHost() + ":" + port + "）。\n" + inspectOut;
+                runOnUiThread(() -> {
+                    if (destroyed) return;
+                    lastResult = msg;
+                    write(msg);
+                    updateWirelessStatusText();
+                    refresh();
+                });
+            } catch (Exception ignored) {
+                // Silent auto-connect only succeeds when already paired; leave port pre-filled for manual/step-2 flow.
+            }
+        });
     }
 
     private void startPairingMdnsIfActive() {
         if (destroyed || Build.VERSION.SDK_INT < 30 || pairingMdns != null) return;
         pairingMdns = new AdbMdns(this, AdbMdns.SERVICE_TYPE_TLS_PAIRING, (hostAddress, port) -> {
-            String host = hostAddress != null ? hostAddress.getHostAddress() : null;
+            if (port < 1024) return;
+            String host = (hostAddress instanceof java.net.Inet4Address) ? hostAddress.getHostAddress() : null;
             discoveredPairingHost = host;
             discoveredPairingPort = port;
             runOnUiThread(() -> {
                 if (destroyed) return;
-                if (port >= 1024 && (!pairingPortEdited || pairingPort.getText().toString().trim().isEmpty())) {
+                if (!pairingPortEdited || pairingPort.getText().toString().trim().isEmpty()) {
                     setPortFieldText(pairingPort, String.valueOf(port));
                     pairingPortEdited = false;
                 }
@@ -996,6 +1090,10 @@ public final class MainActivity extends Activity {
         if (connectMdns != null) {
             try { connectMdns.stop(); } catch (Exception ignored) { }
             connectMdns = null;
+        }
+        if (legacyConnectMdns != null) {
+            try { legacyConnectMdns.stop(); } catch (Exception ignored) { }
+            legacyConnectMdns = null;
         }
         if (pairingMdns != null) {
             try { pairingMdns.stop(); } catch (Exception ignored) { }
