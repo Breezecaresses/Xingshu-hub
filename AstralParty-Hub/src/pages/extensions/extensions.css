@@ -431,18 +431,19 @@
 .workshop-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: 1200;
   background: rgba(18, 17, 15, 0.56);
   backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
+  overflow-y: auto;
 }
 
 .workshop-modal {
   width: min(680px, 100%);
-  max-height: 90vh;
+  max-height: min(90vh, calc(100dvh - 32px));
   display: flex;
   flex-direction: column;
   border-radius: 16px;

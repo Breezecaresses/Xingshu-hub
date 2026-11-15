@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import {
   CheckCircle2,
   Download,
@@ -89,6 +90,17 @@ export function WorkshopPanel({
   const [subSubmitting, setSubSubmitting] = useState(false);
   const [subError, setSubError] = useState('');
   const [subResult, setSubResult] = useState<WorkshopSubmitResponse | null>(null);
+
+  useEffect(() => {
+    if (!detailItem && !submitOpen) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (submitOpen && !subSubmitting) setSubmitOpen(false);
+      else if (detailItem) setDetailItem(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [detailItem, submitOpen, subSubmitting]);
 
   const loadLocalStates = useCallback(async () => {
     if (!isDesktop || !installationId) {
@@ -514,7 +526,7 @@ export function WorkshopPanel({
         </div>
       )}
 
-      {detailItem && (
+      {detailItem && (typeof document !== 'undefined' ? createPortal(
         <div
           className="workshop-modal-backdrop"
           role="presentation"
@@ -631,10 +643,11 @@ export function WorkshopPanel({
               )}
             </footer>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body,
+      ) : null)}
 
-      {submitOpen && (
+      {submitOpen && (typeof document !== 'undefined' ? createPortal(
         <div
           className="workshop-modal-backdrop"
           role="presentation"
@@ -820,8 +833,9 @@ export function WorkshopPanel({
               </footer>
             </form>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body,
+      ) : null)}
     </section>
   );
 }
