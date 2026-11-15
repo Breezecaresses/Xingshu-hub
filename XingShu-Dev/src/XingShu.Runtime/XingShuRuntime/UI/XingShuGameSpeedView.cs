@@ -50,7 +50,8 @@ namespace XingShuRuntime.UI
         private XingShuSpeedEngineMode _lastObservedEngine = XingShuSpeedEngineMode.ManagedXingShu;
         private float _lastObservedSpeed = -1f;
         private bool _lastObservedEnabled = false;
-        private KeyCode _lastObservedHotkey = KeyCode.None;
+        private string _lastObservedHotkey;
+        private int _lastShortcutRevision = -1;
         private bool _lastObservedSuspended = false;
         private AccelerationSuspendReason _lastObservedReasons = AccelerationSuspendReason.None;
         private bool _lastObservedSmartPauseEnabled = false;
@@ -100,7 +101,7 @@ namespace XingShuRuntime.UI
             elRt.anchorMax = new Vector2(0f, 0.5f);
             elRt.pivot = new Vector2(0f, 0.5f);
             elRt.anchoredPosition = new Vector2(20f, 0f);
-            elRt.sizeDelta = new Vector2(80f, 26f);
+            elRt.sizeDelta = new Vector2(210f, 26f);
 
             // [ 游戏内加速 ] 按钮 (Managed XingShu)
             _btnManagedEngine = XingShuUIFactory.CreateButton(selectorCard, "Btn_ManagedEngine", "游戏内加速",
@@ -178,14 +179,14 @@ namespace XingShuRuntime.UI
             statusRt.sizeDelta = new Vector2(320f, 26f);
 
             // 动态热键徽章 [F7]
-            _lastObservedHotkey = GameSpeedControllerGUI.CurrentHotkey;
+            _lastObservedHotkey = XingShuHotkeys.Display(XingShuShortcut.SpeedPanel);
             GameObject badgeGo = XingShuUIFactory.CreateUIObject("HotkeyBadge", headerGo);
             RectTransform badgeRt = badgeGo.GetComponent<RectTransform>();
             badgeRt.anchorMin = new Vector2(1f, 0.5f);
             badgeRt.anchorMax = new Vector2(1f, 0.5f);
             badgeRt.pivot = new Vector2(1f, 0.5f);
             badgeRt.anchoredPosition = new Vector2(-24f, 0f);
-            badgeRt.sizeDelta = new Vector2(52f, 26f);
+            badgeRt.sizeDelta = new Vector2(210f, 26f);
 
             Image badgeImg = badgeGo.AddComponent<Image>();
             badgeImg.sprite = XingShuUIAssetService.GetSprite("hotkey_badge.png");
@@ -374,7 +375,7 @@ namespace XingShuRuntime.UI
             tipBg.type = Image.Type.Sliced;
             tipBg.color = XingShuUIAssetService.IsFallbackSprite(cardBaseSprite) ? XingShuUITheme.Card : Color.white;
 
-            _tipText = XingShuUIFactory.CreateText(tipCard, "TipText", XingShuMobileUIHelper.IsMobile ? "点击开关启停加速 · 拖动滑条调倍率 · 思考时间按真实时间计算" : "[F7] 呼出控制面板  ·  [左Ctrl] 快速开关加速", 13, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
+            _tipText = XingShuUIFactory.CreateText(tipCard, "TipText", XingShuMobileUIHelper.IsMobile ? "点击开关启停加速 · 拖动滑条调倍率 · 思考时间按真实时间计算" : ShortcutTip(), 13, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
             RectTransform tipTxtRt = _tipText.rectTransform;
             tipTxtRt.anchorMin = Vector2.zero;
             tipTxtRt.anchorMax = Vector2.one;
@@ -385,6 +386,8 @@ namespace XingShuRuntime.UI
             _lastObservedEngine = XingShuSpeedEngineCoordinator.CurrentEngine;
             RefreshEngineModeVisuals(_lastObservedEngine, force: true);
         }
+
+        private static string ShortcutTip() => "[" + XingShuHotkeys.Display(XingShuShortcut.SpeedPanel) + "] 呼出控制面板 · [" + XingShuHotkeys.Display(XingShuShortcut.Acceleration) + "] 快速开关加速";
 
         private void CreatePresetButtons(GameObject parent, float currentSpeed)
         {
@@ -838,7 +841,12 @@ namespace XingShuRuntime.UI
                 }
             }
 
-            KeyCode curHotkey = GameSpeedControllerGUI.CurrentHotkey;
+            if (_lastShortcutRevision != XingShuHotkeys.Revision)
+            {
+                _lastShortcutRevision = XingShuHotkeys.Revision;
+                if (!XingShuMobileUIHelper.IsMobile && _tipText != null) _tipText.text = ShortcutTip();
+            }
+            string curHotkey = XingShuHotkeys.Display(XingShuShortcut.SpeedPanel);
             if (curHotkey != _lastObservedHotkey)
             {
                 _lastObservedHotkey = curHotkey;

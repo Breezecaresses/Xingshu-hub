@@ -19,7 +19,7 @@ internal sealed class ReplayPlayerGUI : MonoBehaviour
 
 	private bool _isBusy;
 
-	private KeyCode _hotkey = KeyCode.F9;
+	private KeyCode _hotkey => XingShuHotkeys.Get(XingShuShortcut.ReplayPanel).Key;
 
 	private const string REPLAY_ID_CONTROL_NAME = "XingShu.ReplayPlayer.ReplayId";
 
@@ -45,7 +45,7 @@ internal sealed class ReplayPlayerGUI : MonoBehaviour
 
 	internal static bool IsBusy => Instance != null && Instance._isBusy;
 
-	internal static KeyCode CurrentHotkey => Instance != null ? Instance._hotkey : KeyCode.F9;
+	internal static KeyCode CurrentHotkey => XingShuHotkeys.Get(XingShuShortcut.ReplayPanel).Key;
 
 	internal static void ClearReplayId()
 	{
@@ -127,17 +127,6 @@ internal sealed class ReplayPlayerGUI : MonoBehaviour
 	{
 		XingShuOverlayInput.Register(this, () => _showUI, () => XingShuOverlayInput.ScaledRect(_windowRect, XingShuMobileUIHelper.ScaleFactor));
 		Instance = this;
-		try
-		{
-			if (Enum.TryParse<KeyCode>("F9", ignoreCase: true, out var result))
-			{
-				_hotkey = result;
-			}
-		}
-		catch
-		{
-			_hotkey = KeyCode.F9;
-		}
 	}
 
 	private void ReleaseTextEntryFocusIfNeeded()
@@ -165,7 +154,7 @@ internal sealed class ReplayPlayerGUI : MonoBehaviour
 
 	private void Update()
 	{
-		if (XingShuCentralInputManager.TryConsumeHotkey(XingShuHotkeyAction.ReplayPlayerToggle, "ReplayPlayerGUI", _hotkey))
+		if (XingShuHotkeys.TryConsume(XingShuShortcut.ReplayPanel, "ReplayPlayerGUI"))
 		{
 			if (UseModernView)
 			{
@@ -207,7 +196,7 @@ internal sealed class ReplayPlayerGUI : MonoBehaviour
 		GUILayout.BeginVertical();
 		GUILayout.Space(22f);
 		GUILayout.BeginHorizontal(GUI.skin.box);
-		GUILayout.Label("提示: 按快捷键 <b>[" + _hotkey.ToString() + "]</b> 可随时呼出/隐藏此面板", GUI.skin.label);
+		GUILayout.Label("提示: 按快捷键 <b>[" + XingShuHotkeys.Display(XingShuShortcut.ReplayPanel) + "]</b> 可随时呼出/隐藏此面板", GUI.skin.label);
 		GUILayout.EndHorizontal();
 		GUILayout.Space(6f);
 		GUILayout.BeginVertical(GUI.skin.box);

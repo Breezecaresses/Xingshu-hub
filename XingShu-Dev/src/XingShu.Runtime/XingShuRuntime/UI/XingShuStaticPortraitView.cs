@@ -1,4 +1,5 @@
 using System;
+using XingShuRuntime.Core;
 using System.IO;
 using XingShuRuntime.Utilities;
 using UnityEngine;
@@ -47,7 +48,7 @@ namespace XingShuRuntime.UI
 
         private bool _suppressCallbacks;
         private float _lastDiskCheckTime;
-        private KeyCode _lastObservedHotkey = KeyCode.None;
+        private string _lastObservedHotkey;
         private bool _lastObservedLoadMod;
         private bool _lastObservedAutoDump;
         private string _lastObservedStatusMsg = "";
@@ -77,7 +78,7 @@ namespace XingShuRuntime.UI
                 _stagedModOutPath = StaticPortraitGUI.Instance.ModOutPath ?? StaticPortraitGUI.Instance.DefaultModOut;
                 _lastObservedLoadMod = StaticPortraitGUI.Instance.EnableLoadMod;
                 _lastObservedAutoDump = StaticPortraitGUI.Instance.EnableAutoDump;
-                _lastObservedHotkey = StaticPortraitGUI.Instance.CurrentHotkey;
+                _lastObservedHotkey = XingShuHotkeys.Display(XingShuShortcut.ModsPanel);
             }
             else
             {
@@ -86,7 +87,7 @@ namespace XingShuRuntime.UI
                 _stagedModOutPath = "../outimg";
                 _lastObservedLoadMod = true;
                 _lastObservedAutoDump = true;
-                _lastObservedHotkey = KeyCode.F8;
+                _lastObservedHotkey = XingShuHotkeys.Display(XingShuShortcut.ModsPanel);
             }
         }
 
@@ -185,7 +186,7 @@ namespace XingShuRuntime.UI
             badgeRt.anchorMax = new Vector2(1f, 0.5f);
             badgeRt.pivot = new Vector2(1f, 0.5f);
             badgeRt.anchoredPosition = new Vector2(-24f, 0f);
-            badgeRt.sizeDelta = new Vector2(52f, 26f);
+            badgeRt.sizeDelta = new Vector2(210f, 26f);
 
             Image badgeImg = badgeGo.AddComponent<Image>();
             badgeImg.sprite = XingShuUIAssetService.GetSprite("hotkey_badge.png");
@@ -921,7 +922,7 @@ namespace XingShuRuntime.UI
             if (StaticPortraitGUI.Instance == null) return;
 
             // 1. 热键显示同步
-            KeyCode curHotkey = StaticPortraitGUI.Instance.CurrentHotkey;
+            string curHotkey = XingShuHotkeys.Display(XingShuShortcut.ModsPanel);
             if (curHotkey != _lastObservedHotkey)
             {
                 _lastObservedHotkey = curHotkey;

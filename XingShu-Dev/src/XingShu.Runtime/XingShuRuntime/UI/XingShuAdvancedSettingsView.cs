@@ -66,7 +66,7 @@ namespace XingShuRuntime.UI
         private float _lastObservedTextAlpha = -1f;
         private float _lastObservedScale = -1f;
         private bool? _lastObservedAutoHide = null;
-        private KeyCode? _lastObservedHotkey = null;
+        private string _lastObservedHotkey;
         private float _lastObservedSize = -1f;
         private float _lastObservedAlpha = -1f;
         private float _lastObservedDScale = -1f;
@@ -335,7 +335,7 @@ namespace XingShuRuntime.UI
             ahtRt.sizeDelta = new Vector2(0f, 32f);
 
             // Row 2: 快捷呼出键显示行 (左侧标题，右侧键名显示)
-            Text hkLabel = XingShuUIFactory.CreateText(cardGo, "HotkeyLabel", "悬浮球显示/隐藏快捷键", 13, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft);
+            Text hkLabel = XingShuUIFactory.CreateText(cardGo, "HotkeyLabel", "悬浮球快捷键（在「快捷键」页修改）", 13, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft);
             RectTransform hklRt = hkLabel.rectTransform;
             hklRt.anchorMin = new Vector2(0f, 1f);
             hklRt.anchorMax = new Vector2(0f, 1f);
@@ -343,7 +343,7 @@ namespace XingShuRuntime.UI
             hklRt.anchoredPosition = new Vector2(24f, -100f);
             hklRt.sizeDelta = new Vector2(200f, 20f);
 
-            KeyCode initHotkey = XingShuConfigService.GetKeyCode(XingShuConfigKeys.AssistHotkey, XingShuConfigKeys.AssistHotkeyDefault);
+            string initHotkey = XingShuHotkeys.Display(XingShuShortcut.AssistVisibility);
             _hotkeyDisplayText = XingShuUIFactory.CreateText(cardGo, "HotkeyDisplay", $"{initHotkey}", 12, XingShuUITheme.CyanAccent, TextAnchor.MiddleRight);
             RectTransform hkRt = _hotkeyDisplayText.rectTransform;
             hkRt.anchorMin = new Vector2(1f, 1f);
@@ -611,8 +611,8 @@ namespace XingShuRuntime.UI
                     if (_autoHideToggle != null) XingShuUIFactory.SetToggleRowStateWithoutNotify(_autoHideToggle, autoHide);
                 }
 
-                KeyCode hotkey = XingShuConfigService.GetKeyCode(XingShuConfigKeys.AssistHotkey, XingShuConfigKeys.AssistHotkeyDefault);
-                if (!_lastObservedHotkey.HasValue || _lastObservedHotkey.Value != hotkey)
+                string hotkey = XingShuHotkeys.Display(XingShuShortcut.AssistVisibility);
+                if (_lastObservedHotkey != hotkey)
                 {
                     _lastObservedHotkey = hotkey;
                     if (_hotkeyDisplayText != null) _hotkeyDisplayText.text = $"{hotkey}";

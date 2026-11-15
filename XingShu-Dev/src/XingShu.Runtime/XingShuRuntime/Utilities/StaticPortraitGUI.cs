@@ -37,7 +37,7 @@ internal sealed class StaticPortraitGUI : MonoBehaviour
 
 	private string _modOutPath = "";
 
-	private KeyCode _hotkey = KeyCode.F8;
+	private KeyCode _hotkey => XingShuHotkeys.Get(XingShuShortcut.ModsPanel).Key;
 
 	private string _defaultModImg = "../modimg";
 
@@ -191,7 +191,6 @@ internal sealed class StaticPortraitGUI : MonoBehaviour
 			_modImgPath = (string.IsNullOrEmpty(@string) ? _defaultModImg : @string);
 			string string2 = XingShuConfigService.GetString(XingShuConfigKeys.StaticPortraitModOut, XingShuConfigKeys.StaticPortraitModOutDefault);
 			_modOutPath = (string.IsNullOrEmpty(string2) ? _defaultModOut : string2);
-			_hotkey = XingShuConfigService.GetKeyCode(XingShuConfigKeys.StaticPortraitHotkey, XingShuConfigKeys.StaticPortraitHotkeyDefault);
 		}
 		catch (Exception ex)
 		{
@@ -208,7 +207,6 @@ internal sealed class StaticPortraitGUI : MonoBehaviour
 			XingShuConfigService.SetString(XingShuConfigKeys.StaticPortraitBasePath, (_basePath ?? "").Trim());
 			XingShuConfigService.SetString(XingShuConfigKeys.StaticPortraitModImg, (_modImgPath ?? "").Trim());
 			XingShuConfigService.SetString(XingShuConfigKeys.StaticPortraitModOut, (_modOutPath ?? "").Trim());
-			XingShuConfigService.SetKeyCode(XingShuConfigKeys.StaticPortraitHotkey, _hotkey);
 			XingShuConfigService.Save();
 			_statusMsg = "<color=#34d399>✓ 配置已保存，实时生效！</color>";
 			_statusMsgTimer = Time.unscaledTime + 3f;
@@ -222,7 +220,7 @@ internal sealed class StaticPortraitGUI : MonoBehaviour
 
 	private void Update()
 	{
-		if (_hotkey != 0 && XingShuCentralInputManager.TryConsumeHotkey(XingShuHotkeyAction.StaticPortraitToggle, "StaticPortraitGUI", _hotkey))
+		if (XingShuHotkeys.TryConsume(XingShuShortcut.ModsPanel, "StaticPortraitGUI"))
 		{
 			if (UseModernView)
 			{
@@ -378,7 +376,7 @@ internal sealed class StaticPortraitGUI : MonoBehaviour
 		GUILayout.BeginVertical();
 		GUILayout.Space(18f);
 		GUILayout.BeginHorizontal(GUI.skin.box);
-		GUILayout.Label("提示: 可按快捷键 <b>[" + _hotkey.ToString() + "]</b> 或在悬浮球菜单中快速呼出/隐藏", GUI.skin.label);
+		GUILayout.Label("提示: 可按快捷键 <b>[" + XingShuHotkeys.Display(XingShuShortcut.ModsPanel) + "]</b> 或在悬浮球菜单中快速呼出/隐藏", GUI.skin.label);
 		GUILayout.EndHorizontal();
 		_scrollPos = GUILayout.BeginScrollView(_scrollPos, GUILayout.Height(390f));
 		GUILayout.BeginVertical(GUI.skin.box);

@@ -12,6 +12,9 @@ import javax.net.ssl.HttpsURLConnection;
 /** Signed metadata is shared with the desktop updater; URLs are constructed from a fixed repository. */
 final class ReleaseUpdates {
     static final String REPO="Breezecaresses/AstralParty-XingShu", RELEASES="https://github.com/"+REPO+"/releases";
+    // Keep the signed identity compatible with installed clients from before the rename.
+    static final String SIGNED_REPOSITORY="Breezecaresses/Xingshu-hub";
+    static boolean isUpdateRepository(String repository) { return REPO.equals(repository)||SIGNED_REPOSITORY.equals(repository); }
     static final String[] DOMESTIC_MIRRORS={"https://edgeone.gh-proxy.org/","https://gh-proxy.org/","https://ghfast.top/"};
     static final class Update {
         final JSONObject manifest;
@@ -34,7 +37,7 @@ final class ReleaseUpdates {
         signature.update(payload);
         if(!signature.verify(Base64.getDecoder().decode(e.getString("signature"))))throw new IOException("更新清单签名校验失败");
         JSONObject m=new JSONObject(new String(payload,StandardCharsets.UTF_8));
-        if(m.getInt("schema")!=1 || !REPO.equals(m.getString("repository")) || !tag.matches("v[0-9A-Za-z][0-9A-Za-z.\\-]{0,79}") ||
+        if(m.getInt("schema")!=1 || !isUpdateRepository(m.getString("repository")) || !tag.matches("v[0-9A-Za-z][0-9A-Za-z.\\-]{0,79}") ||
            !tag.equals(m.getString("tag")) || !tag.substring(1).equals(m.getString("version")) || m.getLong("sequence")<1 || m.getLong("sequence")>2100000000 || m.getString("notes").length()>6000)
             throw new IOException("不支持此更新清单");
         for(String key:new String[]{"desktop","android"}) {

@@ -19,6 +19,9 @@ using System.Xml;
 
 internal static class HubUpdater {
     internal const string Repo = "Breezecaresses/AstralParty-XingShu";
+    // Signed identity is stable across repository renames; the URL locator above may change.
+    internal const string SignedRepository = "Breezecaresses/Xingshu-hub";
+    internal static bool IsUpdateRepository(string repository) { return repository==Repo || repository==SignedRepository; }
     internal const string Releases = "https://github.com/" + Repo + "/releases";
     internal static readonly string[] DomesticMirrors = new[] {
         "https://gh-proxy.com/",
@@ -88,7 +91,7 @@ internal static class HubUpdater {
             if(!rsa.VerifyData(data,signature,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1))throw new Exception("更新清单签名校验失败");
         }
         var m=Object(Encoding.UTF8.GetString(data));
-        if(N(m,"schema")!=1 || S(m,"repository")!=Repo || S(m,"tag")!=tag || !Regex.IsMatch(tag,@"^v[0-9A-Za-z][0-9A-Za-z.\-]{0,79}$") ||
+        if(N(m,"schema")!=1 || !IsUpdateRepository(S(m,"repository")) || S(m,"tag")!=tag || !Regex.IsMatch(tag,@"^v[0-9A-Za-z][0-9A-Za-z.\-]{0,79}$") ||
            S(m,"version")!=tag.Substring(1) || N(m,"sequence")<1 || N(m,"sequence")>2100000000 || S(m,"notes").Length>6000)
             throw new Exception("不支持此更新清单");
         foreach(string name in new[]{"desktop","android"}) {

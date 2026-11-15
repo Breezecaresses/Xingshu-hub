@@ -15,6 +15,8 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = 'Breezecaresses/AstralParty-XingShu'
+# This signed namespace must stay unchanged so installed pre-rename clients can upgrade.
+SIGNED_REPOSITORY = 'Breezecaresses/Xingshu-hub'
 
 
 def sha(path):
@@ -31,7 +33,7 @@ def verify_envelope(path):
         subprocess.run(['java', str(ROOT / 'tools/SignUpdate.java'), '--verify', str(ROOT / 'tools/update-public-cert.txt'),
                         str(payload), str(signature)], check=True)
     m = json.loads(data)
-    assert m['schema'] == 1 and m['repository'] == REPO
+    assert m['schema'] == 1 and m['repository'] in (REPO, SIGNED_REPOSITORY)
     assert re.fullmatch(r'v[0-9A-Za-z][0-9A-Za-z.\-]{0,79}', m['tag']) and m['tag'][1:] == m['version']
     assert 0 < m['sequence'] <= 2100000000
     assert 'desktop' in m
@@ -97,7 +99,7 @@ def main():
         assert 'Signer #1 certificate SHA-256 digest: ' + cert_digest in certs, 'APK signing identity differs'
     notes = args.notes.read_text('utf-8-sig').strip()
     assert len(notes) <= 6000
-    m = {'schema': 1, 'repository': REPO, 'tag': 'v' + version, 'version': version, 'sequence': sequence, 'notes': notes}
+    m = {'schema': 1, 'repository': SIGNED_REPOSITORY, 'tag': 'v' + version, 'version': version, 'sequence': sequence, 'notes': notes}
     assets = [('desktop', args.desktop)]
     if not args.desktop_only:
         assets.append(('android', args.android))

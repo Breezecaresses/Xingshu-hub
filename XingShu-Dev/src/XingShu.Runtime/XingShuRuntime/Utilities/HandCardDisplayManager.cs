@@ -758,7 +758,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 	private void Update()
 	{
 		XingShu.Truth.HandSessionLifecycle.Observe();
-		if (XingShuCentralInputManager.TryConsumeHotkeyChord(XingShuHotkeyAction.HandCardDebug, "HandCardDisplayManager", KeyCode.H, XingShuHotkeyModifiers.Ctrl | XingShuHotkeyModifiers.Shift, exactModifiers: true, allowDuringTextEntry: false))
+		if (XingShuHotkeys.TryConsume(XingShuShortcut.HandCardDebug, "HandCardDisplayManager"))
 		{
 			if (UseModernView)
 			{

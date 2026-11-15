@@ -10,6 +10,14 @@ import java.util.List;
 public final class ReleaseAssetRoutingTest {
     private static final String BROWSER="https://github.com/"+ReleaseUpdates.REPO+"/releases/download/v1/file.apk";
 
+    @Test public void signedRepositoryIdentitySurvivesRenameWithoutAcceptingOtherRepositories() {
+        assertTrue(ReleaseUpdates.isUpdateRepository("Breezecaresses/Xingshu-hub"));
+        assertTrue(ReleaseUpdates.isUpdateRepository("Breezecaresses/AstralParty-XingShu"));
+        assertFalse(ReleaseUpdates.isUpdateRepository("other/AstralParty-XingShu"));
+        assertFalse(ReleaseUpdates.isUpdateRepository("Breezecaresses/Xingshu-hub/other"));
+        assertFalse(ReleaseUpdates.isUpdateRepository(null));
+    }
+
     @Test public void locatorUsesOnlyFixedRepositoryAndPositiveId() {
         assertEquals("https://api.github.com/repos/Breezecaresses/AstralParty-XingShu/releases/assets/669387880",ReleaseUpdates.assetApiAddress(669387880));
         for(long id:new long[]{0,-1,Long.MIN_VALUE}) {

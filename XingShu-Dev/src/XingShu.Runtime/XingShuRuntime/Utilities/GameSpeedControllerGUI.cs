@@ -26,7 +26,7 @@ internal sealed class GameSpeedControllerGUI : MonoBehaviour
 
 	private float _timeScale = 1f;
 
-	private KeyCode _hotkey = KeyCode.F7;
+	private KeyCode _hotkey => XingShuHotkeys.Get(XingShuShortcut.SpeedPanel).Key;
 
 	private string _statusMsg = "";
 
@@ -44,7 +44,7 @@ internal sealed class GameSpeedControllerGUI : MonoBehaviour
 
 	internal static bool UseModernView { get; set; } = true;
 
-	internal static KeyCode CurrentHotkey => (Instance != null) ? Instance._hotkey : KeyCode.F7;
+	internal static KeyCode CurrentHotkey => XingShuHotkeys.Get(XingShuShortcut.SpeedPanel).Key;
 
 	public static float EffectiveTimeScale
 	{
@@ -216,7 +216,6 @@ internal sealed class GameSpeedControllerGUI : MonoBehaviour
 		{
 			_enableSpeed = XingShuConfigService.GetBool(XingShuConfigKeys.SpeedEnabled, XingShuConfigKeys.SpeedEnabledDefault);
 			_timeScale = GameSpeedTiming.Sanitize(XingShuConfigService.GetFloat(XingShuConfigKeys.TimeScale, XingShuConfigKeys.TimeScaleDefault, XingShuConfigKeys.TimeScaleMin, XingShuConfigKeys.TimeScaleMax));
-			_hotkey = XingShuConfigService.GetKeyCode(XingShuConfigKeys.SpeedHotkey, XingShuConfigKeys.SpeedHotkeyDefault);
 		}
 		catch (Exception ex)
 		{
@@ -230,7 +229,6 @@ internal sealed class GameSpeedControllerGUI : MonoBehaviour
 		{
 			XingShuConfigService.SetBool(XingShuConfigKeys.SpeedEnabled, _enableSpeed);
 			XingShuConfigService.SetFloat(XingShuConfigKeys.TimeScale, _timeScale, XingShuConfigKeys.TimeScaleMin, XingShuConfigKeys.TimeScaleMax);
-			XingShuConfigService.SetKeyCode(XingShuConfigKeys.SpeedHotkey, _hotkey);
 			XingShuConfigService.Save();
 			ShowStatus("配置已持久化保存");
 		}
@@ -289,12 +287,12 @@ internal sealed class GameSpeedControllerGUI : MonoBehaviour
 		XingShuSpeedEngineCoordinator.Update();
 		ApplySpeedImmediate();
 
-		if (XingShuCentralInputManager.TryConsumeLeftCtrlTap("GameSpeedControllerGUI"))
+		if (XingShuHotkeys.TryConsume(XingShuShortcut.Acceleration, "GameSpeedControllerGUI"))
 		{
 			XingShuSpeedEngineCoordinator.ToggleAcceleration();
 		}
 
-		if (XingShuCentralInputManager.TryConsumeHotkey(XingShuHotkeyAction.GameSpeedToggle, "GameSpeedControllerGUI", _hotkey))
+		if (XingShuHotkeys.TryConsume(XingShuShortcut.SpeedPanel, "GameSpeedControllerGUI"))
 		{
 			if (UseModernView)
 			{
@@ -496,21 +494,10 @@ internal sealed class GameSpeedControllerGUI : MonoBehaviour
 		GUILayout.Space(8f);
 		GUILayout.BeginHorizontal();
 		GUILayout.Label("唤醒快捷键:", GUILayout.Width(80f));
-		GUILayout.Label(_hotkey.ToString(), GUILayout.Width(60f));
-		if (GUILayout.Button("设为 F7", GUILayout.Width(65f)))
+		GUILayout.Label(XingShuHotkeys.Display(XingShuShortcut.SpeedPanel), GUILayout.Width(160f));
+		if (GUILayout.Button("修改所有快捷键", GUILayout.Width(130f)))
 		{
-			_hotkey = KeyCode.F7;
-			SaveConfig();
-		}
-		if (GUILayout.Button("设为 F6", GUILayout.Width(65f)))
-		{
-			_hotkey = KeyCode.F6;
-			SaveConfig();
-		}
-		if (GUILayout.Button("设为 ~", GUILayout.Width(55f)))
-		{
-			_hotkey = KeyCode.BackQuote;
-			SaveConfig();
+			XingShuRuntime.UI.XingShuUICenter.OpenHotkeySettingsPage();
 		}
 		GUILayout.FlexibleSpace();
 		if (GUILayout.Button("保存配置", GUILayout.Width(90f), GUILayout.Height(24f)))

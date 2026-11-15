@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cinemachine;
+using XingShuRuntime.Core;
 using Core;
 using Core.Scene;
 using UnityEngine;
@@ -246,7 +247,8 @@ internal sealed class MapCamera
 		{
 			return false;
 		}
-		bool num = Input.touchCount > 0 || Input.GetMouseButton(0) || Input.GetMouseButton(1) || Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.DownArrow) || Math.Abs(Input.mouseScrollDelta.y) > 0.01f;
+		// A held key must be released after refocusing, even while text entry blocks camera actions.
+		bool num = Input.touchCount > 0 || Input.GetMouseButton(0) || Input.GetMouseButton(1) || Input.GetKey(XingShuHotkeys.Get(XingShuShortcut.CameraLeft).Key) || Input.GetKey(XingShuHotkeys.Get(XingShuShortcut.CameraRight).Key) || Input.GetKey(XingShuHotkeys.Get(XingShuShortcut.CameraUp).Key) || Input.GetKey(XingShuHotkeys.Get(XingShuShortcut.CameraDown).Key) || Math.Abs(Input.mouseScrollDelta.y) > 0.01f;
 		CancelDrag();
 		if (!num)
 		{
@@ -380,9 +382,9 @@ internal sealed class MapCamera
 			{
 				_zoom = PortMath.ClampZoom(_zoom * Mathf.Exp((0f - Mathf.Clamp(y, -10f, 10f)) * ScrollSpeed));
 			}
-			float num = (Input.GetKey(KeyCode.RightArrow) ? 1 : 0) - (Input.GetKey(KeyCode.LeftArrow) ? 1 : 0);
-			float num2 = (Input.GetKey(KeyCode.UpArrow) ? 1 : 0) - (Input.GetKey(KeyCode.DownArrow) ? 1 : 0);
-			ReadDrag(Math.Abs(y) <= 0.01f && num == 0f && num2 == 0f && !Input.GetKey(KeyCode.Escape) && !MapTargetReader.IsMarking(_controller));
+			float num = (XingShuHotkeys.IsHeld(XingShuShortcut.CameraRight) ? 1 : 0) - (XingShuHotkeys.IsHeld(XingShuShortcut.CameraLeft) ? 1 : 0);
+			float num2 = (XingShuHotkeys.IsHeld(XingShuShortcut.CameraUp) ? 1 : 0) - (XingShuHotkeys.IsHeld(XingShuShortcut.CameraDown) ? 1 : 0);
+			ReadDrag(Math.Abs(y) <= 0.01f && num == 0f && num2 == 0f && !XingShuHotkeys.IsHeld(XingShuShortcut.CameraCancelDrag) && !MapTargetReader.IsMarking(_controller));
 			Vector3 vector = _rotation * Vector3.right;
 			vector.y = 0f;
 			vector.Normalize();

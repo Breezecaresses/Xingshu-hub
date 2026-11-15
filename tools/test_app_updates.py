@@ -230,6 +230,20 @@ class Harness { static int Main(string[] a) { try {
             envelope = self.sign(folder, m)
             self.run_case('verify', envelope, 'v0.0.0-fixture.1', ok=False)
 
+    def test_signed_repository_aliases_survive_rename_and_still_require_signature(self):
+        from prepare_update_release import SIGNED_REPOSITORY
+        self.assertEqual(SIGNED_REPOSITORY, 'Breezecaresses/Xingshu-hub')
+        for repository in ('Breezecaresses/Xingshu-hub', 'Breezecaresses/AstralParty-XingShu'):
+            folder, _, manifest = self.fixture()
+            manifest['repository'] = repository
+            envelope = self.sign(folder, manifest)
+            self.run_case('verify', envelope, manifest['tag'])
+            # The production verifier must continue to enforce the pinned RSA identity.
+            encoded = json.loads(envelope.read_text())
+            encoded['payload'] = base64.b64encode(b'{}').decode()
+            envelope.write_text(json.dumps(encoded))
+            self.run_case('verify', envelope, manifest['tag'], ok=False)
+
     def test_valid_zip_and_corrupt_download(self):
         folder, archive, m = self.fixture()
         envelope = self.sign(folder, m)

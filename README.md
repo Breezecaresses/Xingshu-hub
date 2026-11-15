@@ -58,6 +58,7 @@
 
 ## Current Runtime & Hub Highlights
 
+- **Customizable Shortcuts**: Open the in-game function center (default `F1`) → **快捷键** to remap all 12 XingShu keyboard actions, including camera movement. Supports modifier chords, conflict checks, saved settings and restoring defaults. See the [shortcut guide](docs/guides/HOTKEYS.md).
 - **Replay Analyzer & Board Topology**: Full `.rep` parsing and game match ID fetching with round-by-round damage/star-coin curves, PVE monster-kill bounty attribution, chip picks, teammate transfers, interactive chart legend filtering, sortable summary tables, and step-by-step tile playback.
 - **Mod / Card / Skin Workshop**: Browse optimization mods, custom cards, character skins, and voice/FX packs. Desktop users can install and restore with SHA-256 verification and atomic `.xingshu-mods` backups; creators can submit packages for review right from the Hub or Web UI.
 - **Encyclopedia & Emote Portraits**: 38 official character slots (36 released + 2 preview slots), 75 cards, 93 chips/tokens, and 26 map guides synced from official resource `152`, with full-body standing artwork plus randomly rotated static character emotes for avatars.

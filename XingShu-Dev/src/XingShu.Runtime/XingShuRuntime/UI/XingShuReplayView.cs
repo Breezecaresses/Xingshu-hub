@@ -1,4 +1,5 @@
 using System;
+using XingShuRuntime.Core;
 using XingShuRuntime.Utilities;
 using UnityEngine;
 using UnityEngine.UI;
@@ -32,7 +33,7 @@ namespace XingShuRuntime.UI
         private string _lastObservedReplayId = "";
         private string _lastObservedStatusMsg = "";
         private bool _lastObservedIsBusy;
-        private KeyCode _lastObservedHotkey = KeyCode.None;
+        private string _lastObservedHotkey;
 
         internal GameObject Root => _root;
 
@@ -109,15 +110,15 @@ namespace XingShuRuntime.UI
             statusRt.anchoredPosition = new Vector2(-88f, 0f);
             statusRt.sizeDelta = new Vector2(110f, 26f);
 
-            // 快捷键徽章 (绑定 ReplayPlayerGUI.CurrentHotkey, 圆角 8px)
-            _lastObservedHotkey = ReplayPlayerGUI.CurrentHotkey;
+            // 快捷键徽章 (绑定 XingShuHotkeys.Display(XingShuShortcut.ReplayPanel), 圆角 8px)
+            _lastObservedHotkey = XingShuHotkeys.Display(XingShuShortcut.ReplayPanel);
             GameObject badgeGo = XingShuUIFactory.CreateUIObject("HotkeyBadge", headerGo);
             RectTransform badgeRt = badgeGo.GetComponent<RectTransform>();
             badgeRt.anchorMin = new Vector2(1f, 0.5f);
             badgeRt.anchorMax = new Vector2(1f, 0.5f);
             badgeRt.pivot = new Vector2(1f, 0.5f);
             badgeRt.anchoredPosition = new Vector2(-24f, 0f);
-            badgeRt.sizeDelta = new Vector2(52f, 26f);
+            badgeRt.sizeDelta = new Vector2(210f, 26f);
 
             Image badgeImg = badgeGo.AddComponent<Image>();
             badgeImg.sprite = XingShuUIAssetService.GetSprite("hotkey_badge.png");
@@ -349,7 +350,7 @@ namespace XingShuRuntime.UI
             string curId = ReplayPlayerGUI.ReplayId;
             string curMsg = ReplayPlayerGUI.StatusMsg;
             bool curBusy = ReplayPlayerGUI.IsBusy;
-            KeyCode curHotkey = ReplayPlayerGUI.CurrentHotkey;
+            string curHotkey = XingShuHotkeys.Display(XingShuShortcut.ReplayPanel);
 
             // 1. 同步热键徽章
             if (force || curHotkey != _lastObservedHotkey)

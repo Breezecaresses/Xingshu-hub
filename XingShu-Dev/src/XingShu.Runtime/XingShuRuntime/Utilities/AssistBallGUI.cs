@@ -187,7 +187,6 @@ internal sealed class AssistBallGUI : MonoBehaviour
 
 	private int _currentTab;
 
-	private bool _isBindingKey;
 
 	private float _ballSize = 64f;
 
@@ -195,7 +194,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 
 	private float _playBtnSize = 24f;
 
-	private KeyCode _hotkey = KeyCode.BackQuote;
+	private KeyCode _hotkey => XingShuHotkeys.Get(XingShuShortcut.AssistVisibility).Key;
 
 	internal enum AssistDockSide
 	{
@@ -605,11 +604,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			{
 				_dockSide = AssistDockSide.None;
 			}
-			_hotkey = XingShuConfigService.GetKeyCode(XingShuConfigKeys.AssistHotkey, XingShuConfigKeys.AssistHotkeyDefault);
-			if (_hotkey >= KeyCode.Mouse0 && _hotkey <= KeyCode.Mouse6)
-			{
-				_hotkey = XingShuConfigKeys.AssistHotkeyDefault;
-			}
+
 		}
 		catch (Exception ex)
 		{
@@ -669,11 +664,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			}
 			XingShuConfigService.SetFloat(XingShuConfigKeys.AssistSize, _ballSize);
 			XingShuConfigService.SetFloat(XingShuConfigKeys.AssistAlpha, _ballAlpha);
-			if (_hotkey >= KeyCode.Mouse0 && _hotkey <= KeyCode.Mouse6)
-			{
-				_hotkey = XingShuConfigKeys.AssistHotkeyDefault;
-			}
-			XingShuConfigService.SetKeyCode(XingShuConfigKeys.AssistHotkey, _hotkey);
+
 			XingShuConfigService.SetBool(XingShuConfigKeys.AssistAutoHide, _autoHide);
 			if (XingShuMobileUIHelper.IsMobile)
 			{
@@ -1310,7 +1301,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 							{
 								_hotkeyBtn.onClick.AddListener(delegate
 								{
-									_isBindingKey = !_isBindingKey;
+									XingShuRuntime.UI.XingShuUICenter.OpenHotkeySettingsPage();
 									UpdateSettingsUI();
 								});
 							}
@@ -1371,7 +1362,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 								_hideBtn.onClick.AddListener(delegate
 								{
 									SetVisible(visible: false);
-									ShowToast("悬浮球已隐藏，可按 [" + _hotkey.ToString() + "] 键重新显示", 3f);
+									ShowToast("悬浮球已隐藏，可按 [" + XingShuHotkeys.Display(XingShuShortcut.AssistVisibility) + "] 键重新显示", 3f);
 								});
 							}
 						}
@@ -1466,8 +1457,8 @@ internal sealed class AssistBallGUI : MonoBehaviour
 		}
 		if (_hotkeyBtnText != null)
 		{
-			_hotkeyBtnText.text = (_isBindingKey ? "请按键(Esc取消)" : FormatHotkeyName(_hotkey));
-			_hotkeyBtnText.color = (_isBindingKey ? new Color(1f, 0.75f, 0.2f) : new Color(0.92f, 0.94f, 0.98f));
+			_hotkeyBtnText.text = XingShuHotkeys.Display(XingShuShortcut.AssistVisibility);
+			_hotkeyBtnText.color = new Color(0.92f, 0.94f, 0.98f);
 		}
 		if (_autoHideBtnText != null)
 		{
@@ -1923,32 +1914,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 				_ballRootObj.SetActive(value: true);
 			}
 		}
-		if (_isBindingKey)
-		{
-			if (Input.GetKeyDown(KeyCode.Escape))
-			{
-				_isBindingKey = false;
-				UpdateSettingsUI();
-				ShowToast("已取消按键绑定");
-			}
-			else if (Input.anyKeyDown)
-			{
-				KeyCode[] array = (KeyCode[])Enum.GetValues(typeof(KeyCode));
-				foreach (KeyCode keyCode in array)
-				{
-					if ((keyCode < KeyCode.Mouse0 || keyCode > KeyCode.Mouse6) && keyCode != 0 && keyCode != KeyCode.Escape && Input.GetKeyDown(keyCode))
-					{
-						_hotkey = keyCode;
-						_isBindingKey = false;
-						SaveConfig();
-						UpdateSettingsUI();
-						ShowToast("快捷键已绑定为: [" + FormatHotkeyName(_hotkey) + "]");
-						break;
-					}
-				}
-			}
-		}
-		else if (_hotkey != 0 && (_hotkey < KeyCode.Mouse0 || _hotkey > KeyCode.Mouse6) && !IsTextInputFocused() && Input.GetKeyDown(_hotkey))
+		if (XingShuHotkeys.TryConsume(XingShuShortcut.AssistVisibility, "AssistBallGUI"))
 		{
 			ToggleVisible();
 		}
@@ -2623,10 +2589,10 @@ internal sealed class AssistBallGUI : MonoBehaviour
 		if (!XingShuMobileUIHelper.IsMobile)
 		{
 			GUILayout.Space(10f);
-			string text = (_isBindingKey ? "按下任意键..." : ("[ 绑定按键: " + _hotkey.ToString() + " ]"));
-			if (DrawSimpleButton(ReserveRect(_menuRect.width - 28f, num2), text, _isBindingKey, num))
+			string text = ("[ 快捷键设置: " + XingShuHotkeys.Display(XingShuShortcut.AssistVisibility) + " ]");
+			if (DrawSimpleButton(ReserveRect(_menuRect.width - 28f, num2), text, false, num))
 			{
-				_isBindingKey = !_isBindingKey;
+				XingShuRuntime.UI.XingShuUICenter.OpenHotkeySettingsPage();
 			}
 			GUILayout.Space(8f);
 			string text2 = "启动时自动隐藏: " + (_autoHide ? "✓ 已开启" : "✕ 已关闭");
@@ -2658,7 +2624,7 @@ internal sealed class AssistBallGUI : MonoBehaviour
 			if (DrawSimpleButton(ReserveRect(_menuRect.width - 28f, h), "隐藏悬浮球", hl: false, num))
 			{
 				SetVisible(visible: false);
-				ShowToast("悬浮球已隐藏，可按 [" + _hotkey.ToString() + "] 键重新显示", 3f);
+				ShowToast("悬浮球已隐藏，可按 [" + XingShuHotkeys.Display(XingShuShortcut.AssistVisibility) + "] 键重新显示", 3f);
 			}
 		}
 		GUILayout.Space(10f);

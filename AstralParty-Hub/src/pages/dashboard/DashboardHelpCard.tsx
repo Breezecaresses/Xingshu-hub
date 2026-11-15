@@ -56,8 +56,8 @@ const USAGE_GUIDE: { title: string; subtitle: string; sections: GuideSection[] }
       title: '一、打开星枢功能中心与快捷键',
       items: [
         '保持星枢 Hub 在后台运行，通过官方启动器进入游戏后即会自动挂接本地网桥。',
-        'F1：打开 / 收起「星枢功能中心」主面板（包含游戏变速、手牌监视、击飞预测、模组加载、录像回放、自由镜头、自动化与社交、对局数据、高级设置 9 个分页）。',
-        '`（Esc 下方反引号键）或点击边缘星形悬浮球：开关悬浮捷径菜单；F7 为游戏变速默认热键，F8 为静态立绘默认热键，可在设置内调整。',
+        '默认 F1：打开 / 收起「星枢功能中心」主面板（包含游戏变速、手牌监视、击飞预测、模组加载、录像回放、自由镜头、自动化与社交、对局数据、高级设置、快捷键 10 个分页）。',
+        '`（Esc 下方反引号键）或点击边缘星形悬浮球：开关悬浮捷径菜单；F7 为游戏变速默认热键，F8 为静态立绘默认热键，所有星枢快捷键都可在游戏内「功能中心 → 快捷键」统一修改，支持组合键、清除与恢复默认。',
       ],
     },
     {
@@ -120,7 +120,7 @@ export function DashboardHelpCard() {
               首次使用建议按下方三步完成环境接入；遇热更新替换、无悬浮窗或观战手牌未同步时可随时点开完整说明文档。
             </p>
           </div>
-          <div className="xingshu-help-shortcuts" aria-label="游戏内常用热键">
+          <div className="xingshu-help-shortcuts" aria-label="游戏内默认热键，可在功能中心快捷键页修改">
             <span><kbd>F1</kbd> 功能中心</span>
             <span><kbd>~ / `</kbd> 悬浮球</span>
             <span><kbd>F7</kbd> 变速</span>
@@ -135,7 +135,7 @@ export function DashboardHelpCard() {
           </div>
           <div className="xingshu-help-step">
             <strong>2. 进游开启与手牌</strong>
-            <p>游戏中按 <code>F1</code> 打开 9 项功能中心；进局在「手牌监视」开启同步，点角色头像旁「手牌」即可查看。</p>
+            <p>游戏中默认按 <code>F1</code> 打开功能中心，可在「快捷键」页修改所有按键；进局在「手牌监视」开启同步，点角色头像旁「手牌」即可查看。</p>
           </div>
           <div className="xingshu-help-step">
             <strong>3. 账号、观战与排障</strong>

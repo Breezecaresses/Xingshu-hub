@@ -23,6 +23,8 @@ namespace XingShuRuntime.UI
         private CanvasGroup _canvasGroup;
         private RectTransform _mainFrameRt;
         private Text _pageTitle;
+        private Text _hotkeyHint;
+        private int _hotkeyRevision = -1;
         private GameObject _mobileNavigation;
         private float _preferredScale = 1f;
 
@@ -36,6 +38,7 @@ namespace XingShuRuntime.UI
         private XingShuActionGuardView _actionGuardView;
         private XingShuBattleStatsView _battleStatsView;
         private XingShuAdvancedSettingsView _advancedSettingsView;
+        private XingShuHotkeySettingsView _hotkeySettingsView;
         private GameObject _comingSoonView;
         private Text _comingSoonText;
 
@@ -59,7 +62,8 @@ namespace XingShuRuntime.UI
             "自由镜头",
             "自动化与社交",
             "对局数据",
-            "高级设置"
+            "高级设置",
+            "快捷键"
         };
 
         internal static void Install(GameObject host)
@@ -101,6 +105,7 @@ namespace XingShuRuntime.UI
         {
             if (Instance == this)
             {
+                XingShuHotkeys.CancelCapture();
                 XingShuUIAssetService.Cleanup();
                 Instance = null;
             }
@@ -108,14 +113,19 @@ namespace XingShuRuntime.UI
 
         private void Update()
         {
-            // 全局快捷键 F1 集中管理切换呼出 (受 CentralInput 文本输入与焦点门禁控制)
-            if (XingShuCentralInputManager.TryConsumeHotkey("XingShu.UICenter", KeyCode.F1))
+            XingShuHotkeys.PollCapture();
+            if (XingShuHotkeys.TryConsume(XingShuShortcut.Center, "XingShu.UICenter"))
             {
                 Toggle();
             }
 
             if (_isOpen)
             {
+                if (_hotkeyHint != null && _hotkeyRevision != XingShuHotkeys.Revision)
+                {
+                    _hotkeyRevision = XingShuHotkeys.Revision;
+                    _hotkeyHint.text = XingShuMobileUIHelper.IsMobile ? "拖动顶部移动面板" : XingShuHotkeys.Display(XingShuShortcut.Center) + " 打开 / 收起";
+                }
                 // 分辨率变化自适应 Clamp (0 GC / 仅变化时触发)
                 if (_lastScreenWidth != Screen.width || _lastScreenHeight != Screen.height || _lastSafeScreenRect != XingShuMobileUIHelper.SafeScreenRect)
                 {
@@ -166,6 +176,10 @@ namespace XingShuRuntime.UI
                 {
                     _advancedSettingsView.UpdateSync();
                 }
+                else if (_currentTabIndex == 9 && _hotkeySettingsView != null)
+                {
+                    _hotkeySettingsView.UpdateSync();
+                }
             }
         }
 
@@ -175,6 +189,13 @@ namespace XingShuRuntime.UI
             {
                 Instance.SetOpenState(true);
             }
+        }
+
+        internal static void OpenHotkeySettingsPage()
+        {
+            if (Instance == null) return;
+            Instance.SetOpenState(true);
+            Instance.SelectTab(9);
         }
 
         internal static void OpenGameSpeedPage()
@@ -503,6 +524,7 @@ namespace XingShuRuntime.UI
 
         private void SetOpenState(bool open)
         {
+            if (!open) XingShuHotkeys.CancelCapture();
             _isOpen = open;
             if (_canvas != null)
             {
@@ -794,7 +816,7 @@ namespace XingShuRuntime.UI
             Text brand = XingShuUIFactory.CreateText(titleBar, "Brand", "星枢 · 功能中心", 19, Color.white, TextAnchor.MiddleLeft, FontStyle.Bold);
             Place(brand.gameObject, Vector2.zero, Vector2.up, new Vector2(0f,0.5f), new Vector2(312f,0f), new Vector2(230f,0f));
             brand.raycastTarget = false;
-            Text hotkey = XingShuUIFactory.CreateText(titleBar, "Hotkey", XingShuMobileUIHelper.IsMobile ? "拖动顶部移动面板" : "F1 打开 / 收起", 14, new Color(0.82f,0.80f,0.87f), TextAnchor.MiddleRight);
+            Text hotkey = _hotkeyHint = XingShuUIFactory.CreateText(titleBar, "Hotkey", XingShuMobileUIHelper.IsMobile ? "拖动顶部移动面板" : XingShuHotkeys.Display(XingShuShortcut.Center) + " 打开 / 收起", 14, new Color(0.82f,0.80f,0.87f), TextAnchor.MiddleRight);
             Place(hotkey.gameObject, Vector2.right, Vector2.one, new Vector2(1f,0.5f), new Vector2(-72f,0f), new Vector2(220f,0f));
             hotkey.raycastTarget = false;
             Button close = XingShuUIFactory.CreateButton(titleBar, "Close", "×", XingShuUIAssetService.GetSprite("close_normal.png"), Color.white, Color.white, Close, 30);
@@ -825,7 +847,7 @@ namespace XingShuRuntime.UI
             Place(sidebar, Vector2.zero, Vector2.up, Vector2.zero, new Vector2(0f,58f), new Vector2(230f,-170f));
             VerticalLayoutGroup layout = sidebar.AddComponent<VerticalLayoutGroup>();
             layout.padding = new RectOffset(0,0,8,8);
-            layout.spacing = 12f; layout.childAlignment = TextAnchor.UpperCenter;
+            layout.spacing = 8f; layout.childAlignment = TextAnchor.UpperCenter;
             layout.childControlWidth = true; layout.childControlHeight = true;
             layout.childForceExpandWidth = true; layout.childForceExpandHeight = false;
             Sprite normal = XingShuUIAssetService.GetSprite("sidebar_tab_normal.png");
@@ -836,7 +858,7 @@ namespace XingShuRuntime.UI
                 int index = i;
                 GameObject tab = XingShuUIFactory.CreateUIObject("Tab_"+index, sidebar);
                 LayoutElement le = tab.AddComponent<LayoutElement>();
-                le.minHeight = 62f; le.preferredHeight = 62f; le.flexibleHeight = 0f;
+                le.minHeight = 54f; le.preferredHeight = 54f; le.flexibleHeight = 0f;
                 Image image = tab.AddComponent<Image>();
                 image.sprite = i==0 ? selected : normal; image.type = Image.Type.Sliced; image.color = Color.white;
                 Text text = XingShuUIFactory.CreateText(tab,"Text",TAB_NAMES[i],21,Color.white,TextAnchor.MiddleLeft,FontStyle.Bold);
@@ -907,6 +929,9 @@ namespace XingShuRuntime.UI
             _advancedSettingsView = new XingShuAdvancedSettingsView(_contentArea.transform);
             _advancedSettingsView.Root.SetActive(false);
 
+            _hotkeySettingsView = new XingShuHotkeySettingsView(_contentArea.transform);
+            _hotkeySettingsView.Root.SetActive(false);
+
             // 占位提示页面 (Coming Soon)
             _comingSoonView = XingShuUIFactory.CreateUIObject("Page_ComingSoon", _contentArea);
             RectTransform csRt = _comingSoonView.GetComponent<RectTransform>();
@@ -934,6 +959,7 @@ namespace XingShuRuntime.UI
 
         private void SelectTab(int index)
         {
+            if (index != 9) XingShuHotkeys.CancelCapture();
             if (_mobileNavigation != null) _mobileNavigation.SetActive(false);
             _currentTabIndex = index;
             if (_pageTitle != null) _pageTitle.text = TAB_NAMES[index];
@@ -986,6 +1012,12 @@ namespace XingShuRuntime.UI
                 {
                     _advancedSettingsView.UpdateSync();
                 }
+            }
+
+            if (_hotkeySettingsView != null)
+            {
+                _hotkeySettingsView.Root.SetActive(index == 9);
+                if (index == 9) _hotkeySettingsView.UpdateSync();
             }
 
             if (_comingSoonView != null)
