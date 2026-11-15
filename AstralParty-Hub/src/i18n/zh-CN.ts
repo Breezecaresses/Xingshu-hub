@@ -25,7 +25,7 @@ export const zhCN: TranslationSchema = {
     scanningGameDir: '正在扫描游戏目录...',
     language: '语言',
     platformSubtitle: '星引擎对决平台',
-    versionReady: 'v0.1.4 就绪',
+    versionReady: 'v0.1.5 就绪',
     notIdentified: '未指定',
     unknown: '未知',
     justNow: '刚刚',
