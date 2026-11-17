@@ -150,6 +150,80 @@ final class MobileAuthHub {
         return new BoundAccount("", uid, nick, token.platform);
     }
 
+    static BoundAccount completeQqHandoff(String handoff, BnSdkTokenExtractor.ChannelToken token) throws Exception {
+        return completeQqHandoff(handoff, token, null);
+    }
+
+    static BoundAccount completeQqHandoff(String handoff, BnSdkTokenExtractor.ChannelToken token, String deviceId) throws Exception {
+        if (handoff == null || !handoff.matches("[A-Za-z0-9_-]{43}") || token == null || !token.nativeSupported) {
+            throw new IOException("请从 QQ 登录网页重新打开手机助手，或使用游戏内「趴绑定」。");
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("handoff", handoff);
+        body.put("platform", token.platform);
+        body.put("app_id", token.appId);
+        body.put("sdk_token", token.sdkToken);
+        body.put("confirm_account", Boolean.TRUE);
+        String[] pkce = deviceId == null ? null : generatePkce();
+        if (pkce != null) {
+            body.put("device_id", deviceId);
+            body.put("code_challenge", pkce[1]);
+        }
+        HttpReply reply = postJson("/auth/page/assistant/complete", body, ORIGIN, null, null, null, 90000);
+        if (reply.code != 200) throw new IOException(extractError(reply, "本次快捷登录未完成，请返回网页重试。"));
+        Map<String, Object> account = MiniJson.objectField(reply.body, "account");
+        String uid = MiniJson.stringField(account, "uid");
+        if (uid.isEmpty()) throw new IOException("未取得游戏账号，请返回网页重新登录。");
+        if (pkce != null) {
+            String requestId = MiniJson.stringField(MiniJson.objectField(reply.body, "device_login"), "request_id");
+            PollOutcome own = pollDeviceLogin(requestId, pkce[0]);
+            if (!"succeeded".equals(own.status) || own.account == null || !uid.equals(own.account.uid)) {
+                throw new IOException("QQ 已绑定，请点击登录星枢恢复助手会话");
+            }
+            return new BoundAccount(own.account.token, uid, own.account.nick, token.platform);
+        }
+        return new BoundAccount("", uid, MiniJson.stringField(account, "nick"), token.platform);
+    }
+
+    static BoundAccount bindCurrentSessionToQq(String handoff, BoundAccount account) throws Exception {
+        if (account == null || account.token.isEmpty()) throw new IOException("请先登录星枢");
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("handoff", handoff);
+        body.put("confirm_account", Boolean.TRUE);
+        HttpReply reply = postJson("/auth/assistant/session", body, ORIGIN, null, null, account.token, 20000);
+        if (reply.code == 401) throw new IOException("UNAUTHORIZED");
+        if (reply.code != 200) throw new IOException(extractError(reply, "QQ 账号绑定未完成"));
+        Map<String, Object> value = MiniJson.objectField(reply.body, "account");
+        if (!account.uid.equals(MiniJson.stringField(value, "uid"))) throw new IOException("账号身份核对未通过");
+        return new BoundAccount(account.token, account.uid, MiniJson.stringField(value, "nick"), account.platform);
+    }
+
+    static final class GameHandoff {
+        final String token, uid;
+        GameHandoff(String token, String uid) { this.token = token; this.uid = uid; }
+    }
+
+    static GameHandoff prepareGameHandoff(BoundAccount account) throws Exception {
+        HttpReply reply = postJson("/auth/mobile/handoff", new LinkedHashMap<String, Object>(), null, null, null, account.token, 20000);
+        if (reply.code == 401) throw new IOException("UNAUTHORIZED");
+        if (reply.code != 200) throw new IOException(extractError(reply, "游戏账号同步暂未完成"));
+        String token = MiniJson.stringField(reply.body, "handoff");
+        String uid = MiniJson.stringField(MiniJson.objectField(reply.body, "account"), "uid");
+        if (!token.matches("[A-Za-z0-9_-]{43}") || !account.uid.equals(uid)) throw new IOException("游戏账号同步身份不一致");
+        return new GameHandoff(token, uid);
+    }
+
+    static String qqHandoffRequester(String handoff) throws Exception {
+        if (handoff == null || !handoff.matches("[A-Za-z0-9_-]{43}")) throw new IOException("请回到 QQ 重新打开登录链接。");
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("handoff", handoff);
+        HttpReply reply = postJson("/auth/page/assistant/info", body, ORIGIN, null, null, null, 20000);
+        if (reply.code != 200) throw new IOException(extractError(reply, "快捷登录已过期，请返回网页重试。"));
+        if (!"qq".equals(MiniJson.stringField(reply.body, "purpose"))) throw new IOException("请从 QQ 的趴登录页面打开助手。");
+        String requester = MiniJson.stringField(reply.body, "requester");
+        return requester.isEmpty() ? "本次 QQ 登录请求" : requester;
+    }
+
     static DeviceStart startChannelHubLogin(String deviceId, BnSdkTokenExtractor.ChannelToken token) throws Exception {
         if (token == null || !token.nativeSupported) {
             throw new IOException("当前检测到的渠道暂不支持直接云同步验证，请使用游戏内「趴绑定」");
@@ -175,13 +249,16 @@ final class MobileAuthHub {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("device_id", deviceId);
         body.put("code_challenge", pkce[1]);
+        body.put("copy_safe", Boolean.TRUE);
         HttpReply reply = postJson("/auth/device", body, null, null, null, null, 20000);
         if (reply.code != 200) {
             throw new IOException(extractError(reply, "无法获取星枢官网授权页"));
         }
         String requestId = MiniJson.stringField(reply.body, "request_id");
         String loginUrl = MiniJson.stringField(reply.body, "login_url");
-        if (requestId.isEmpty() || !loginUrl.startsWith(ORIGIN + "/login#")) {
+        boolean compact = loginUrl.matches(java.util.regex.Pattern.quote(ORIGIN) + "/login\\?token=[A-Za-z0-9_-]{43}");
+        boolean legacy = loginUrl.matches(java.util.regex.Pattern.quote(ORIGIN + "/login#" + requestId + ".") + "[A-Za-z0-9_-]{43}");
+        if (!requestId.matches("[A-Za-z0-9_-]{32}") || !(compact || legacy)) {
             throw new IOException("官网授权地址格式无效");
         }
         return new DeviceStart(requestId, pkce[0], loginUrl);
@@ -211,9 +288,7 @@ final class MobileAuthHub {
     }
 
     static String fetchAccountSummary(String bearerToken) throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("action", "cached");
-        HttpReply reply = postJson("/account/data", body, null, null, null, bearerToken, 20000);
+        HttpReply reply = requestJson("GET", "/account/data", null, null, null, null, bearerToken, 20000);
         if (reply.code == 401) throw new IOException("UNAUTHORIZED");
         if (reply.code != 200) throw new IOException(extractError(reply, "读取云端资料失败"));
         Map<String, Object> account = MiniJson.objectField(reply.body, "account");
@@ -248,6 +323,11 @@ final class MobileAuthHub {
 
     private static HttpReply postJson(String path, Map<String, Object> jsonBody, String reqOrigin,
             String cookie, String csrf, String bearer, int readTimeoutMs) throws Exception {
+        return requestJson("POST", path, jsonBody, reqOrigin, cookie, csrf, bearer, readTimeoutMs);
+    }
+
+    private static HttpReply requestJson(String method, String path, Map<String, Object> jsonBody, String reqOrigin,
+            String cookie, String csrf, String bearer, int readTimeoutMs) throws Exception {
         URL url = new URL(ORIGIN + path);
         if (!"https".equals(url.getProtocol()) || !"124.221.176.134".equals(url.getHost())) {
             throw new IOException("拒绝访问非官方授权节点");
@@ -256,8 +336,8 @@ final class MobileAuthHub {
         conn.setInstanceFollowRedirects(false);
         conn.setConnectTimeout(15000);
         conn.setReadTimeout(readTimeoutMs);
-        conn.setRequestMethod("POST");
-        conn.setDoOutput(true);
+        conn.setRequestMethod(method);
+        conn.setDoOutput("POST".equals(method));
         conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
         conn.setRequestProperty("User-Agent", "XingShu-Android-Hub/1");
         if (reqOrigin != null) conn.setRequestProperty("Origin", reqOrigin);
@@ -265,14 +345,14 @@ final class MobileAuthHub {
         if (csrf != null) conn.setRequestProperty("X-XingShu-CSRF", csrf);
         if (bearer != null) conn.setRequestProperty("Authorization", "Bearer " + bearer);
 
-        byte[] payload = MiniJson.stringify(jsonBody).getBytes(StandardCharsets.UTF_8);
         try {
-            try (OutputStream out = conn.getOutputStream()) {
-                out.write(payload);
+            if ("POST".equals(method)) {
+                byte[] payload = MiniJson.stringify(jsonBody).getBytes(StandardCharsets.UTF_8);
+                try (OutputStream out = conn.getOutputStream()) { out.write(payload); }
             }
             int status = conn.getResponseCode();
             InputStream stream = status >= 400 ? conn.getErrorStream() : conn.getInputStream();
-            String raw = readBounded(stream, 65536);
+            String raw = readBounded(stream, "GET".equals(method) ? 2097152 : 65536);
             Map<String, Object> parsed = null;
             if (!raw.isEmpty() && raw.trim().startsWith("{")) {
                 try { parsed = MiniJson.parseObject(raw); } catch (IOException ignored) { }

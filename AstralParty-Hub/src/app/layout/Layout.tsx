@@ -9,6 +9,7 @@ import { UpdatePromptController } from '../../components/UpdatePromptModal';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { isTauriRuntime } from '../../shared/runtime';
 import { GitHubRepoLink } from '../../components/GitHubRepoLink';
+import { DesktopWindowBar } from './DesktopWindowBar';
 
 export const Layout: React.FC = () => {
   const [report, setReport] = useState<DiagnosticReport | null>(null);
@@ -172,6 +173,8 @@ export const Layout: React.FC = () => {
       ? t('common.degraded')
       : t('common.initializing');
   return (
+    <div className={webMode ? 'web-app-frame' : 'desktop-app-frame'}>
+      {!webMode && <DesktopWindowBar title={appTitle} english={locale !== 'zh-CN'} />}
     <div className="app-container" ref={shellRef}>
       <div className="xingshu-aurora-stage" aria-hidden="true">
         <i />
@@ -237,6 +240,13 @@ export const Layout: React.FC = () => {
           </div>
         </main>
       </div>
+    </div>
+      {!webMode && <footer className="desktop-status-bar">
+        <span><i className={`desktop-status-dot ${statusClass}`} />{report?.snapshot.primary_game
+          ? (locale === 'zh-CN' ? '游戏目录已连接' : 'Game directory connected')
+          : (locale === 'zh-CN' ? '等待选择游戏目录' : 'Select a game directory')}</span>
+        <span>{locale === 'zh-CN' ? '星枢工作台' : 'XingShu Workspace'} · v0.1.6-beta.1</span>
+      </footer>}
     </div>
   );
 };

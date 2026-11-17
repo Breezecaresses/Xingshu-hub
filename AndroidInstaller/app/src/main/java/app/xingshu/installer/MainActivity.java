@@ -103,6 +103,13 @@ public final class MainActivity extends Activity {
     private final List<BnSdkTokenExtractor.ChannelToken> detectedTokens = new ArrayList<>();
     private int selectedTokenIndex = 0;
     private MobileAuthHub.BoundAccount boundSession;
+    private String pendingQqHandoff = "";
+    private String pendingQqRequester = "";
+    private BnSdkTokenExtractor.ChannelToken quickSelectedToken;
+    private boolean quickAutoPending;
+    private TextView quickLoginStatusView;
+    private Button quickLoginBtn;
+    private LinearLayout quickAccountsRow;
     private String cloudSummaryLine = "";
 
     private ReleaseUpdates.Update availableUpdate;
@@ -135,6 +142,9 @@ public final class MainActivity extends Activity {
     private TextView[] tabPills = new TextView[4];
     private Button installBtn, restoreBtn, inspectBtn, scanPackagesBtn, pairBtn, connectBtn, shizukuBtn, updateCheckBtn, exportLogBtn;
     private Button scanTokenBtn, bindQqBtn, hubTokenLoginBtn, webAuthBtn, webAuthCancelBtn, refreshCloudBtn, hubLogoutBtn, launchGameBtn;
+    private Button starLoginBtn, starLaunchBtn, starRefreshBtn, starLogoutBtn;
+    private TextView starAccountSummaryView;
+    private String unifiedLoginMessage = "";
     private EditText pairingPort, pairingCode, connectionPort, qqLinkInput;
     private Switch previewUpdates;
 
@@ -256,9 +266,174 @@ public final class MainActivity extends Activity {
         refreshPackageChips();
         refreshAuthUi();
         refresh();
+        handleQqLoginIntent(getIntent());
 
         // Silently check GitHub/mirror for newer helper builds once on launch
         progressHandler.postDelayed(() -> checkAssistantUpdate(true), 650);
+    }
+
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleQqLoginIntent(intent);
+    }
+
+    private void handleQqLoginIntent(Intent intent) {
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())) return;
+        try {
+            String handoff = AssistantLoginLink.parse(intent.getDataString(), intent.getStringExtra("handoff"));
+            intent.setData(null);
+            intent.removeExtra("handoff");
+            if (authBusy) {
+                if (quickLoginStatusView != null) quickLoginStatusView.setText("正在处理当前登录，请完成后再打开新的登录链接。");
+                return;
+            }
+            pendingQqHandoff = handoff;
+            pendingQqRequester = "";
+            quickSelectedToken = null;
+            quickAutoPending = false;
+            selectTab(TAB_LOGIN);
+            quickLoginStatusView.setText("QQ 登录已带入，正在确认授权对象…");
+            authBusy = true;
+            refreshAuthUi();
+            authWorker.execute(() -> {
+                String requester = "", error = "";
+                try { requester = MobileAuthHub.qqHandoffRequester(handoff); }
+                catch (Exception failure) { error = failure.getMessage(); }
+                final String verifiedRequester = requester, tip = error;
+                runOnUiThread(() -> {
+                    authBusy = false;
+                    if (destroyed) return;
+                    if (verifiedRequester.isEmpty()) {
+                        pendingQqHandoff = "";
+                        quickLoginStatusView.setText(tip == null || tip.isEmpty() ? "本次登录已过期，请返回 QQ 重试。" : tip);
+                        refreshAuthUi();
+                        return;
+                    }
+                    pendingQqRequester = verifiedRequester;
+                    quickAutoPending = true;
+                    continueQuickQqLogin();
+                });
+            });
+        } catch (Exception ignored) {
+            if (quickLoginStatusView != null) quickLoginStatusView.setText("登录链接不完整，请回到 QQ 重新点击登录链接。");
+        }
+    }
+
+    private void continueQuickQqLogin() {
+        if (pendingQqHandoff.isEmpty() || authBusy || destroyed) return;
+        if (boundSession != null && !boundSession.token.isEmpty()) {
+            selectTab(TAB_LOGIN);
+            quickLoginStatusView.setText("QQ 授权对象：" + pendingQqRequester + "\n使用当前星枢账号：" + boundSession.nick
+                + "（UID " + boundSession.uid + "）\n点击确认即可绑定，无需再次获取验证码。");
+            refreshAuthUi();
+            return;
+        }
+        quickAutoPending = false;
+        quickSelectedToken = null;
+        selectTab(TAB_LOGIN);
+        quickLoginStatusView.setText("QQ 授权对象：" + pendingQqRequester + "\n请先点击「登录星枢」，登录完成后即可使用当前 UID 绑定 QQ。无需无线调试或复制票据。");
+        quickAccountsRow.removeAllViews();
+        refreshAuthUi();
+    }
+
+    private void chooseQuickQqAccount() {
+        List<BnSdkTokenExtractor.ChannelToken> supported = new ArrayList<>();
+        for (BnSdkTokenExtractor.ChannelToken token : detectedTokens) if (token.nativeSupported) supported.add(token);
+        if (supported.size() == 1) {
+            quickSelectedToken = supported.get(0);
+            quickLoginStatusView.setText("授权对象：" + pendingQqRequester + "\n游戏账号：" + quickSelectedToken.displaySummary() + "\n确认后即可完成登录。");
+            refreshAuthUi();
+            return;
+        }
+        if (supported.isEmpty()) {
+            quickLoginStatusView.setText("暂未识别到可授权的游戏账号。请先进入游戏大厅，再退出游戏后点继续。其他安卓渠道可在游戏内点「绑定 QQ 全端同步」。");
+            return;
+        }
+        quickLoginStatusView.setText("授权对象：" + pendingQqRequester + "\n发现多个游戏账号，请点选这次要绑定的账号：");
+        quickAccountsRow.removeAllViews();
+        for (BnSdkTokenExtractor.ChannelToken token : supported) {
+            quickAccountsRow.addView(AuroraUi.button(this, token.displaySummary(), AuroraUi.BtnStyle.ACCENT, v -> completeQuickQqLogin(token)));
+        }
+    }
+
+    private void completeQuickQqLogin(BnSdkTokenExtractor.ChannelToken token) {
+        if (authBusy || pendingQqHandoff.isEmpty()) return;
+        final String handoff = pendingQqHandoff;
+        authBusy = true;
+        quickLoginStatusView.setText("正在登录 " + token.label + " 并自动绑定 QQ，请稍候…");
+        refreshAuthUi();
+        authWorker.execute(() -> {
+            MobileAuthHub.BoundAccount account = null;
+            String error = "";
+            try { account = MobileAuthHub.completeQqHandoff(handoff, token, MobileAuthHub.getOrCreateDeviceId(getPreferences(0))); }
+            catch (Exception failure) { error = failure.getMessage(); }
+            final MobileAuthHub.BoundAccount result = account;
+            final String tip = error;
+            runOnUiThread(() -> {
+                authBusy = false;
+                if (destroyed) return;
+                if (result != null) {
+                    if (!result.token.isEmpty()) {
+                        MobileAuthHub.saveSession(getPreferences(0), result);
+                        boundSession = result;
+                        cloudSummaryLine = "";
+                    }
+                    pendingQqHandoff = "";
+                    pendingQqRequester = "";
+                    quickSelectedToken = null;
+                    quickAutoPending = false;
+                    quickAccountsRow.removeAllViews();
+                    detectedTokens.clear();
+                    refreshTokenChips("");
+                    quickLoginStatusView.setText("登录成功：" + result.nick + "（UID " + result.uid + "）\n已自动绑定 QQ，返回 QQ 直接使用即可。以后电脑、手机都不用重复登录。");
+                } else {
+                    quickLoginStatusView.setText(tip == null || tip.isEmpty() ? "登录未完成，请回到网页重新点击快捷登录。" : tip);
+                }
+                refreshAuthUi();
+            });
+        });
+    }
+
+    private void completeQqWithCurrentSession() {
+        if (authBusy || boundSession == null || pendingQqHandoff.isEmpty()) return;
+        final MobileAuthHub.BoundAccount current = boundSession;
+        final String handoff = pendingQqHandoff;
+        authBusy = true;
+        refreshAuthUi();
+        authWorker.execute(() -> {
+            try {
+                final MobileAuthHub.BoundAccount account = MobileAuthHub.bindCurrentSessionToQq(handoff, current);
+                runOnUiThread(() -> {
+                    authBusy = false;
+                    if (destroyed) return;
+                    boundSession = account;
+                    MobileAuthHub.saveSession(getPreferences(0), account);
+                    pendingQqHandoff = pendingQqRequester = "";
+                    quickSelectedToken = null;
+                    quickAutoPending = false;
+                    quickLoginStatusView.setText("已绑定 QQ：" + account.nick + "（UID " + account.uid + "）\n直接回 QQ 使用，UID 会自动引用当前账号。");
+                    refreshAuthUi();
+                });
+            } catch (Exception failure) {
+                final boolean expired = "UNAUTHORIZED".equals(failure.getMessage());
+                final String tip = expired ? "星枢账号已过期，请先点击登录星枢。" : failure.getMessage();
+                runOnUiThread(() -> {
+                    authBusy = false;
+                    if (expired) { MobileAuthHub.clearSession(getPreferences(0)); boundSession = null; }
+                    quickLoginStatusView.setText(tip == null ? "QQ 绑定未完成，请重新打开登录链接。" : tip);
+                    refreshAuthUi();
+                });
+            }
+        });
+    }
+
+    private void openQqApp() {
+        try {
+            Intent launch = getPackageManager().getLaunchIntentForPackage("com.tencent.mobileqq");
+            if (launch != null) startActivity(launch);
+            else quickLoginStatusView.setText("请打开 QQ，向 Bot 发送「趴登录」后点登录链接。");
+        } catch (Exception ignored) { quickLoginStatusView.setText("请手动返回 QQ，即可直接使用 Bot。"); }
     }
 
     private void configureSystemBars() {
@@ -491,6 +666,42 @@ public final class MainActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
 
+        LinearLayout accountCard = AuroraUi.card(this);
+        accountCard.addView(AuroraUi.cardTitle(this, "星枢账号"));
+        starAccountSummaryView = AuroraUi.callout(this, "登录一次，自动记住游戏 UID，共享手机、电脑与 QQ 的云端资料。");
+        accountCard.addView(starAccountSummaryView);
+        starLoginBtn = AuroraUi.button(this, "登录星枢", AuroraUi.BtnStyle.PRIMARY, v -> startWebAuth());
+        accountCard.addView(starLoginBtn);
+        starLaunchBtn = AuroraUi.button(this, "启动游戏并同步当前账号", AuroraUi.BtnStyle.ACCENT, v -> launchSelectedGame());
+        accountCard.addView(starLaunchBtn);
+        starRefreshBtn = AuroraUi.button(this, "刷新账号数据", AuroraUi.BtnStyle.SECONDARY, v -> refreshHubAccountSummary());
+        accountCard.addView(starRefreshBtn);
+        starLogoutBtn = AuroraUi.button(this, "退出星枢账号", AuroraUi.BtnStyle.SUBTLE, v -> logoutHubSession());
+        accountCard.addView(starLogoutBtn);
+        accountCard.addView(AuroraUi.caption(this, "支持官服、Steam、B 站与 TapTap。登录无需无线调试；游戏同步需安装本版星枢插件，并使用相同 UID。"));
+        col.addView(accountCard);
+
+        LinearLayout quickCard = AuroraUi.card(this);
+        quickCard.addView(AuroraUi.cardTitle(this, "QQ 快捷登录"));
+        quickLoginStatusView = AuroraUi.callout(this, "在 QQ 发送「趴登录」，点网页里的「打开手机助手」即可。登录链接自动带入，账号自动识别，不用复制粘贴。");
+        quickCard.addView(quickLoginStatusView);
+        quickAccountsRow = new LinearLayout(this);
+        quickAccountsRow.setOrientation(LinearLayout.VERTICAL);
+        quickCard.addView(quickAccountsRow);
+        quickLoginBtn = AuroraUi.button(this, "打开 QQ", AuroraUi.BtnStyle.PRIMARY, v -> {
+            if (pendingQqHandoff.isEmpty()) openQqApp();
+            else if (boundSession != null && !boundSession.token.isEmpty()) completeQqWithCurrentSession();
+            else if (quickSelectedToken != null) completeQuickQqLogin(quickSelectedToken);
+            else startWebAuth();
+        });
+        quickCard.addView(quickLoginBtn);
+        col.addView(quickCard);
+        LinearLayout otherMethods = new LinearLayout(this);
+        otherMethods.setOrientation(LinearLayout.VERTICAL);
+        otherMethods.setVisibility(View.GONE);
+        col.addView(AuroraUi.button(this, "其他登录方式 / 云端档案", AuroraUi.BtnStyle.SUBTLE, v -> otherMethods.setVisibility(otherMethods.getVisibility() == View.GONE ? View.VISIBLE : View.GONE)));
+        col.addView(otherMethods);
+
         // Card 1: Mobile Hub Cloud Session Card
         LinearLayout statusCard = AuroraUi.card(this);
         statusCard.addView(AuroraUi.cardTitle(this, "1. 手机端全端登录中枢"));
@@ -509,7 +720,7 @@ public final class MainActivity extends Activity {
         sessionRow.addView(refreshCloudBtn, sl);
         sessionRow.addView(hubLogoutBtn, sr);
         statusCard.addView(sessionRow);
-        col.addView(statusCard);
+        otherMethods.addView(statusCard);
 
         // Card 2: Native BnSdk Token Scan & One-Tap QQ Bind / Hub Auth
         LinearLayout tokenCard = AuroraUi.card(this);
@@ -540,7 +751,7 @@ public final class MainActivity extends Activity {
         linkHeader.addView(pasteBtn);
         tokenCard.addView(linkHeader);
 
-        qqLinkInput = AuroraUi.input(this, "https://124.221.176.134/login#...", false);
+        qqLinkInput = AuroraUi.input(this, "https://124.221.176.134/login?token=...", false);
         LinearLayout.LayoutParams qlLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         qlLp.bottomMargin = AuroraUi.dp(this, 8);
         tokenCard.addView(qqLinkInput, qlLp);
@@ -549,7 +760,7 @@ public final class MainActivity extends Activity {
         tokenCard.addView(bindQqBtn);
         hubTokenLoginBtn = AuroraUi.button(this, "用选中渠道直接登录助手查看数据", AuroraUi.BtnStyle.SECONDARY, v -> startHubChannelAuth());
         tokenCard.addView(hubTokenLoginBtn);
-        col.addView(tokenCard);
+        otherMethods.addView(tokenCard);
 
         // Card 3: Official Phone SMS / Steam Web Authorization
         LinearLayout webCard = AuroraUi.card(this);
@@ -565,7 +776,7 @@ public final class MainActivity extends Activity {
             refreshAuthUi();
         });
         webCard.addView(webAuthCancelBtn);
-        col.addView(webCard);
+        otherMethods.addView(webCard);
 
         // Card 4: Universal Zero-Adaptation In-Game Bind (All Android Channels)
         LinearLayout uniCard = AuroraUi.card(this);
@@ -577,7 +788,7 @@ public final class MainActivity extends Activity {
             + "3. 复制生成的「趴绑定 XXXXXXXX」发送给 QQ Bot，进大厅与结算后自动全量同步。"));
         launchGameBtn = AuroraUi.button(this, "启动当前选中游戏渠道", AuroraUi.BtnStyle.ACCENT, v -> launchSelectedGame());
         uniCard.addView(launchGameBtn);
-        col.addView(uniCard);
+        otherMethods.addView(uniCard);
 
         return col;
     }
@@ -1296,6 +1507,7 @@ public final class MainActivity extends Activity {
             AuroraUi.tintPill(connBadge, AuroraUi.SURFACE, AuroraUi.BORDER, AuroraUi.INK_MUTED, this);
             connSummary.setText("尚未连接调试通道：请到“无线配对”页填写端口并连接，或授权 Shizuku。");
         }
+        if (connected && quickAutoPending && !authBusy) continueQuickQqLogin();
     }
 
     private void refreshAuthUi() {
@@ -1320,6 +1532,22 @@ public final class MainActivity extends Activity {
         if (refreshCloudBtn != null) refreshCloudBtn.setEnabled(!authBusy && boundSession != null && !boundSession.token.isEmpty());
         if (hubLogoutBtn != null) hubLogoutBtn.setEnabled(!authBusy && boundSession != null);
         if (launchGameBtn != null) launchGameBtn.setEnabled(!authBusy);
+        if (quickLoginBtn != null) {
+            quickLoginBtn.setEnabled(!authBusy);
+            quickLoginBtn.setText(pendingQqHandoff.isEmpty() ? "打开 QQ 绑定账号" : boundSession != null && !boundSession.token.isEmpty() ? "使用当前账号绑定 QQ" : quickSelectedToken != null ? "确认账号并登录" : "登录星枢后绑定 QQ");
+        }
+        boolean loggedIn = boundSession != null && !boundSession.token.isEmpty();
+        if (starLoginBtn != null) {
+            starLoginBtn.setEnabled(!authBusy);
+            starLoginBtn.setText(authBusy ? "正在处理登录…" : loggedIn ? "切换星枢账号" : "登录星枢");
+        }
+        if (starAccountSummaryView != null) starAccountSummaryView.setText(loggedIn
+            ? (boundSession.nick.isEmpty() ? "游戏账号" : boundSession.nick) + "\n游戏 UID：" + boundSession.uid
+                + (cloudSummaryLine.isEmpty() ? "\n账号已连接，可刷新数据或启动游戏同步。" : "\n" + cloudSummaryLine)
+            : !unifiedLoginMessage.isEmpty() ? unifiedLoginMessage : "登录一次，自动记住游戏 UID，共享手机、电脑与 QQ 的云端资料。");
+        for (Button button : new Button[]{starLaunchBtn, starRefreshBtn, starLogoutBtn}) {
+            if (button != null) { button.setVisibility(loggedIn ? View.VISIBLE : View.GONE); button.setEnabled(!authBusy); }
+        }
     }
 
     private void pasteClipboardToLink() {
@@ -1339,6 +1567,10 @@ public final class MainActivity extends Activity {
     }
 
     private void scanChannelTokens() {
+        scanChannelTokens(false);
+    }
+
+    private void scanChannelTokens(boolean continueQq) {
         if (authBusy) return;
         boolean shizukuReady = useShizuku && remote != null;
         boolean localReady = !useShizuku && local != null && local.connected();
@@ -1384,6 +1616,7 @@ public final class MainActivity extends Activity {
                 selectedTokenIndex = 0;
                 refreshTokenChips(finalErr);
                 refreshAuthUi();
+                if (continueQq && !destroyed && !pendingQqHandoff.isEmpty()) chooseQuickQqAccount();
             });
         });
     }
@@ -1504,6 +1737,7 @@ public final class MainActivity extends Activity {
                             cloudSummaryLine = sum;
                             if (tokenStatusView != null) tokenStatusView.setText("助手渠道登录成功：" + acct.nick + "（UID " + acct.uid + "）");
                             refreshAuthUi();
+                            if (!pendingQqHandoff.isEmpty()) continueQuickQqLogin();
                         });
                         return;
                     }
@@ -1529,7 +1763,8 @@ public final class MainActivity extends Activity {
         if (authBusy) return;
         authBusy = true;
         webPollCancelled = false;
-        if (webAuthStatusView != null) webAuthStatusView.setText("正在向星枢服务器申请官服 / Steam 授权页…");
+        unifiedLoginMessage = "请在浏览器选择登录渠道，验证完成后会自动同步回此处。";
+        if (webAuthStatusView != null) webAuthStatusView.setText("正在打开星枢统一登录页…");
         refreshAuthUi();
         final String deviceId = MobileAuthHub.getOrCreateDeviceId(getPreferences(0));
         authWorker.execute(() -> {
@@ -1537,11 +1772,11 @@ public final class MainActivity extends Activity {
                 final MobileAuthHub.DeviceStart start = MobileAuthHub.startWebDeviceLogin(deviceId);
                 runOnUiThread(() -> {
                     if (webAuthStatusView != null) {
-                        webAuthStatusView.setText("请在打开的浏览器中完成手机号短信或 Steam 验证，完成后自动返回同步…");
+                        webAuthStatusView.setText("请在浏览器选择官服、Steam、B 站或 TapTap。完成后本助手会自动取得账号与 UID。");
                     }
                     open(start.loginUrl);
                 });
-                long deadline = SystemClock.elapsedRealtime() + 180000L;
+                long deadline = SystemClock.elapsedRealtime() + 600000L;
                 while (SystemClock.elapsedRealtime() < deadline && !destroyed && !webPollCancelled) {
                     Thread.sleep(2000);
                     if (webPollCancelled || destroyed) break;
@@ -1555,11 +1790,13 @@ public final class MainActivity extends Activity {
                         runOnUiThread(() -> {
                             authBusy = false;
                             boundSession = acct;
+                            unifiedLoginMessage = "";
                             cloudSummaryLine = sum;
                             if (webAuthStatusView != null) {
                                 webAuthStatusView.setText("已通过官网验证登录：" + acct.nick + "（UID " + acct.uid + "）");
                             }
                             refreshAuthUi();
+                            if (!pendingQqHandoff.isEmpty()) continueQuickQqLogin();
                         });
                         return;
                     }
@@ -1572,12 +1809,14 @@ public final class MainActivity extends Activity {
                 }
                 runOnUiThread(() -> {
                     authBusy = false;
+                    unifiedLoginMessage = "已取消等待，可重新点击登录星枢。";
                     refreshAuthUi();
                 });
             } catch (Exception e) {
                 String msg = e.getMessage() == null ? "网页授权失败" : e.getMessage();
                 runOnUiThread(() -> {
                     authBusy = false;
+                    unifiedLoginMessage = msg;
                     if (webAuthStatusView != null) webAuthStatusView.setText(msg);
                     refreshAuthUi();
                 });
@@ -1632,6 +1871,44 @@ public final class MainActivity extends Activity {
     }
 
     private void launchSelectedGame() {
+        if (authBusy) return;
+        if (boundSession == null || boundSession.token.isEmpty()) {
+            launchSelectedGameWithoutSession();
+            return;
+        }
+        final MobileAuthHub.BoundAccount account = boundSession;
+        final String pkg = GamePackageCatalog.isValidPackageName(selectedPackageName) ? selectedPackageName : GamePackageCatalog.DEFAULT_PACKAGE;
+        authBusy = true;
+        refreshAuthUi();
+        authWorker.execute(() -> {
+            try {
+                final MobileAuthHub.GameHandoff handoff = MobileAuthHub.prepareGameHandoff(account);
+                runOnUiThread(() -> {
+                    authBusy = false;
+                    if (destroyed) return;
+                    Intent launch = getPackageManager().getLaunchIntentForPackage(pkg);
+                    if (launch != null) {
+                        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                        launch.putExtra("xingshu_session_handoff", handoff.token);
+                        launch.putExtra("xingshu_account_uid", handoff.uid);
+                        try { startActivity(launch); }
+                        catch (Exception failure) { write("系统未允许启动，请从桌面打开游戏并使用游戏内绑定。"); }
+                    } else write("请先安装选中的游戏渠道，再从助手启动。游戏内绑定仍可使用。");
+                    refreshAuthUi();
+                });
+            } catch (Exception failure) {
+                final boolean expired = "UNAUTHORIZED".equals(failure.getMessage());
+                runOnUiThread(() -> {
+                    authBusy = false;
+                    if (expired) { MobileAuthHub.clearSession(getPreferences(0)); boundSession = null; }
+                    write(expired ? "星枢登录已过期，请点击登录星枢。" : "账号同步暂未连接，请稍后重试；也可以直接从桌面启动游戏。");
+                    refreshAuthUi();
+                });
+            }
+        });
+    }
+
+    private void launchSelectedGameWithoutSession() {
         final String pkg = GamePackageCatalog.isValidPackageName(selectedPackageName)
             ? selectedPackageName : GamePackageCatalog.DEFAULT_PACKAGE;
         boolean shizukuReady = useShizuku && remote != null;

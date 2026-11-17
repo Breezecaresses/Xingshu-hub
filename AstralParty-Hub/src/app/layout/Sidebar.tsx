@@ -17,6 +17,7 @@ import {
   Eye,
   Radio,
   PackageCheck,
+  Paintbrush,
   X,
 } from 'lucide-react';
 import { useTranslation } from '../../i18n';
@@ -162,6 +163,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onClose })
         >
           <Sparkles size={17} />
           <span>{t('nav.gameMods')}</span>
+        </NavLink>
+        <NavLink
+          to="/extensions/creator"
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+        >
+          <Paintbrush size={17} />
+          <span>{locale === 'zh-CN' ? '创作者入口' : 'Creator Center'}</span>
         </NavLink>
 
         {isDesktop && (

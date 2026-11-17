@@ -11,6 +11,7 @@ import { MatchesPage } from '../pages/player/MatchesPage';
 import { ReplayAnalyzerPage } from '../pages/player/ReplayAnalyzerPage';
 import { isTauriRuntime, routerBasename } from '../shared/runtime';
 import { ModsPage } from '../pages/extensions/ModsPage';
+import { WorkshopCreatorPage } from '../pages/extensions/WorkshopCreatorPage';
 import { PackagesPage } from '../pages/packages/PackagesPage';
 import { SpectatorPage } from '../pages/spectator/SpectatorPage';
 import { BridgePage } from '../pages/bridge/BridgePage';
@@ -112,6 +113,10 @@ export const router = createBrowserRouter([
       {
         path: 'extensions/mods',
         element: <ModsPage />,
+      },
+      {
+        path: 'extensions/creator',
+        element: <WorkshopCreatorPage />,
       },
       {
         path: 'extensions/packages',

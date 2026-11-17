@@ -25,7 +25,7 @@ export const enUS: TranslationSchema = {
     scanningGameDir: 'Scanning game directory...',
     language: 'Language',
     platformSubtitle: 'Astral Party Platform',
-    versionReady: 'v0.1.5 Ready',
+    versionReady: 'v0.1.6-beta.1 Ready',
     notIdentified: 'Not identified',
     unknown: 'Unknown',
     justNow: 'Just now',

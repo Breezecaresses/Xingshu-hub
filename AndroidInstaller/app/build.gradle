@@ -6,8 +6,8 @@ android {
         applicationId 'app.xingshu.installer'
         minSdk 26
         targetSdk 35
-        versionCode 2026111601
-        versionName '0.1.5'
+        versionCode 2026111706
+        versionName '0.1.6-beta.1'
     }
     buildFeatures { aidl true; buildConfig true }
     buildTypes { release { minifyEnabled false } }

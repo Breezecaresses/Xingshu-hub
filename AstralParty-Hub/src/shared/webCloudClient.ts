@@ -1,6 +1,6 @@
 import type { CloudAccount } from '../pages/account/cloudLoginStatus';
 import type { LibraryAccount, MatchDetail } from './gameLibrary';
-import { webApiBaseUrl } from './runtime';
+import { webApiBaseUrl } from './runtime.ts';
 
 const TOKEN_KEY = 'xingshu.web.cloudToken';
 const DEVICE_KEY = 'xingshu.web.deviceId';
@@ -335,8 +335,14 @@ async function apiRequest<T>(path: string, init: RequestInit = {}, auth = false)
   if (init.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
-  const res = await fetch(`${base}${path}`, { ...init, headers });
-  const text = await res.text();
+  let res: Response;
+  let text: string;
+  try {
+    res = await fetch(`${base}${path}`, { ...init, headers });
+    text = await res.text();
+  } catch {
+    throw new Error('无法连接星枢云端，请检查网络后重试。');
+  }
   let parsed: Record<string, unknown> = {};
   try {
     parsed = text ? (JSON.parse(text) as Record<string, unknown>) : {};

@@ -6,6 +6,7 @@ import { api } from './shared/api/tauri';
 import { isTauriRuntime } from './shared/runtime';
 import './App.css';
 import './styles/aurora.css';
+import './styles/desktop-shell.css';
 
 export function App() {
   useEffect(() => {

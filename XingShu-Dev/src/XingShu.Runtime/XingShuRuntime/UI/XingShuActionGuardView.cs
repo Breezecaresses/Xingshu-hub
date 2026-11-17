@@ -276,7 +276,7 @@ namespace XingShuRuntime.UI
             cpBg.type = Image.Type.Sliced;
             cpBg.color = XingShuUIAssetService.IsFallbackSprite(cardBaseSprite) ? XingShuUITheme.Card : Color.white;
 
-            Text cpTitle = XingShuUIFactory.CreateText(cardPraise, "PraiseTitle", "局末全赞", 15, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
+            Text cpTitle = XingShuUIFactory.CreateText(cardPraise, "PraiseTitle", "头像点赞", 15, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
             RectTransform cptRt = cpTitle.rectTransform;
             cptRt.anchorMin = new Vector2(0f, 1f);
             cptRt.anchorMax = new Vector2(0f, 1f);
@@ -284,7 +284,7 @@ namespace XingShuRuntime.UI
             cptRt.anchoredPosition = new Vector2(20f, -12f);
             cptRt.sizeDelta = new Vector2(200f, 22f);
 
-            Text cpDesc = XingShuUIFactory.CreateText(cardPraise, "PraiseDesc", "对局结束时自动为真人队友点赞排除自身与人机", 11, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
+            Text cpDesc = XingShuUIFactory.CreateText(cardPraise, "PraiseDesc", "头像旁选择/取消，结算时只为选中的真人玩家点赞", 11, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
             RectTransform cpdRt = cpDesc.rectTransform;
             cpdRt.anchorMin = new Vector2(0f, 1f);
             cpdRt.anchorMax = new Vector2(0f, 1f);

@@ -37,6 +37,8 @@ namespace XingShu.Runtime
         private static long _loadedPrefUid;
         private static float _loginDeadline;
         private static float _nextPoll;
+        private static string _appHandoff, _appUid;
+        private static float _appHandoffDeadline, _nextIntentCheck;
 
         private static string _pendingReportJson;
         private static string _inFlightReportJson;
@@ -44,7 +46,7 @@ namespace XingShu.Runtime
         private static float _reportRetryAt;
 
         internal static string Status { get; private set; } = "一键生成「趴绑定」码，免适配接入全部安卓渠道";
-        internal static string ButtonLabel => _session != null ? "解绑当前 QQ" :
+        internal static string ButtonLabel => _session != null ? "退出全端同步" :
             _verifier != null ? "取消绑定" : "绑定 QQ 全端同步";
         internal static string SecondaryButtonLabel => PairingCommand != null ? "复制指令" :
             CanReport ? "立即同步" : "";
@@ -86,7 +88,7 @@ namespace XingShu.Runtime
                 _authorizedUid = uid;
                 _activeScope = "mobile_bind";
                 _lastUploadedReport = null;
-                Status = "已绑定 QQ 全端同步，等待进局或定时同步战绩";
+                Status = "已连接星枢全端同步，等待进局或定时同步战绩";
                 GameLibraryExporter.Request(1f);
             }
             else if (_session != null && _authorizedUid != uid)
@@ -129,7 +131,7 @@ namespace XingShu.Runtime
                 string session = _session;
                 long prevUid = _authorizedUid > 0 ? _authorizedUid : currentUid;
                 ClearPersistedSession(prevUid);
-                Reset("已解除当前 QQ 绑定");
+                Reset("已退出手机全端同步，QQ 账号绑定仍保留");
                 if (session != null) PostJson("/auth/logout", "{}", session, (_, __) => { });
                 return;
             }
@@ -227,6 +229,7 @@ namespace XingShu.Runtime
         internal static void Tick()
         {
             long uid = XingShuRuntimeHost.CurrentLocalPlayerId;
+            ReadAppLoginIntent();
             if (uid > 0) EnsureSavedSessionLoaded(uid);
 
             if (_request != null)
@@ -249,6 +252,30 @@ namespace XingShu.Runtime
             }
 
             float now = Time.realtimeSinceStartup;
+            if (_appHandoff != null && now < _appHandoffDeadline && uid > 0)
+            {
+                if (uid.ToString(CultureInfo.InvariantCulture) != _appUid)
+                {
+                    Status = "当前游戏 UID 与助手账号不同，请切换游戏账号后继续";
+                    return;
+                }
+                string handoff = _appHandoff;
+                _appHandoff = null;
+                Status = "正在接续星枢助手登录，同步账号与手牌权限…";
+                var body = new Dictionary<string, string> { ["handoff"] = handoff, ["playerId"] = _appUid };
+                PostJson("/auth/mobile/claim", BridgeJson.Serialize(body), null, (code, data) =>
+                {
+                    if (XingShuRuntimeHost.CurrentLocalPlayerId != uid) return;
+                    if (code == 200 && Field(data, "status") == "succeeded")
+                    {
+                        CompleteLogin(code, data);
+                        Status = "星枢账号已接续，正在同步资料与合作手牌";
+                    }
+                    else Status = "助手账号同步未完成，请回到助手重新点击「启动游戏并同步当前账号」";
+                });
+                return;
+            }
+            if (_appHandoff != null && now >= _appHandoffDeadline) _appHandoff = _appUid = null;
             if (_requestId != null)
             {
                 if (now >= _loginDeadline)
@@ -307,6 +334,31 @@ namespace XingShu.Runtime
                 (code, data) => CompleteHandRead(code, data, room, uid, epoch));
         }
 
+        private static void ReadAppLoginIntent()
+        {
+            if (Time.realtimeSinceStartup < _nextIntentCheck) return;
+            _nextIntentCheck = Time.realtimeSinceStartup + 1f;
+            try
+            {
+                using (var unity = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+                using (var activity = unity.GetStatic<AndroidJavaObject>("currentActivity"))
+                using (var intent = activity.Call<AndroidJavaObject>("getIntent"))
+                {
+                    string handoff = intent.Call<string>("getStringExtra", "xingshu_session_handoff");
+                    if (string.IsNullOrEmpty(handoff)) return;
+                    string uid = intent.Call<string>("getStringExtra", "xingshu_account_uid");
+                    intent.Call<AndroidJavaObject>("removeExtra", "xingshu_session_handoff").Dispose();
+                    intent.Call<AndroidJavaObject>("removeExtra", "xingshu_account_uid").Dispose();
+                    if (!Regex.IsMatch(handoff, @"\A[A-Za-z0-9_-]{43}\z") || !Regex.IsMatch(uid ?? "", @"\A[1-9][0-9]{0,18}\z")) return;
+                    _appHandoff = handoff;
+                    _appUid = uid;
+                    _appHandoffDeadline = Time.realtimeSinceStartup + 120f;
+                    Status = "已收到星枢助手账号，等待游戏登录完成…";
+                }
+            }
+            catch { /* Older hosts without an activity intent retain the manual binding entry. */ }
+        }
+
         private static void ShowPairingCode(long code, Dictionary<string, object> value)
         {
             string id = Field(value, "request_id");
@@ -350,7 +402,7 @@ namespace XingShu.Runtime
                     GameLibraryExporter.ResetMobileDedup();
                     GameLibraryExporter.Request(0f);
                     Status = scope == "mobile_bind"
-                        ? "QQ 全端绑定成功！正在自动上传战绩与角色数据"
+                        ? "全端账号连接成功！正在自动上传战绩与角色数据"
                         : "已授权，等待允许观战的合作对局";
                     return;
                 case "expired":
@@ -486,6 +538,7 @@ namespace XingShu.Runtime
             }
             _onComplete = null;
             _requestId = _verifier = _pairingCommand = _session = _activeScope = null;
+            _appHandoff = _appUid = null;
             _pendingReportJson = _inFlightReportJson = _lastUploadedReport = null;
             _authorizedUid = 0;
             lock (QueuedDetails) { QueuedDetails.Clear(); }

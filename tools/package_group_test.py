@@ -183,6 +183,7 @@ def main():
     parser.add_argument('--deployment', type=Path, default=ROOT / 'XingShu-Dev/build/runtime-truth-fix/deployment.json')
     parser.add_argument('--official-baselines', type=Path, help='Audited directory containing PLATFORM/vanilla.__data for fresh-install checks')
     parser.add_argument('--android-bundle', type=Path, help='Verified Android companion directory from prepare_android_hub_bundle.py')
+    parser.add_argument('--release-notes', type=Path, help='Current release notes to include in the verified desktop ZIP')
     parser.add_argument('--mod-library', type=Path, help='Local texture adaptation candidate; not automatically uploaded or relicensed')
     parser.add_argument('--local-build', action='store_true', help='Mark a local worktree candidate; SourceCommit is a baseline, not a published source tag')
     args = parser.parse_args()
@@ -362,6 +363,8 @@ Windows 便携程序未附 Authenticode 代码签名；应用更新清单和手�
     shutil.copy2(ROOT / 'LICENSE', stage / 'LICENSE.txt')
     (stage / '项目来源.txt').write_text('星枢 Hub 与游戏内运行时\nhttps://github.com/Breezecaresses/AstralParty-XingShu\n\n代码许可见 LICENSE.txt。角色、卡面、配置及游戏资源版权归吉星派对原权利人所有，不随本项目代码许可证重新授权。\n', encoding='utf-8-sig')
     verify_installer(stage, profiles, release, deployment, args.official_baselines)
+    if args.release_notes:
+        shutil.copy2(args.release_notes.resolve(strict=True), stage / '本版更新.md')
     entries = sorted(p for p in stage.rglob('*') if p.is_file())
     (stage / 'SHA256SUMS.txt').write_text(''.join(f'{sha(p)}  {p.relative_to(stage).as_posix()}\n' for p in entries), encoding='utf-8')
     stage.rename(destination)
@@ -380,9 +383,11 @@ Windows 便携程序未附 Authenticode 代码签名；应用更新清单和手�
 安装：完整解压，退出游戏后用“星枢安装助手.exe”安装；主端、观战端分别安装，可备份还原。
 
 更新：
-• 修复官方资源更新后悬浮球不出现，适配选人倒计时的新入口；保留手牌、三排统计、治疗参考、怪物CD和自由镜头。
+• 创作者入口加入侧边栏，与投稿及创作说明合并。
+• 手机助手增加登录星枢，衔接 QQ Bot 授权与已验证的游戏 UID。
+• 修复回放和工坊连接，保留原色系并增加桌面窗口控制。
+• 点赞图标放在角色头像上，蓝色未选、彩色已选，结算前可取消。
 • 四个电脑渠道合并一个ZIP，安装助手按各渠道的新资源路径与指纹校验，保留备份还原。
-• 直播隐私试用封存，旧开关不会隐藏普通手牌。
 • Steam国服悬浮球已人工验收；其余电脑渠道通过文件兼容及安装事务检查。
 • {'安卓包同时提供新版手机助手和手动替换／还原文件；增加顶部安装、使用说明和同位置覆盖冲突备份整理。' if args.android_bundle else '本包未附安卓安装组件，请使用已验证的安卓发布。'}
 

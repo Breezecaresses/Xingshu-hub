@@ -1,7 +1,19 @@
 import assert from 'node:assert/strict';
 import { formatPercent, formatSignedInt, playerSeatColor } from '../pages/player/replay/replayShared.ts';
 import { pickStaticEmoteAsset } from '../shared/gameLibrary.ts';
-import { formatModBytes, installKindLabel, validateWorkshopSubmission } from '../shared/workshopClient.ts';
+import { formatModBytes, installKindLabel, validateWorkshopSubmission, fetchWorkshopMods } from '../shared/workshopClient.ts';
+import { analyzeReplayById } from '../shared/webCloudClient.ts';
+
+const originalFetch = globalThis.fetch;
+try {
+  globalThis.fetch = async () => { throw new TypeError('Failed to fetch'); };
+  await assert.rejects(() => fetchWorkshopMods(), /无法连接模组工坊/);
+  await assert.rejects(() => analyzeReplayById('1794507512315356'), /无法连接星枢云端/);
+  globalThis.fetch = async () => new Response(JSON.stringify({ items: [], total: 0, counts: {}, categories: [] }));
+  assert.equal((await fetchWorkshopMods()).total, 0, 'a working empty catalog remains a valid result');
+} finally {
+  globalThis.fetch = originalFetch;
+}
 
 assert.equal(formatPercent(null), '无机会');
 assert.equal(formatPercent(undefined), '无机会');

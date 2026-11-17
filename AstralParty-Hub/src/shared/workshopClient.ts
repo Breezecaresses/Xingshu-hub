@@ -123,8 +123,14 @@ export async function fetchWorkshopMods(
   const qs = params.toString();
   const url = `${base}/api/workshop/mods${qs ? `?${qs}` : ''}`;
 
-  const res = await fetch(url);
-  const text = await res.text();
+  let res: Response;
+  let text: string;
+  try {
+    res = await fetch(url);
+    text = await res.text();
+  } catch {
+    throw new Error('暂时无法连接模组工坊，请检查网络后点击刷新列表。');
+  }
   let parsed: Record<string, unknown> = {};
   try {
     parsed = text ? (JSON.parse(text) as Record<string, unknown>) : {};

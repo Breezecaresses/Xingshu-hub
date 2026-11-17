@@ -475,8 +475,8 @@ class Harness { static int Main(string[] a) { try {
 
     def test_interrupted_download_reselects_remaining_sources(self):
         result = self.download_fixture([
-            {'match': '', 'host': 'edgeone.gh-proxy.org', 'delay': 10, 'body': 'ready'},
-            {'match': '', 'host': 'gh-proxy.org', 'delay': 50, 'body': 'ready'},
+            {'match': '', 'host': 'edgeone.gh-proxy.org', 'delay': 10, 'body': 'ready', 'speed': 10000000},
+            {'match': '', 'host': 'gh-proxy.org', 'delay': 50, 'body': 'ready', 'speed': 1000000},
         ], failDownloadHost='edgeone.gh-proxy.org')
         self.assertEqual(result['downloads'], ['edgeone.gh-proxy.org', 'gh-proxy.org'])
         self.assertEqual(result['content'], 'complete')
@@ -484,8 +484,9 @@ class Harness { static int Main(string[] a) { try {
 
     def test_download_integrity_failure_is_fatal(self):
         result = self.download_fixture([
-            {'match': '', 'host': 'edgeone.gh-proxy.org', 'delay': 10, 'body': 'ready'},
-            {'match': '', 'host': 'gh-proxy.org', 'delay': 50, 'body': 'ready'},
+            # Keep the chosen mirror deterministic while unrelated builds load the CPU.
+            {'match': '', 'host': 'edgeone.gh-proxy.org', 'delay': 10, 'body': 'ready', 'speed': 10000000},
+            {'match': '', 'host': 'gh-proxy.org', 'delay': 50, 'body': 'ready', 'speed': 1000000},
         ], integrityFailure=True, ok=False)
         self.assertIn('SHA256', result['error'])
         self.assertEqual(result['downloads'], ['edgeone.gh-proxy.org'])

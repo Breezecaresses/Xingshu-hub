@@ -44,6 +44,7 @@ lerna-debug.log*
 **/build/
 **/out/
 *.tsbuildinfo
+/发布包/
 
 # ------------------------------------------
 # Rust & Cargo & Tauri (src-tauri)

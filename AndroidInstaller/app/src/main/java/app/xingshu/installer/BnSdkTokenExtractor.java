@@ -346,6 +346,12 @@ final class BnSdkTokenExtractor {
 
     static LoginLinkParams parseLoginLink(String raw) throws IOException {
         String trimmed = raw == null ? "" : raw.trim();
+        String compactPrefix = PUBLIC_ORIGIN + "/login?token=";
+        if (trimmed.startsWith(compactPrefix)) {
+            String pageToken = trimmed.substring(compactPrefix.length());
+            if (!pageToken.matches("[A-Za-z0-9_-]{43}")) throw new IOException("请复制完整的星枢登录链接");
+            return new LoginLinkParams("", pageToken);
+        }
         String prefix = PUBLIC_ORIGIN + "/login#";
         String fragment = trimmed.startsWith(prefix) ? trimmed.substring(prefix.length()) : trimmed;
         if (trimmed.toLowerCase(Locale.ROOT).startsWith("http") && !trimmed.startsWith(prefix)) {

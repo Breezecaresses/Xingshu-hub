@@ -43,6 +43,10 @@
     <DefineConstants>TRACE;XINGSHU_DIAGNOSTIC_PROBE;XINGSHU_SPECTATOR_PROBE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="UnityEngine.AndroidJNIModule" Condition="Exists('..\..\references\unity\UnityEngine.AndroidJNIModule.dll')">
+      <HintPath>..\..\references\unity\UnityEngine.AndroidJNIModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="mscorlib">
       <HintPath>..\..\references\framework\mscorlib.dll</HintPath>
       <Private>False</Private>

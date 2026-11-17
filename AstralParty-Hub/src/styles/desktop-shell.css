@@ -1,0 +1,25 @@
+.web-app-frame { display: contents; }
+.desktop-app-frame { display: flex; flex-direction: column; height: 100dvh; width: 100vw; overflow: hidden; background: var(--bg-primary); color: var(--text-primary); }
+.desktop-app-frame > .app-container { flex: 1; height: auto; min-height: 0; width: 100%; }
+.desktop-app-frame .main-wrapper, .desktop-app-frame .content-area { min-height: 0; min-width: 0; }
+.desktop-window-bar { position: relative; z-index: 120; display: flex; flex: 0 0 34px; height: 34px; align-items: center; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); font-size: 11px; }
+.desktop-drag-region { display: flex; flex: 1; align-items: center; gap: 9px; height: 100%; padding-left: 14px; cursor: default; }
+.desktop-drag-region svg { color: var(--accent); }
+.desktop-workspace-tag { color: var(--text-muted); margin-left: 10px; }
+.desktop-window-controls { display: flex; align-self: stretch; }
+.desktop-window-controls button { display: grid; place-items: center; width: 44px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--text-secondary); cursor: default; transition: background 100ms; }
+.desktop-window-controls button:hover { background: var(--glass-code-bg); color: var(--text-primary); }
+.desktop-window-controls button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.desktop-window-controls .desktop-close-button:hover { background: #c42b3b; color: white; }
+.desktop-window-error { color: var(--danger); padding: 0 12px; }
+.desktop-status-bar { display: flex; align-items: center; justify-content: space-between; flex: 0 0 26px; height: 26px; gap: 16px; padding: 0 15px; border-top: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-secondary); font-size: 10.5px; z-index: 2; }
+.desktop-status-bar > span { display: inline-flex; align-items: center; gap: 7px; }
+.desktop-status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--warning); }
+.desktop-status-dot.healthy { background: var(--success); }
+.desktop-app-frame .top-bar { flex-shrink: 0; }
+.desktop-app-frame .content-area { overscroll-behavior: contain; }
+.desktop-app-frame input, .desktop-app-frame textarea, .desktop-app-frame pre, .desktop-app-frame code { user-select: text; }
+.desktop-app-frame ::-webkit-scrollbar { width: 7px; height: 7px; }
+.desktop-app-frame ::-webkit-scrollbar-track { background: transparent; }
+.desktop-app-frame ::-webkit-scrollbar-thumb { background: var(--border-focus); border: 2px solid var(--bg-primary); border-radius: 5px; }
+@media (prefers-reduced-motion: reduce) { .desktop-window-controls button { transition: none; } }
