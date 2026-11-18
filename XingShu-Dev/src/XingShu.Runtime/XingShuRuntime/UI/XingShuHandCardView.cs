@@ -33,6 +33,7 @@ namespace XingShuRuntime.UI
 #if XINGSHU_ANDROID_PREVIEW
         private Text _cloudHandStatus;
         private Text _cloudHandButton;
+        private Button _disconnectCloudHands;
         private Button _copyCloudHandButton;
         private Text _copyCloudHandLabel;
 #endif
@@ -152,18 +153,26 @@ namespace XingShuRuntime.UI
 #if XINGSHU_ANDROID_PREVIEW
         private void BuildCloudHandsCard(GameObject parent)
         {
-            var card = CreateCardContainer(parent, "CloudHands", 120f);
+            var card = CreateCardContainer(parent, "CloudHands", 164f);
+            XingShuDetailLayout.Text(card.transform, "云端手牌与账号同步", 24, 12, 330, 24, 16).fontStyle = FontStyle.Bold;
             _cloudHandStatus = XingShuUIFactory.CreateText(card, "Status", XingShu.Runtime.AndroidCloudHands.Status,
                 15, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft);
             var status = _cloudHandStatus.rectTransform;
             status.anchorMin = new Vector2(0, 1);
             status.anchorMax = new Vector2(1, 1);
             status.pivot = new Vector2(.5f, 1);
-            status.anchoredPosition = new Vector2(0, -14);
+            status.anchoredPosition = new Vector2(0, -46);
             status.sizeDelta = new Vector2(-48, 44);
 
             var sprite = XingShuUIAssetService.GetSprite("button_secondary.png");
             var buttonColor = XingShuUIAssetService.IsFallbackSprite(sprite) ? XingShuUITheme.ButtonSecondaryBase : Color.white;
+            _disconnectCloudHands = XingShuUIFactory.CreateButton(card, "DisconnectCloudHands", "退出同步",
+                sprite, buttonColor, XingShuUITheme.SecondaryText, XingShu.Runtime.AndroidCloudHands.Disconnect, 12);
+            var disconnectRect = _disconnectCloudHands.GetComponent<RectTransform>();
+            disconnectRect.anchorMin = disconnectRect.anchorMax = disconnectRect.pivot = new Vector2(1, 1);
+            disconnectRect.anchoredPosition = new Vector2(-24, -12);
+            disconnectRect.sizeDelta = new Vector2(100, 28);
+            _disconnectCloudHands.gameObject.SetActive(XingShu.Runtime.AndroidCloudHands.CanDisconnect);
             var button = XingShuUIFactory.CreateButton(card, "CloudHandsButton", XingShu.Runtime.AndroidCloudHands.ButtonLabel,
                 sprite, buttonColor,
                 XingShuUITheme.PrimaryText, XingShu.Runtime.AndroidCloudHands.Toggle, 16);
@@ -597,6 +606,8 @@ namespace XingShuRuntime.UI
                 _cloudHandStatus.text = XingShu.Runtime.AndroidCloudHands.Status;
             if (_cloudHandButton.text != XingShu.Runtime.AndroidCloudHands.ButtonLabel)
                 _cloudHandButton.text = XingShu.Runtime.AndroidCloudHands.ButtonLabel;
+            if (_disconnectCloudHands.gameObject.activeSelf != XingShu.Runtime.AndroidCloudHands.CanDisconnect)
+                _disconnectCloudHands.gameObject.SetActive(XingShu.Runtime.AndroidCloudHands.CanDisconnect);
             bool showSecondary = XingShu.Runtime.AndroidCloudHands.ShowSecondaryButton;
             if (_copyCloudHandButton.gameObject.activeSelf != showSecondary)
             {

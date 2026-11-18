@@ -51,11 +51,12 @@ public sealed class MonsterCooldownRuntime : MonoBehaviour
 
     private bool Context(bool requireBattleView = true)
     {
+        if (!SimpleSingletonProvider<GameLogicManager>.hasInstance) return false;
         var logic = SimpleSingletonProvider<GameLogicManager>.inst;
         var room = logic?.room?.curRoomInfo;
         var battle = logic?.battle;
         if (room?.info == null || room.info.Id <= 0 || room.info.StartTime <= 0 || battle?.PlayerDatas == null ||
-            (requireBattleView && SimpleSingletonProvider<SceneManager>.inst.currentType.Value != SceneType.Battle))
+            (requireBattleView && (!SimpleSingletonProvider<SceneManager>.hasInstance || SimpleSingletonProvider<SceneManager>.inst.currentType == null || SimpleSingletonProvider<SceneManager>.inst.currentType.Value != SceneType.Battle)))
         { return false; } // A transient unavailable frame is not a new match.
         if (_ledger.BeginSession(room.info.Id, room.info.StartTime))
         { _players.Clear(); _seen.Clear(); }

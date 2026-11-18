@@ -9,6 +9,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import shutil
 import struct
 import subprocess
 import urllib.parse
@@ -159,7 +160,8 @@ def audit(profile, out, hooks_dll):
         assemblies.append({'name': name, 'pathId': obj.path_id, 'size': len(data), 'sha256': digest(data)})
     if sum(a['name'] == 'AstralParty.Runtime.dll' for a in assemblies) != 1:
         raise ValueError('Expected exactly one game runtime')
-    result = subprocess.run(['pwsh', '-NoProfile', '-File', str(ROOT / 'tools/check_runtime_compatibility.ps1'),
+    shell = shutil.which('pwsh') or 'powershell.exe'
+    result = subprocess.run([shell, '-NoProfile', '-File', str(ROOT / 'tools/check_runtime_compatibility.ps1'),
         '-RuntimeDll', str(folder / 'AstralParty.Runtime.dll'), '-HooksDll', str(hooks_dll)],
         capture_output=True, text=True)
     (folder / 'compatibility.log').write_text(result.stdout + result.stderr, 'utf-8')

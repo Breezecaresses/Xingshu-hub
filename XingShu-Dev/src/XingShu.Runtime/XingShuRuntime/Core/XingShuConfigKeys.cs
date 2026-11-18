@@ -333,4 +333,12 @@ internal static class XingShuConfigKeys
 	internal const string AutoPraiseDefault = "XINGSHU_AUTO_PRAISE_DEFAULT";
 
 	internal const bool AutoPraiseDefaultDefault = true;
+
+	internal const string AutoPraiseScale = "XINGSHU_AUTO_PRAISE_SCALE";
+
+	internal const float AutoPraiseScaleDefault = 1.0f;
+
+	internal const float AutoPraiseScaleMin = 0.6f;
+
+	internal const float AutoPraiseScaleMax = 2.0f;
 }

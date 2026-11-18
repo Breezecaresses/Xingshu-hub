@@ -1,10 +1,10 @@
-param([Parameter(Mandatory)][string]$CandidateDirectory, [switch]$CheckOnly)
+﻿param([Parameter(Mandatory)][string]$CandidateDirectory, [switch]$CheckOnly)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
 $taskBuild = (Resolve-Path -LiteralPath $CandidateDirectory).Path
 if (!$taskBuild.StartsWith($taskRoot + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Candidate directory escaped workspace' }
-$taskProfiles = @(Get-Content -LiteralPath (Join-Path $taskRoot 'AstralParty-Hub/src-tauri/src/xing_shu/platform/platform_profiles.json') -Raw | ConvertFrom-Json)
-$taskItems = @(Get-Content -LiteralPath (Join-Path $taskBuild 'deployment.json') -Raw | ConvertFrom-Json)
+$taskProfiles = @(Get-Content -LiteralPath (Join-Path $taskRoot 'AstralParty-Hub/src-tauri/src/xing_shu/platform/platform_profiles.json') -Raw -Encoding UTF8 | ConvertFrom-Json | ForEach-Object { $_ })
+$taskItems = @(Get-Content -LiteralPath (Join-Path $taskBuild 'deployment.json') -Raw -Encoding UTF8 | ConvertFrom-Json | ForEach-Object { $_ })
 if ($taskItems.Count -lt 1 -or $taskItems.Count -gt 4 -or @($taskItems.platform | Sort-Object -Unique).Count -ne $taskItems.Count) { throw 'Invalid channel manifest' }
 function Assert-GameClosed {
     if (Get-Process -Name AstralParty_CN,吉星派对 -ErrorAction SilentlyContinue) {

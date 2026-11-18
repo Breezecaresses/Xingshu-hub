@@ -119,7 +119,6 @@ namespace XingShu.Truth
                 || payload.spectatorAccountPlayerId == payload.playerId
                 || matchSequence <= 0
                 || payload.spectatorSessionEpoch <= 0
-                || payload.spectatorSessionEpoch <= HandSessionLifecycle.RetiredMirrorEpoch
                 || payload.spectatorSessionEpoch > matchSequence
                 || payload.roomPlayers == null || payload.roomPlayers.Count == 0 || payload.roomPlayers.Count > 16
                 || !DateTimeOffset.TryParse(payload.snapshotTimestamp, CultureInfo.InvariantCulture,
@@ -131,13 +130,21 @@ namespace XingShu.Truth
             var hands = new Dictionary<long, IReadOnlyList<int>>();
             foreach (var player in payload.roomPlayers.Values)
             {
-                if (player == null || player.playerId <= 0 || player.playerId == payload.playerId
-                    || player.cardIds == null || player.cardIds.Count > 128 || player.cardIds.Any(id => id <= 0)
-                    || room.Players == null || !room.Players.Any(p => p != null && p.Id == player.playerId))
+                if (player == null || player.playerId <= 0
+                    || player.cardIds == null || player.cardIds.Count > 128 || player.cardIds.Any(id => id <= 0))
                 {
                     return false;
                 }
+                if (player.playerId == payload.playerId
+                    || room.Players == null || !room.Players.Any(p => p != null && p.Id == player.playerId))
+                {
+                    continue;
+                }
                 hands[player.playerId] = new List<int>(player.cardIds).AsReadOnly();
+            }
+            if (hands.Count == 0)
+            {
+                return false;
             }
 
             return _cloudMirrorStore.Record(
@@ -556,19 +563,20 @@ namespace XingShu.Truth
                     isAuth = true;
                     statusDesc = "本地己方权威手牌";
                 }
-                else if (!isBot && TryGetCloudHand(roomInfo.Id, pid, out var cloudCards))
+                else if (TryGetTeammateMirrorHand(roomInfo.Id, pid, out var mirrorCards))
                 {
-                    cardIds = new List<int>(cloudCards);
+                    cardIds = new List<int>(mirrorCards);
                     isAuth = true;
-                    statusDesc = "云端观战手牌";
+                    statusDesc = "云端/观战镜像权威手牌";
                 }
                 else
                 {
-                    // Bot or teammate without a fresh cloud snapshot.
-                    // Decision A: If local container._HandCards has all valid CardId > 0, sample directly
+                    // Bot or teammate without a fresh spectator/cloud snapshot.
+                    // Decision A: If local container._HandCards has all valid CardId > 0 and matches live CardCount, sample directly
                     bool decisionASucceeded = false;
                     var container = bpd.cardContainer;
-                    if (container?._HandCards != null && container._HandCards.Count > 0)
+                    if (container?._HandCards != null && container._HandCards.Count > 0
+                        && container._HandCards.Count == container.CardCount)
                     {
                         bool allValid = true;
                         var tempIds = new List<int>();
@@ -592,24 +600,14 @@ namespace XingShu.Truth
                         }
                     }
 
-                    // Decision B: If remote cards are masked, check Spectator mirror truth
+                    // Decision B: Cards are masked or local _HandCards is a stale snapshot with mismatched count
                     if (!decisionASucceeded)
                     {
-                        if (TryGetTeammateMirrorHand(roomInfo.Id, pid, out var mirrorCards))
-                        {
-                            cardIds = new List<int>(mirrorCards);
-                            isAuth = true;
-                            statusDesc = "观战镜像流权威手牌(决策B)";
-                        }
-                        else
-                        {
-                            // Cards are masked and spectator stream is absent
-                            // DO NOT fabricate fake unknown cards! Truthfully retain count only.
-                            int heldCount = (container != null) ? container.CardCount : 0;
-                            cardIds.Clear();
-                            isAuth = false;
-                            statusDesc = heldCount > 0 ? $"等待观战端完整手牌数据 (持有 {heldCount} 张)" : "无手牌 (0 张)";
-                        }
+                        // DO NOT fabricate fake unknown cards! Truthfully retain count only.
+                        int heldCount = (container != null) ? container.CardCount : 0;
+                        cardIds.Clear();
+                        isAuth = false;
+                        statusDesc = heldCount > 0 ? $"等待观战端完整手牌数据 (持有 {heldCount} 张)" : "无手牌 (0 张)";
                     }
                 }
 

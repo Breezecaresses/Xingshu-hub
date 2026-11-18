@@ -562,8 +562,19 @@ public sealed class MonsterKillProbability : MonoBehaviour
 		}
 	}
 
+	private static FightWindow ActiveFightWindow()
+	{
+		return SimpleSingletonProvider<UIManager>.hasInstance ? ShownNativeWindows.Find<FightWindow>(SimpleSingletonProvider<UIManager>.inst) : null;
+	}
+
 	private void Tick()
 	{
+		if (!SimpleSingletonProvider<GameLogicManager>.hasInstance || !SimpleSingletonProvider<SceneManager>.hasInstance)
+		{
+			ClearSession();
+			_status = "等待进入对局";
+			return;
+		}
 		GameLogicManager inst = SimpleSingletonProvider<GameLogicManager>.inst;
 		RoomInfo roomInfo = ((inst.room == null) ? null : inst.room.curRoomInfo);
 		if (_room != roomInfo)
@@ -576,7 +587,7 @@ public sealed class MonsterKillProbability : MonoBehaviour
 			_status = "功能已停用，原始名称已恢复";
 			return;
 		}
-		if (roomInfo == null || SimpleSingletonProvider<SceneManager>.inst.currentType.Value != SceneType.Battle || inst.battle == null || inst.battle.PlayerDatas == null)
+		if (roomInfo == null || SimpleSingletonProvider<SceneManager>.inst.currentType == null || SimpleSingletonProvider<SceneManager>.inst.currentType.Value != SceneType.Battle || inst.battle == null || inst.battle.PlayerDatas == null)
 		{
 			ClearSession();
 			_status = "等待进入对局";
@@ -588,7 +599,7 @@ public sealed class MonsterKillProbability : MonoBehaviour
 		bool flag = battlePlayerData != null && battlePlayerData.Property != null && battlePlayerData.characterType == CharacterType.Hero && battlePlayerData.Property.HP.Value > 0 && (battleFightData?.isEnd ?? true);
 		BattlePlayerData attacker;
 		BattlePlayerData defender;
-		bool flag2 = TryGetCombatants(battleFightData, inst.battle.PlayerDatas, out attacker, out defender) && SimpleSingletonProvider<UIManager>.inst.Fight.isShowing;
+		bool flag2 = TryGetCombatants(battleFightData, inst.battle.PlayerDatas, out attacker, out defender) && ActiveFightWindow() != null;
 		long num = (flag2 ? battleFightData.battleId : 0);
 		long num2 = (flag2 ? attacker.player.Id : 0);
 		long num3 = (flag2 ? defender.player.Id : 0);
@@ -889,7 +900,8 @@ public sealed class MonsterKillProbability : MonoBehaviour
 			num4 = ((attackerInfo.Point >= 1 && attackerInfo.Point <= 6) ? attackerInfo.Point : 0);
 			BattleSceneController inst = BattleSceneController.inst;
 			UIFight_PlayerInfo uIFight_PlayerInfo = ((inst == null || inst.directorManager == null || inst.directorManager.attacker == null) ? null : inst.directorManager.attacker._UI);
-			if (SimpleSingletonProvider<UIManager>.inst.Fight.contentPane is UIFightWindow uIFightWindow && (uIFightWindow.step.selectedIndex == 4 || uIFightWindow.step.selectedIndex == 5) && num4 == 0 && uIFight_PlayerInfo != null && !uIFight_PlayerInfo.isDisposed && uIFight_PlayerInfo.com_Attack.showPoint.selectedIndex > 0 && int.TryParse(uIFight_PlayerInfo.com_Attack.com_Point.txt_Point.text, out var result) && result >= 1 && result <= 6)
+			UIFightWindow activeFightPane = ActiveFightWindow()?.contentPane as UIFightWindow;
+			if (activeFightPane is UIFightWindow uIFightWindow && (uIFightWindow.step.selectedIndex == 4 || uIFightWindow.step.selectedIndex == 5) && num4 == 0 && uIFight_PlayerInfo != null && !uIFight_PlayerInfo.isDisposed && uIFight_PlayerInfo.com_Attack.showPoint.selectedIndex > 0 && int.TryParse(uIFight_PlayerInfo.com_Attack.com_Point.txt_Point.text, out var result) && result >= 1 && result <= 6)
 			{
 				num4 = result;
 			}
@@ -898,7 +910,7 @@ public sealed class MonsterKillProbability : MonoBehaviour
 			if (_previewCards && num4 == 0 && attackerInfo.PlayerId == SimpleSingletonProvider<GameLogicManager>.inst.account.GetPlayerID())
 			{
 				UIHandCard_Button_Card uIHandCard_Button_Card = GObject.draggingObject as UIHandCard_Button_Card;
-				UIFightWindow uIFightWindow2 = SimpleSingletonProvider<UIManager>.inst.Fight.contentPane as UIFightWindow;
+				UIFightWindow uIFightWindow2 = activeFightPane;
 				bool flag = uIHandCard_Button_Card != null && uIHandCard_Button_Card.CardData != null && attacker.cardContainer != null && attacker.cardContainer._HandCards.Contains(uIHandCard_Button_Card.CardData);
 				if (uIFightWindow2 != null && uIFightWindow2.step.selectedIndex == 3 && flag && uIHandCard_Button_Card.touchable && !attackerInfo.UseCards.Contains(uIHandCard_Button_Card.CardData.Guid) && uIHandCard_Button_Card._config.EffectType == EffectType.Attack && SimpleSingletonProvider<GameLogicManager>.inst.card.cardActions.TryGetValue(uIHandCard_Button_Card._config.Id, out var value2) && value2.GetCostValue(attacker.player.Id, uIHandCard_Button_Card.CardData) <= attackerInfo.Cost && uIHandCard_Button_Card._config.Params.Count >= 2 && uIHandCard_Button_Card._config.Params[0] <= uIHandCard_Button_Card._config.Params[1])
 				{

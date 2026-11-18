@@ -47,6 +47,19 @@ namespace XingShuRuntime.Social
             get { return XingShuConfigService.GetBool(XingShuConfigKeys.AutoPraiseEnabled, XingShuConfigKeys.AutoPraiseEnabledDefault); }
             set { XingShuConfigService.SetBool(XingShuConfigKeys.AutoPraiseEnabled, value); }
         }
+        public static float PraiseScale
+        {
+            get { return XingShuConfigService.GetFloat(XingShuConfigKeys.AutoPraiseScale, XingShuConfigKeys.AutoPraiseScaleDefault, XingShuConfigKeys.AutoPraiseScaleMin, XingShuConfigKeys.AutoPraiseScaleMax); }
+            set
+            {
+                if (float.IsNaN(value) || float.IsInfinity(value)) return;
+                float clamped = Mathf.Clamp(value, XingShuConfigKeys.AutoPraiseScaleMin, XingShuConfigKeys.AutoPraiseScaleMax);
+                if (Mathf.Abs(PraiseScale - clamped) < .001f) return;
+                XingShuConfigService.SetFloat(XingShuConfigKeys.AutoPraiseScale, clamped);
+                XingShuConfigService.Save();
+                if (_instance != null) _instance.UpdateAvatars();
+            }
+        }
         public static int PraiseCount { get { return _instance != null ? _instance._selection.SubmittedCount : 0; } }
         public static string StatusText { get { return _instance != null ? _instance._status : "未初始化"; } }
         public static void Install(GameObject host)
@@ -59,6 +72,7 @@ namespace XingShuRuntime.Social
         private bool SyncContext()
         {
             if (!SimpleSingletonProvider<GameLogicManager>.hasInstance || !SimpleSingletonProvider<SceneManager>.hasInstance ||
+                SimpleSingletonProvider<SceneManager>.inst.currentType == null ||
                 SimpleSingletonProvider<SceneManager>.inst.currentType.Value != SceneType.Battle) return false;
             GameLogicManager logic = SimpleSingletonProvider<GameLogicManager>.inst;
             if ((logic.watch != null && logic.watch.PlayerIsWatcher()) ||
@@ -92,16 +106,28 @@ namespace XingShuRuntime.Social
                 if (node.isDisposed || !node.visible || node.alpha <= .01f) return false;
             return true;
         }
+        private static void EnsureButtonAbovePortrait(UIBattleInfo_Button_PlayerInfo head, GComponent button)
+        {
+            if (head == null || head.isDisposed || button == null || button.isDisposed || button.parent != head || head.numChildren <= 1) return;
+            GObject portrait = head.btn_Head != null && !head.btn_Head.isDisposed && head.btn_Head.parent == head ? (GObject)head.btn_Head : head.com_player;
+            if (portrait != null && !portrait.isDisposed && portrait.parent == head && head.GetChildIndex(button) < head.GetChildIndex(portrait))
+                head.SetChildIndex(button, head.numChildren - 1);
+        }
         private void EnsureAvatar(Avatar avatar)
         {
-            if (avatar.Button != null && !avatar.Button.isDisposed && avatar.Button.parent == avatar.Head) return;
+            if (avatar.Button != null && !avatar.Button.isDisposed && avatar.Button.parent == avatar.Head)
+            {
+                EnsureButtonAbovePortrait(avatar.Head, avatar.Button);
+                return;
+            }
             if (avatar.Button != null && !avatar.Button.isDisposed) avatar.Button.Dispose();
-            avatar.Button = new GComponent { name = "__xingshu_avatar_praise", sortingOrder = 3 };
+            avatar.Button = new GComponent { name = "__xingshu_avatar_praise", sortingOrder = 0 };
             avatar.Image = new GImage { touchable = false };
             avatar.Mask = new GGraph { touchable = false };
             avatar.Button.AddChild(avatar.Image); avatar.Button.AddChild(avatar.Mask);
             avatar.Button.mask = avatar.Mask.displayObject;
             avatar.Head.AddChild(avatar.Button);
+            EnsureButtonAbovePortrait(avatar.Head, avatar.Button);
             XingShuOverlayInput.Protect(avatar.Button);
             avatar.Button.onTouchBegin.Add((EventCallback1)(context =>
             {
@@ -126,32 +152,38 @@ namespace XingShuRuntime.Social
         }
         private void UpdateAvatars()
         {
-            if (XingShuUICenter.IsOpen || HandCardVisibility.ShouldHide) { HideAvatars(); return; }
+            var logic = SimpleSingletonProvider<GameLogicManager>.hasInstance ? SimpleSingletonProvider<GameLogicManager>.inst : null;
+            var fight = logic != null && logic.fight != null ? logic.fight.battleFightData : null;
+            var uiMgr = SimpleSingletonProvider<UIManager>.hasInstance ? SimpleSingletonProvider<UIManager>.inst : null;
+            bool combat = (fight != null && !fight.isEnd) || ShownNativeWindows.Find<FightWindow>(uiMgr) != null;
+            if (XingShuUICenter.IsOpen || StreamPrivacyHands.Enabled || combat) { HideAvatars(); return; }
             var ui = _battle != null && _battle.battleInfo != null ? _battle.battleInfo.UIObject : null;
             var container = ui != null && ui.com_BattlePlayer != null ? ui.com_BattlePlayer.com_Container : null;
             if (container == null || !Visible(container)) { HideAvatars(); return; }
+            bool modalOpen = HandCardVisibility.BlockingWindow != null;
             _avatars[0].Head = container.com_Player_1; _avatars[1].Head = container.com_Player_2;
             _avatars[2].Head = container.com_Player_3; _avatars[3].Head = container.com_Player_4;
             foreach (Avatar avatar in _avatars)
             {
                 BattlePlayerData data = avatar.Head != null ? avatar.Head.PlayerData : null;
-                if (!Visible(avatar.Head) || !Represented(data))
+                if (avatar.Head == null || avatar.Head.parent != container || !Visible(avatar.Head) || !Represented(data))
                 { if (avatar.Button != null && !avatar.Button.isDisposed) avatar.Button.visible = false; continue; }
                 avatar.Player = data.player.Id;
                 EnsureAvatar(avatar);
                 GObject portrait = avatar.Head.btn_Head;
                 if (portrait == null || portrait.width <= 0 || portrait.height <= 0) portrait = avatar.Head.com_player;
                 if (portrait == null || portrait.width <= 0 || portrait.height <= 0) { avatar.Button.visible = false; continue; }
-                float portraitWidth = Mathf.Min(portrait.width, portrait.height);
-                float size = Mathf.Clamp(portraitWidth * .32f, 42f, 52f);
+                PraiseIconLayout layout = PraiseIconLayout.Calculate(portrait.width, portrait.height, XingShuMobileUIHelper.IsMobile, PraiseScale);
+                if (layout.Size <= 0) { avatar.Button.visible = false; continue; }
+                float size = layout.Size;
                 avatar.Button.SetSize(size, size);
-                avatar.Button.SetXY(portrait.x + Mathf.Max(0, portraitWidth - size * 1.25f - 6), portrait.y + 6);
+                avatar.Button.SetXY(portrait.x + layout.X, portrait.y + layout.Y);
                 avatar.Image.SetSize(size, size);
                 if (Mathf.Abs(avatar.Mask.width - size) > .1f) avatar.Mask.DrawEllipse(size, size, Color.white);
                 avatar.Image.texture = NativePraiseAssets.Get(_selection.IsSelected(avatar.Player));
                 bool eligible = Eligible(data);
                 avatar.Button.visible = true;
-                avatar.Button.touchable = true;
+                avatar.Button.touchable = !modalOpen;
                 avatar.Button.alpha = eligible ? 1f : .8f;
                 avatar.Button.tooltips = !eligible ? (avatar.Player == _self ? "宝宝你是自恋吗，爱你哦" : "人机不参与点赞") :
                     _selection.IsConfirmed(avatar.Player) ? "原版结算已确认点赞，无法撤回" :

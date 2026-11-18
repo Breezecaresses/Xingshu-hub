@@ -46,6 +46,7 @@ internal sealed class DefensePointHint : MonoBehaviour
     private void Tick()
     {
         if (!_enabled || !SimpleSingletonProvider<SceneManager>.hasInstance ||
+            SimpleSingletonProvider<SceneManager>.inst.currentType == null ||
             SimpleSingletonProvider<SceneManager>.inst.currentType.Value != SceneType.Battle ||
             !SimpleSingletonProvider<GameLogicManager>.hasInstance ||
             !SimpleSingletonProvider<UIManager>.hasInstance) { RemoveLabel(); return; }

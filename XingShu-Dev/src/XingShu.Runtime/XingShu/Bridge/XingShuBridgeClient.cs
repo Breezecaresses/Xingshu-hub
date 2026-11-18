@@ -800,7 +800,15 @@ namespace XingShu.Bridge
                     if (!XingShu.Truth.HandTruthSource.RecordCloudMirror(payload, sequence))
                     {
                         rejectionReason = "Cloud hand snapshot is stale or outside the current co-op match";
-                        Log("[XingShuBridgeClient] CLOUD_HAND_REJECTED: stale or unmatched snapshot.");
+                        Log(string.Format(
+                            "[XingShuBridgeClient] CLOUD_HAND_REJECTED: payloadRoom={0}, activeRoom={1}, epoch={2}, seq={3}, pve={4}, players={5}, ts='{6}'.",
+                            payload.roomId,
+                            XingShu.Truth.HandSessionLifecycle.ActiveRoomId(),
+                            payload.spectatorSessionEpoch,
+                            sequence,
+                            XingShuRuntime.Utilities.HandCardDisplayManager.IsPVEMode(),
+                            payload.roomPlayers != null ? payload.roomPlayers.Count : 0,
+                            payload.snapshotTimestamp ?? ""));
                         return false;
                     }
                     XingShuRuntime.Utilities.HandCardDisplayManager.OverlayRenderDirty = true;

@@ -155,12 +155,18 @@ fn forward_ready_hands(bridge: &BridgeServer, logged_in_uid: Option<i64>, value:
             return false;
         };
         let Some(payload) = mirror(&fresh_target, value.clone()) else {
+            tracing::warn!(
+                room_id = fresh_target.room_id,
+                player_id = fresh_target.live_player_id,
+                "Cloud hand mirror rejected or had no matching roster hands"
+            );
             return false;
         };
         if bridge.send_cloud_hand_mirror(&fresh_target, &payload) {
             return true;
         }
     }
+    tracing::warn!("Failed to forward cloud hand mirror to verified game bridge session");
     false
 }
 
@@ -185,16 +191,27 @@ fn mirror(target: &RuntimeSession, value: Value) -> Option<SpectatorHandPayload>
         || observer_id == 0 || observer_id > i64::MAX as u64 || observer_id == player_id as u64
         || !(-300_000..120_000).contains(&age) || live.hands.len() > 16
     {
+        tracing::warn!(
+            target_room = target.room_id,
+            live_room = room_id,
+            target_player = target.live_player_id,
+            live_player = player_id,
+            observer_id,
+            age_ms = age,
+            "Cloud hand response mismatch against active runtime session"
+        );
         return None;
     }
 
     let mut room_players = HashMap::new();
     for (key, card_ids) in live.hands {
         let id: i64 = key.parse().ok()?;
-        if id <= 0 || id == player_id || !context.roster_player_ids.contains(&id)
-            || card_ids.len() > 128 || card_ids.iter().any(|&id| id <= 0)
-        {
+        if id <= 0 || card_ids.len() > 128 || card_ids.iter().any(|&id| id <= 0) {
             return None;
+        }
+        if id == player_id || !context.roster_player_ids.contains(&id) {
+            tracing::debug!(skipped_player_id = id, room_id, "Skipping non-roster or self entry in cloud hand response");
+            continue;
         }
         room_players.insert(id.to_string(), PlayerHandSummary {
             player_id: id as u64, hand_size: card_ids.len(), card_ids, ..Default::default()
@@ -256,6 +273,11 @@ mod tests {
             invalid[key] = value;
             assert!(mirror(&target, invalid).is_none(), "accepted invalid {key}");
         }
+        let mut with_extra_peer = response.clone();
+        with_extra_peer["hands"] = json!({"102":[10001],"999":[10002],"101":[10003]});
+        let partial = mirror(&target, with_extra_peer).expect("extra non-roster entry should not drop valid teammate hands");
+        assert_eq!(partial.room_players.len(), 1);
+        assert_eq!(partial.room_players["102"].card_ids, vec![10001]);
     }
 
     #[test]

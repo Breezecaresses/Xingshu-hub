@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using XingShuRuntime.Core;
+using XingShuRuntime.Utilities;
 using Core;
 using Core.Scene;
 using FairyGUI;
@@ -88,7 +89,8 @@ namespace XingShuRuntime.Social
             }
 
             GameLogicManager logic = SimpleSingletonProvider<GameLogicManager>.inst;
-            if (SimpleSingletonProvider<SceneManager>.inst.currentType.Value != SceneType.Battle ||
+            if (SimpleSingletonProvider<SceneManager>.inst.currentType == null ||
+                SimpleSingletonProvider<SceneManager>.inst.currentType.Value != SceneType.Battle ||
                 logic.watch == null || logic.watch.PlayerIsWatcher() ||
                 (logic.replay != null && logic.replay.Session != null && logic.replay.Session.IsReplay) ||
                 logic.room == null || logic.room.roomController == null ||
@@ -107,8 +109,8 @@ namespace XingShuRuntime.Social
                 return false;
             }
 
-            ExpressionWindow expression = SimpleSingletonProvider<UIManager>.inst.expression;
-            if (expression == null || !expression.isShowing || expression.contentPane == null || !Visible(expression.contentPane))
+            ExpressionWindow expression = ShownNativeWindows.Find<ExpressionWindow>(SimpleSingletonProvider<UIManager>.inst);
+            if (expression == null || !Visible(expression.contentPane))
             {
                 return false;
             }

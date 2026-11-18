@@ -397,10 +397,11 @@ internal sealed class ReplayPlayerGUI : MonoBehaviour
 	{
 		try
 		{
-			UIManager inst = SimpleSingletonProvider<UIManager>.inst;
-			if (inst != null && inst.AccountInfo != null && inst.AccountInfo.isShowing)
+			UIManager inst = SimpleSingletonProvider<UIManager>.hasInstance ? SimpleSingletonProvider<UIManager>.inst : null;
+			AccountInfoWindow accountInfo = XingShuRuntime.Utilities.ShownNativeWindows.Find<AccountInfoWindow>(inst);
+			if (accountInfo != null)
 			{
-				inst.AccountInfo.QuitInfoWindow();
+				accountInfo.QuitInfoWindow();
 			}
 		}
 		catch (Exception ex)
@@ -411,6 +412,10 @@ internal sealed class ReplayPlayerGUI : MonoBehaviour
 
 	private void ShowFailTip(ReplayLogic.ReplayLoadStatus status)
 	{
+		if (!SimpleSingletonProvider<UIManager>.hasInstance)
+		{
+			return;
+		}
 		UIManager inst = SimpleSingletonProvider<UIManager>.inst;
 		if (inst != null && inst.systemTips != null)
 		{

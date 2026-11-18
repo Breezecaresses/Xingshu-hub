@@ -212,8 +212,8 @@ namespace XingShuRuntime.Features
                     return true;
                 }
 
-                ChooseRoundCardWindow chooseCardWin = SimpleSingletonProvider<UIManager>.inst?.ChooseRoundCard;
-                if (chooseCardWin != null && chooseCardWin.isShowing)
+                UIManager ui = SimpleSingletonProvider<UIManager>.hasInstance ? SimpleSingletonProvider<UIManager>.inst : null;
+                if (ShownNativeWindows.Find<ChooseRoundCardWindow>(ui) != null)
                 {
                     return true;
                 }
@@ -245,10 +245,9 @@ namespace XingShuRuntime.Features
                     return false;
                 }
 
-                FightLogic fight = SimpleSingletonProvider<GameLogicManager>.inst?.fight;
-                FightWindow fightWin = SimpleSingletonProvider<UIManager>.inst?.Fight;
-
-                bool fightActive = (fight != null && fight.fightStatus) || (fightWin != null && fightWin.isShowing);
+                FightLogic fight = SimpleSingletonProvider<GameLogicManager>.hasInstance ? SimpleSingletonProvider<GameLogicManager>.inst?.fight : null;
+                UIManager ui = SimpleSingletonProvider<UIManager>.hasInstance ? SimpleSingletonProvider<UIManager>.inst : null;
+                bool fightActive = (fight != null && fight.fightStatus) || ShownNativeWindows.Find<FightWindow>(ui) != null;
                 if (!fightActive)
                 {
                     return false;

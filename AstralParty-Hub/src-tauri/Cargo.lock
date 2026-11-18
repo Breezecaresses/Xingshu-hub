@@ -5218,7 +5218,7 @@ dependencies = [
 
 [[package]]
 name = "xingshu-hub"
-version = "0.1.6-beta.1"
+version = "0.1.6-beta.2"
 dependencies = [
  "async-trait",
  "base64 0.22.1",

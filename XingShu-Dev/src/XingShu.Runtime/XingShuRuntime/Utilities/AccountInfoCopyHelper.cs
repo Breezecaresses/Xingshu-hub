@@ -26,10 +26,13 @@ public static class AccountInfoCopyHelper
 		button.onClick.Set((EventCallback0)delegate
 		{
 			button.onClick.Retain();
-			UIManager inst = SimpleSingletonProvider<UIManager>.inst;
-			if (inst != null && inst.systemTips != null)
+			if (SimpleSingletonProvider<UIManager>.hasInstance)
 			{
-				inst.systemTips.ShowTips(1009.GetLocal(UIStringType.Spectate));
+				UIManager inst = SimpleSingletonProvider<UIManager>.inst;
+				if (inst != null && inst.systemTips != null)
+				{
+					inst.systemTips.ShowTips(1009.GetLocal(UIStringType.Spectate));
+				}
 			}
 			GUIUtility.systemCopyBuffer = uiWindow.com_Main.com_Fight.txt_ReplayId.text;
 			button.onClick.Release();

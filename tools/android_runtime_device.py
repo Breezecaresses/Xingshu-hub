@@ -5,6 +5,7 @@ Only the verified external assembly cache is replaced. App data is never cleared
 import argparse
 from datetime import datetime, timezone
 import hashlib
+import ipaddress
 import json
 from pathlib import Path
 import re
@@ -18,6 +19,35 @@ ROOT = f"/sdcard/Android/data/{PACKAGE}/files/"
 
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _adb_endpoint_ip(serial):
+    """Extract the normalized IP from an `ip:port` ADB serial, or None."""
+    if not isinstance(serial, str) or ":" not in serial:
+        return None
+    host, port = serial.rsplit(":", 1)
+    if not port.isdigit():
+        return None
+    try:
+        return str(ipaddress.ip_address(host))
+    except ValueError:
+        return None
+
+
+def same_device_receipt(previous, serial, device_serial):
+    """Verify that a prior deployment receipt belongs to the same Android device."""
+    prev_device_serial = (previous.get("deviceSerial") or "").strip()
+    if device_serial and prev_device_serial:
+        return prev_device_serial == device_serial
+    prev_serial = previous.get("serial")
+    if prev_serial == serial:
+        return True
+    if not prev_device_serial:
+        prev_ip = _adb_endpoint_ip(prev_serial)
+        curr_ip = _adb_endpoint_ip(serial)
+        if prev_ip is not None and prev_ip == curr_ip:
+            return True
+    return False
 
 
 def main():
@@ -70,6 +100,7 @@ def main():
     if adb("get-state") != "device":
         raise RuntimeError("Device is not ready")
     require_game_closed()
+    device_serial = shell("getprop", "ro.serialno").strip()
     package_info = shell("dumpsys", "package", PACKAGE)
     version = re.search(r"^\s*versionName=(\S+)\s*$", package_info, re.MULTILINE)
     if version is None or version.group(1) != manifest["appVersion"]:
@@ -88,9 +119,10 @@ def main():
         if sha(source) != candidate_sha:
             raise RuntimeError("Candidate hash differs from manifest")
         if current_sha != vanilla:
-            # Permit a second, verified preview only if this serial's receipt proves it.
+            # Permit a second, verified preview only if this device's receipt proves it.
             previous = json.loads(receipt.read_text("utf8")) if receipt.exists() else {}
-            if (previous.get("serial") != args.serial or previous.get("target") != target
+            if (not same_device_receipt(previous, args.serial, device_serial)
+                    or previous.get("target") != target
                     or previous.get("installedSha256") != current_sha):
                 raise RuntimeError("Device cache is neither vanilla nor the recorded preview")
         if backup.exists():
@@ -107,7 +139,8 @@ def main():
         if not receipt.exists():
             raise RuntimeError("No deployment receipt; refusing to replace untracked data")
         previous = json.loads(receipt.read_text("utf8"))
-        if (previous.get("serial") != args.serial or previous.get("target") != target
+        if (not same_device_receipt(previous, args.serial, device_serial)
+                or previous.get("target") != target
                 or current_sha not in (vanilla, previous.get("installedSha256"))):
             raise RuntimeError("Device cache changed since recorded deployment")
         source = backup
@@ -135,7 +168,8 @@ def main():
         if remote_sha(target) != vanilla:
             raise RuntimeError("Rollback verification failed; use the host vanilla backup") from deployment_error
         raise RuntimeError("Deployment failed; restored and verified vanilla cache") from deployment_error
-    result = {"serial": args.serial, "package": PACKAGE, "target": target,
+    result = {"serial": args.serial, "deviceSerial": device_serial,
+              "package": PACKAGE, "target": target,
               "originalSha256": vanilla, "installedSha256": expected,
               "backup": str(backup), "action": args.action,
               "timestamp": datetime.now(timezone.utc).isoformat()}

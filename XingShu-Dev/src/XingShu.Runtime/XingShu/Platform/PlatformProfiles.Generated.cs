@@ -20,9 +20,9 @@ namespace XingShu.Platform
     ""gameRuntimeDllPath"": ""GameAssembly.dll"",
     ""gameRuntimeDllSha256"": ""6279B4A1814E9B0DEF32779EBC2DFD5810373F112F0B12EE02F5C97CAA4F46FA"",
     ""xingshuRuntimeDllSha256"": null,
-    ""bundleRelativePath"": ""AstralParty_CN_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\536196fba89e10e449fc9b864bfdbd51\\__data"",
-    ""bundleId"": ""536196fba89e10e449fc9b864bfdbd51"",
-    ""containerSha256"": ""2110578F420D2DC436E1A411C28BE1381F4B9611774E64CD6549BC4D10BBFD9A"",
+    ""bundleRelativePath"": ""AstralParty_CN_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\74ec34421f662150b01741f232d7497c\\__data"",
+    ""bundleId"": ""74ec34421f662150b01741f232d7497c"",
+    ""containerSha256"": ""9292A1B5D4C743F2EDB42D37CDFD76FBD1DE806ECF09406E2D64A391B54D68EE"",
     ""hookTextAssetPathId"": 99992000,
     ""hookSignatures"": [
       ""XingShuBootstrap.EnsureRuntimeHost"",
@@ -32,7 +32,7 @@ namespace XingShu.Platform
     ],
     ""compatibilityStatus"": ""PARTIALLY_AUDITED"",
     ""lastVerifiedAt"": null,
-    ""resourceVersion"": ""152""
+    ""resourceVersion"": ""160""
   },
   {
     ""platformId"": ""STEAM_GLOBAL"",
@@ -73,10 +73,10 @@ namespace XingShu.Platform
     ""gameRuntimeDllPath"": ""GameAssembly.dll"",
     ""gameRuntimeDllSha256"": ""BAE3828CEF31104E4B77856115E7106FB8539FCC0A0A6098B57A34E9354044E6"",
     ""xingshuRuntimeDllSha256"": null,
-    ""bundleRelativePath"": ""吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\9fd5d18e11899a0a7de6534f8e3cda38\\__data"",
-    ""bundleId"": ""9fd5d18e11899a0a7de6534f8e3cda38"",
-    ""containerSha256"": ""23C072102DA9488FFFC09D9B75750D9D62B68BD16DEDA323C00467277355094F"",
-    ""containerHash"": ""23C072102DA9488FFFC09D9B75750D9D62B68BD16DEDA323C00467277355094F"",
+    ""bundleRelativePath"": ""吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\f468bb754fee0362b0d1074e74e7e885\\__data"",
+    ""bundleId"": ""f468bb754fee0362b0d1074e74e7e885"",
+    ""containerSha256"": ""0EB59A6D9AA2BB080DAF0158D341E1A0D4E4A55C2E19E0B81556A9523190B69D"",
+    ""containerHash"": ""0EB59A6D9AA2BB080DAF0158D341E1A0D4E4A55C2E19E0B81556A9523190B69D"",
     ""hookTextAssetPathId"": 99992000,
     ""hookSignatures"": [
       ""XingShuBootstrap.EnsureRuntimeHost"",
@@ -88,7 +88,7 @@ namespace XingShu.Platform
     ""status"": ""PARTIALLY_AUDITED"",
     ""runtimeCompatible"": true,
     ""lastVerifiedAt"": null,
-    ""resourceVersion"": ""152""
+    ""resourceVersion"": ""160""
   },
   {
     ""platformId"": ""BILIBILI"",
@@ -102,9 +102,9 @@ namespace XingShu.Platform
     ""gameRuntimeDllPath"": ""GameAssembly.dll"",
     ""gameRuntimeDllSha256"": ""8C4C0DEE771F85622011A3500E2A69C7A6446AC57C840DFE68E32262A8A3D16B"",
     ""xingshuRuntimeDllSha256"": null,
-    ""bundleRelativePath"": ""吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\6e88cd8b53c46daa69c53e15294a43a8\\__data"",
-    ""bundleId"": ""6e88cd8b53c46daa69c53e15294a43a8"",
-    ""containerSha256"": ""362EAB962F4EF06CBF978158F89615C82EB04971C7E958001DDCF6B58DAAAD50"",
+    ""bundleRelativePath"": ""吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\21b07f52b18434b20781372324ee459f\\__data"",
+    ""bundleId"": ""21b07f52b18434b20781372324ee459f"",
+    ""containerSha256"": ""542B7A5F75A26EEBF72E95EEC577F3AA26F252731DD7356455D92C78B35E4ED1"",
     ""hookTextAssetPathId"": 99992000,
     ""hookSignatures"": [
       ""XingShuBootstrap.EnsureRuntimeHost"",
@@ -114,7 +114,7 @@ namespace XingShu.Platform
     ],
     ""compatibilityStatus"": ""PARTIALLY_AUDITED"",
     ""lastVerifiedAt"": null,
-    ""resourceVersion"": ""152""
+    ""resourceVersion"": ""160""
   },
   {
     ""platformId"": ""WEGAME"",
@@ -128,9 +128,9 @@ namespace XingShu.Platform
     ""gameRuntimeDllPath"": ""GameAssembly.dll"",
     ""gameRuntimeDllSha256"": ""34E53BD7690ECC97E50EA062A33007845D3CC189D3048AF8CDCBC5000A82F21D"",
     ""xingshuRuntimeDllSha256"": null,
-    ""bundleRelativePath"": ""吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\5e133f5a21ffa0e94e99e4db324ebf2f\\__data"",
-    ""bundleId"": ""5e133f5a21ffa0e94e99e4db324ebf2f"",
-    ""containerSha256"": ""5903AE080FD7041A13E721609605843397FB5DD7AEBE6ABF78C24A9DD26417E9"",
+    ""bundleRelativePath"": ""吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\111661d4da79135f6d1fdadbc1140b74\\__data"",
+    ""bundleId"": ""111661d4da79135f6d1fdadbc1140b74"",
+    ""containerSha256"": ""554374A8BBA214DAAFFB8155CDB9C7F636D1D8ACB6F367086E7634CF1C9825DC"",
     ""hookTextAssetPathId"": 99992000,
     ""hookSignatures"": [
       ""XingShuBootstrap.EnsureRuntimeHost"",
@@ -140,7 +140,7 @@ namespace XingShu.Platform
     ],
     ""compatibilityStatus"": ""PARTIALLY_AUDITED"",
     ""lastVerifiedAt"": null,
-    ""resourceVersion"": ""152""
+    ""resourceVersion"": ""160""
   }
 ]";
     }

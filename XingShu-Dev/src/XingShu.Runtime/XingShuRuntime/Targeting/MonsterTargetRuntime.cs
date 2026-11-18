@@ -113,11 +113,18 @@ namespace XingShuRuntime.Targeting
 
         private void Refresh()
         {
+            if (!SimpleSingletonProvider<GameLogicManager>.hasInstance || !SimpleSingletonProvider<SceneManager>.hasInstance)
+            {
+                ClearSession();
+                _status = "等待进入 PVE 对局";
+                return;
+            }
             var logic = SimpleSingletonProvider<GameLogicManager>.inst;
             var room = logic?.room?.curRoomInfo;
             if (!ReferenceEquals(_room, room)) { ClearSession(); _room = room; }
             if (!_enabled) { _status = "索敌显示已关闭"; return; }
             if (room == null || !HandCardDisplayManager.IsPVEMode() || logic.battle?.PlayerDatas == null ||
+                SimpleSingletonProvider<SceneManager>.inst.currentType == null ||
                 SimpleSingletonProvider<SceneManager>.inst.currentType.Value != SceneType.Battle)
             {
                 ClearSession();
@@ -132,7 +139,8 @@ namespace XingShuRuntime.Targeting
             var snapshot = MonsterTargetContext.ExtractInput();
             _seen.Clear();
             _details.Clear();
-            bool combat = (fight != null && !fight.isEnd) || SimpleSingletonProvider<UIManager>.inst.Fight.isShowing;
+            var ui = SimpleSingletonProvider<UIManager>.hasInstance ? SimpleSingletonProvider<UIManager>.inst : null;
+            bool combat = (fight != null && !fight.isEnd) || ShownNativeWindows.Find<FightWindow>(ui) != null;
             foreach (var monster in data)
             {
                 if (monster?.player == null || monster.characterType != CharacterType.Monster ||

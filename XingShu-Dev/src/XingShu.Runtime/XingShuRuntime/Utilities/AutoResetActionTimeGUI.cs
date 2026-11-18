@@ -115,7 +115,9 @@ internal sealed class AutoResetActionTimeGUI : MonoBehaviour
 		{
 			try
 			{
-				return SimpleSingletonProvider<SceneManager>.inst.currentType.Value == SceneType.Battle;
+				return SimpleSingletonProvider<SceneManager>.hasInstance &&
+					SimpleSingletonProvider<SceneManager>.inst.currentType != null &&
+					SimpleSingletonProvider<SceneManager>.inst.currentType.Value == SceneType.Battle;
 			}
 			catch
 			{
@@ -343,7 +345,7 @@ internal sealed class AutoResetActionTimeGUI : MonoBehaviour
 			Instance._lastInterceptTimeStr = DateTime.Now.ToString("HH:mm:ss");
 			Instance.ShowStatus("已成功拦截服务端超时踢出！正在无感恢复战局...");
 			Debug.LogWarning($"[XingShu 超时自动重连] 拦截到服务端超时踢出: RoomId={model?.RoomId}, IsExit={model?.IsExit}。已阻断断网与退回登录，正在执行无感战局同步！");
-			if (SimpleSingletonProvider<SceneManager>.inst.currentType.Value == SceneType.Battle)
+			if (SimpleSingletonProvider<SceneManager>.hasInstance && SimpleSingletonProvider<SceneManager>.inst.currentType != null && SimpleSingletonProvider<SceneManager>.inst.currentType.Value == SceneType.Battle)
 			{
 				TriggerSeamlessReconnect(model?.RoomId ?? 0);
 			}
@@ -561,7 +563,7 @@ internal sealed class AutoResetActionTimeGUI : MonoBehaviour
 		}
 		DrawStatusRow("反作弊变速检测 (TimeProtector)", flag2 ? "<color=#4ade80>[已永久禁用 (允许长考与暂停)]</color>" : "<color=#fbbf24>[运行中]</color>");
 		DrawStatusRow("客户端挂机认输检测 (AFKCheck)", (!GMConfig.AFKCheck) ? "<color=#4ade80>[已关闭 (杜绝自动认输)]</color>" : "<color=#fbbf24>[开启中]</color>");
-		bool flag3 = SimpleSingletonProvider<SceneManager>.inst.currentType.Value == SceneType.Battle;
+		bool flag3 = SimpleSingletonProvider<SceneManager>.hasInstance && SimpleSingletonProvider<SceneManager>.inst.currentType != null && SimpleSingletonProvider<SceneManager>.inst.currentType.Value == SceneType.Battle;
 		RoomLogic roomLogic = SimpleSingletonProvider<GameLogicManager>.inst?.room;
 		string text = ((flag3 && roomLogic != null && roomLogic.curRoomInfo != null) ? $"战斗中 (ID: {roomLogic.curRoomInfo.Id})" : (flag3 ? "战斗准备中" : "非战斗场景"));
 		DrawStatusRow("当前战局运行状态", flag3 ? ("<color=#38bdf8>" + text + "</color>") : "<color=#94a3b8>大厅 / 主菜单</color>");

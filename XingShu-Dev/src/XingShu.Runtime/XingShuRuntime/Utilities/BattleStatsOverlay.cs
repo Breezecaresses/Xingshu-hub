@@ -331,7 +331,7 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 		{
 			return false;
 		}
-		if (!SimpleSingletonProvider<SceneManager>.hasInstance || SimpleSingletonProvider<SceneManager>.inst == null || SimpleSingletonProvider<SceneManager>.inst.currentType.Value != SceneType.Battle)
+		if (!SimpleSingletonProvider<SceneManager>.hasInstance || SimpleSingletonProvider<SceneManager>.inst == null || SimpleSingletonProvider<SceneManager>.inst.currentType == null || SimpleSingletonProvider<SceneManager>.inst.currentType.Value != SceneType.Battle)
 		{
 			return false;
 		}

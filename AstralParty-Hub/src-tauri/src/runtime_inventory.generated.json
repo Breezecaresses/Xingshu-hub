@@ -1,26 +1,26 @@
 [
   {
     "platform": "STEAM_CN",
-    "version": "1.0.0-game-ui-r8.32",
-    "sha256": "b30fb9ee29cb4e48d6fb523eb6fbbcd187af1dc20646687a389c69e8610446b1",
-    "bundleRelativePath": "AstralParty_CN_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\536196fba89e10e449fc9b864bfdbd51\\__data"
+    "version": "1.0.0-game-ui-r8.33",
+    "sha256": "255728584a527d2b7a8e645d62ada32822b211abfe5750ba2bfc0757dcac170e",
+    "bundleRelativePath": "AstralParty_CN_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\74ec34421f662150b01741f232d7497c\\__data"
   },
   {
     "platform": "TAPTAP",
-    "version": "1.0.0-game-ui-r8.32",
-    "sha256": "d94587748f07d840e51a0198c4e5c36112980109fc091411c6038a156866ac64",
-    "bundleRelativePath": "吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\9fd5d18e11899a0a7de6534f8e3cda38\\__data"
+    "version": "1.0.0-game-ui-r8.33",
+    "sha256": "afe5892add557725dd7a7df7fb4e77d14616dc128e6dd0e850602445b7fa605e",
+    "bundleRelativePath": "吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\f468bb754fee0362b0d1074e74e7e885\\__data"
   },
   {
     "platform": "BILIBILI",
-    "version": "1.0.0-game-ui-r8.32",
-    "sha256": "0b1775e9887fb86c19c49f486cafff408c75ed72afe8090824d6c1a1a67adb62",
-    "bundleRelativePath": "吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\6e88cd8b53c46daa69c53e15294a43a8\\__data"
+    "version": "1.0.0-game-ui-r8.33",
+    "sha256": "1bf511d41ae41436b90201945f21d4acad7d47f1634d698e37f5e4d07d895707",
+    "bundleRelativePath": "吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\21b07f52b18434b20781372324ee459f\\__data"
   },
   {
     "platform": "WEGAME",
-    "version": "1.0.0-game-ui-r8.32",
-    "sha256": "4a5217e6011a23d65b7491fc7e68146c45fbb5c852df6b68949d82eae32bd794",
-    "bundleRelativePath": "吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\5e133f5a21ffa0e94e99e4db324ebf2f\\__data"
+    "version": "1.0.0-game-ui-r8.33",
+    "sha256": "72a111cce03ac981161b9b12b0bf3700645d3c459a807db77bb75440e3e94bbc",
+    "bundleRelativePath": "吉星派对_Data\\com.unity.addressables\\AssetBundles\\57a198703b66364d5420d39c0d251747\\111661d4da79135f6d1fdadbc1140b74\\__data"
   }
 ]

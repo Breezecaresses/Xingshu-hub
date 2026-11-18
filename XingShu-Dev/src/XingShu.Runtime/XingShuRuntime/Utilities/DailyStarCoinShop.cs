@@ -96,6 +96,7 @@ internal sealed class DailyStarCoinShop : MonoBehaviour
         { _status = "今日星币货架已处理；等待明日登录"; return; }
         if (Time.realtimeSinceStartup < _readyAt) { _status = "等待官方登录数据就绪"; return; }
         bool inHomeScene = SimpleSingletonProvider<SceneManager>.hasInstance &&
+            SimpleSingletonProvider<SceneManager>.inst.currentType != null &&
             SimpleSingletonProvider<SceneManager>.inst.currentType.Value == SceneType.Home;
         bool inRoom = logic.room != null && (logic.room.IsInRoom ||
             (logic.room.roomController != null && logic.room.roomController.roomStateType != RoomStateType.NONE));

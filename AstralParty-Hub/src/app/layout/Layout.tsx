@@ -245,7 +245,7 @@ export const Layout: React.FC = () => {
         <span><i className={`desktop-status-dot ${statusClass}`} />{report?.snapshot.primary_game
           ? (locale === 'zh-CN' ? '游戏目录已连接' : 'Game directory connected')
           : (locale === 'zh-CN' ? '等待选择游戏目录' : 'Select a game directory')}</span>
-        <span>{locale === 'zh-CN' ? '星枢工作台' : 'XingShu Workspace'} · v0.1.6-beta.1</span>
+        <span>{locale === 'zh-CN' ? '星枢工作台' : 'XingShu Workspace'} · v0.1.6-beta.2</span>
       </footer>}
     </div>
   );

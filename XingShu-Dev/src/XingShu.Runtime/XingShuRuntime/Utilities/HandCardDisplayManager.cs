@@ -1571,9 +1571,9 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 						RefreshHandWidget(orCreateHand);
 					}
 				}
-				else if (!orCreateHand.IsBot && XingShu.Truth.HandTruthSource.TryGetCloudHand(roomInfo.Id, id, out var cloudCards))
+				else if (XingShu.Truth.HandTruthSource.TryGetTeammateMirrorHand(roomInfo.Id, id, out var cloudCards))
 				{
-					// A valid local list can be an initial snapshot that never changes for human teammates.
+					// A valid local list can be an initial snapshot that never changes for human or bot teammates.
 					if (orCreateHand.SyncState != HandSyncState.Latest || !CardListsMatch(orCreateHand.Cards, cloudCards))
 					{
 						ApplyCardIdsToHand(orCreateHand, cloudCards);
@@ -1581,6 +1581,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 						RefreshHandWidget(orCreateHand);
 						Log("CLOUD_TEAMMATE_SYNC", $"Slot={orCreateHand.Slot} Count={cloudCards.Count}");
 					}
+					orCreateHand.SyncState = HandSyncState.Latest;
 					orCreateHand.IsAuthoritative = true;
 					orCreateHand.MaskedHandCount = cloudCards.Count;
 				}
@@ -1682,6 +1683,10 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 	{
 		changed = false;
 		if (hand == null || cardContainer == null || cardContainer._HandCards == null)
+		{
+			return false;
+		}
+		if (requireAllValid && cardContainer._HandCards.Count != cardContainer.CardCount)
 		{
 			return false;
 		}
@@ -2431,7 +2436,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 				num6 = num5 - num3 - 4f;
 			}
 			gComponent.SetXY(xv, num6);
-			gComponent.sortingOrder = 9999;
+			gComponent.sortingOrder = 0;
 			widgetRoot.AddChild(gComponent);
 			gComponent.visible = true;
 		}
@@ -2651,7 +2656,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 				cardItem.SetSize(cardWidth, num);
 				float curX = (float)i * num4;
 				cardItem.SetXY(curX, 0f);
-				cardItem.sortingOrder = i;
+				cardItem.sortingOrder = 0;
 				cardItem.opaque = true;
 				bool isAltArt = false;
 				string altArtTitle = "";
@@ -2710,24 +2715,24 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 				}
 				cardItem.onRollOver.Add((EventCallback0)delegate
 				{
-					cardItem.sortingOrder = 100;
+					SetCardSiblingOrder(cardItem, gComponent, bringToFront: true, capturedIndex);
 					ShowHoverBar(widgetRoot, hoverText, curX, cardWidth);
 				});
 				cardItem.onRollOut.Add((EventCallback0)delegate
 				{
-					cardItem.sortingOrder = capturedIndex;
+					SetCardSiblingOrder(cardItem, gComponent, bringToFront: false, capturedIndex);
 					HideHoverBar(widgetRoot);
 				});
 				cardItem.onClick.Add((EventCallback0)delegate
 				{
 					if (widgetRoot.GetChild("hover_bar") is GComponent { visible: not false })
 					{
-						cardItem.sortingOrder = capturedIndex;
+						SetCardSiblingOrder(cardItem, gComponent, bringToFront: false, capturedIndex);
 						HideHoverBar(widgetRoot);
 					}
 					else
 					{
-						cardItem.sortingOrder = 100;
+						SetCardSiblingOrder(cardItem, gComponent, bringToFront: true, capturedIndex);
 						ShowHoverBar(widgetRoot, hoverText, curX, cardWidth);
 					}
 				});
@@ -2742,7 +2747,7 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 				summaryItem.SetSize(cardWidth, num);
 				float curX = (float)summaryIndex * num4;
 				summaryItem.SetXY(curX, 0f);
-				summaryItem.sortingOrder = summaryIndex;
+				summaryItem.sortingOrder = 0;
 				summaryItem.opaque = true;
 
 				GGraph gGraph = new GGraph();
@@ -2776,24 +2781,24 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 				string hoverText = $"[color=#ffd700][b]【未知手牌】[/b][/color]  [color=#94a3b8]数量: {unknownCount} 张 (服务端遮蔽)[/color]";
 				summaryItem.onRollOver.Add((EventCallback0)delegate
 				{
-					summaryItem.sortingOrder = 100;
+					SetCardSiblingOrder(summaryItem, gComponent, bringToFront: true, capturedIndex);
 					ShowHoverBar(widgetRoot, hoverText, curX, cardWidth);
 				});
 				summaryItem.onRollOut.Add((EventCallback0)delegate
 				{
-					summaryItem.sortingOrder = capturedIndex;
+					SetCardSiblingOrder(summaryItem, gComponent, bringToFront: false, capturedIndex);
 					HideHoverBar(widgetRoot);
 				});
 				summaryItem.onClick.Add((EventCallback0)delegate
 				{
 					if (widgetRoot.GetChild("hover_bar") is GComponent { visible: not false })
 					{
-						summaryItem.sortingOrder = capturedIndex;
+						SetCardSiblingOrder(summaryItem, gComponent, bringToFront: false, capturedIndex);
 						HideHoverBar(widgetRoot);
 					}
 					else
 					{
-						summaryItem.sortingOrder = 100;
+						SetCardSiblingOrder(summaryItem, gComponent, bringToFront: true, capturedIndex);
 						ShowHoverBar(widgetRoot, hoverText, curX, cardWidth);
 					}
 				});
@@ -2803,6 +2808,19 @@ public sealed class HandCardDisplayManager : MonoBehaviour
 		catch (Exception ex)
 		{
 			Log("RENDER_CARDS_ERROR", "渲染卡牌列表失败: " + ex.Message);
+		}
+	}
+
+	private static void SetCardSiblingOrder(GComponent item, GComponent container, bool bringToFront, int originalIndex)
+	{
+		if (item == null || item.isDisposed || container == null || container.isDisposed || item.parent != container || container.numChildren <= 1)
+		{
+			return;
+		}
+		int target = bringToFront ? container.numChildren - 1 : Mathf.Clamp(originalIndex, 0, container.numChildren - 1);
+		if (container.GetChildIndex(item) != target)
+		{
+			container.SetChildIndex(item, target);
 		}
 	}
 

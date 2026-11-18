@@ -34,7 +34,7 @@
 
 ## Stable Release
 
-[Download stable v0.1.5](https://github.com/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.5) or try the optional [v0.1.6-beta.1 preview](https://github.com/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.6-beta.1) ([preview notes](docs/records/RELEASE_20261117_0.1.6-beta.1.md)). Both the Windows and Android packages target *Astral Party* `3.3.0` (`resource 152`).
+[Download stable v0.1.5](https://github.com/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.5) or try the optional [v0.1.6-beta.2 preview](https://github.com/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.6-beta.2) ([preview notes](docs/records/RELEASE_0.1.6-beta.2.md)). The `v0.1.6-beta.2` Windows and Android packages target *Astral Party* `3.3.0` (`resource 160`; stable `v0.1.5` targets `resource 152`).
 
 | Target | Package / Access | Highlights |
 | --- | --- | --- |

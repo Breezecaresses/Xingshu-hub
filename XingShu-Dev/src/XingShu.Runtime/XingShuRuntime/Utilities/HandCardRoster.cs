@@ -98,12 +98,30 @@ namespace XingShuRuntime.Utilities
         {
             for (int i = 0; i < _rows.Length; i++) _rows[i] = new Row();
         }
-        private void EnsureRow(Row row)
+        private static void EnsureRowBelowAttrInfos(GComponent attrInfos, GComponent root)
         {
-            if (row.Root != null && !row.Root.isDisposed && row.Root.parent == row.Head) return;
+            if (attrInfos == null || attrInfos.isDisposed || root == null || root.isDisposed || root.parent != attrInfos) return;
+            int rootIndex = attrInfos.GetChildIndex(root);
+            for (int i = 0; i < attrInfos.numChildren; i++)
+            {
+                if (attrInfos.GetChildAt(i) is UICom_AttrInfo)
+                {
+                    if (rootIndex > i) attrInfos.SetChildIndex(root, i);
+                    return;
+                }
+            }
+        }
+        private void EnsureRow(Row row, GComponent host)
+        {
+            if (row.Root != null && !row.Root.isDisposed && row.Root.parent == host)
+            {
+                EnsureRowBelowAttrInfos(host, row.Root);
+                return;
+            }
             if (row.Root != null && !row.Root.isDisposed) row.Root.Dispose();
             row.Root = new GComponent { name = "__xingshu_roster_hand", sortingOrder = 0 };
-            row.Head.AddChild(row.Root); // Native avatar owns drawing order and lifecycle.
+            host.AddChildAt(row.Root, 0); // Mounted in com_AttrInfos below UICom_AttrInfo so monster predictions stay on top and modal dimmers cover both.
+            EnsureRowBelowAttrInfos(host, row.Root);
             XingShuOverlayInput.Protect(row.Root);
             row.Toggle = new GComponent { name = "ExpandPlayerHand" };
             XingShuOverlayInput.Protect(row.Toggle); row.Root.AddChild(row.Toggle);
@@ -160,15 +178,21 @@ namespace XingShuRuntime.Utilities
                     return;
                 }
                 if (XingShuUICenter.IsOpen) { Hide(); return; }
-                bool chipHidden = HandCardVisibility.ShouldHide;
+                var fight = logic?.fight?.battleFightData;
+                var uiMgr = SimpleSingletonProvider<UIManager>.hasInstance ? SimpleSingletonProvider<UIManager>.inst : null;
+                bool combat = (fight != null && !fight.isEnd) || ShownNativeWindows.Find<FightWindow>(uiMgr) != null;
+                bool chipHidden = StreamPrivacyHands.Enabled || combat;
                 if (_chipHidden != chipHidden)
                 {
                     _chipHidden = chipHidden;
                     XingShu.Runtime.XingShuRuntimeHost.LogLifecycle("[HandRoster] nativeModalHidden=" + chipHidden + "; window=" + HandCardVisibility.BlockingWindow);
                 }
                 if (chipHidden) { Hide(); return; }
-                var container = logic?.battle?.battleInfo?.UIObject?.com_BattlePlayer?.com_Container;
+                var ui = logic?.battle?.battleInfo?.UIObject;
+                var container = ui?.com_BattlePlayer?.com_Container;
                 if (container == null || !Visible(container)) { Hide(); return; }
+                var attrInfos = ui.com_AttrInfos != null && !ui.com_AttrInfos.isDisposed ? ui.com_AttrInfos : null;
+                bool modalOpen = HandCardVisibility.BlockingWindow != null;
                 if (_rows[0] == null) Build();
                 _active = true;
                 _rows[0].Head = container.com_Player_1; _rows[1].Head = container.com_Player_2;
@@ -186,7 +210,7 @@ namespace XingShuRuntime.Utilities
                 safe.y = Screen.height - safe.yMax;
                 bool mobile = XingShuMobileUIHelper.IsMobile;
                 float size = Scale;
-                foreach (var row in _rows) row.Anchor = Anchor(row.Head);
+                foreach (var row in _rows) row.Anchor = row.Head != null && row.Head.parent == container ? Anchor(row.Head) : default(Rect);
                 foreach (var row in _rows)
                 {
                     var player = row.Head?.PlayerData?.player;
@@ -205,7 +229,7 @@ namespace XingShuRuntime.Utilities
                     bool expanded = _state.IsExpanded(row.Player);
                     row.Plan = HandRosterLayout.Build(row.Anchor, safe, lane, row.Entries.Count, size, expanded, mobile);
                     if (!row.Plan.Valid) { Reset(row); continue; }
-                    EnsureRow(row); row.Root.visible = true;
+                    EnsureRow(row, attrInfos ?? (GComponent)row.Head); row.Root.visible = true; row.Root.touchable = !modalOpen;
                     ApplyRow(row, expanded);
                 }
             }
@@ -259,11 +283,13 @@ namespace XingShuRuntime.Utilities
         private void ApplyRow(Row row, bool expanded)
         {
             var p = row.Plan;
+            var parent = row.Root.parent ?? row.Head;
             // Layout uses physical pixels; cancel the native parent's UI scale.
-            var origin = row.Head.GlobalToLocal(new Vector2(p.Bounds.x, p.Bounds.y));
-            var pixel = row.Head.GlobalToLocal(new Vector2(p.Bounds.x + 1, p.Bounds.y + 1)) - origin;
+            var origin = parent.GlobalToLocal(new Vector2(p.Bounds.x, p.Bounds.y));
+            var pixel = parent.GlobalToLocal(new Vector2(p.Bounds.x + 1, p.Bounds.y + 1)) - origin;
             if (pixel.x <= 0 || pixel.y <= 0 || float.IsNaN(pixel.x) || float.IsNaN(pixel.y)) { row.Root.visible = false; return; }
             row.Root.SetXY(origin.x, origin.y); row.Root.SetScale(pixel.x, pixel.y); row.Root.SetSize(p.Bounds.width, p.Bounds.height);
+            row.Root.alpha = row.Head.alpha;
             row.Toggle.SetXY(0, (p.Bounds.height - p.ToggleHeight) * .5f); row.Toggle.SetSize(p.ToggleWidth, p.ToggleHeight);
             row.Badge.DrawRoundRect(p.ToggleWidth, p.ToggleHeight, expanded ? new Color(1, .79f, 0, .96f) : new Color(1, 1, 1, .94f), new float[] { 8, 8, 8, 8 });
             row.Caption.SetSize(p.ToggleWidth, p.ToggleHeight);
@@ -274,12 +300,14 @@ namespace XingShuRuntime.Utilities
             {
                 row.Logged = true; row.LastExpanded = expanded; row.LastCount = p.Count; row.LastCell = p.Cell;
                 XingShu.Runtime.XingShuRuntimeHost.LogLifecycle("[HandRoster] native layout slot=" + (row.Hand.Slot + 1) + "; expanded=" + expanded + "; bounds=" + p.Bounds +
-                    "; cell=" + p.Cell.ToString("F1") + "; step=" + p.Step.ToString("F1") + "; cards=" + p.Count + "; avatarParent=" + (row.Root.parent == row.Head));
+                    "; cell=" + p.Cell.ToString("F1") + "; step=" + p.Step.ToString("F1") + "; cards=" + p.Count + "; host=" + parent.name);
             }
             if (!expanded) return;
             float offset = _state.Offset(row.Player, p.MaxOffset);
             row.Grid.SetXY(p.GridX, p.GridY); row.Grid.SetSize(p.GridWidth, p.Cell + 2 * p.Gap);
-            ((Container)row.Grid.displayObject).clipRect = new Rect(0, 0, p.GridWidth, p.Cell + 2 * p.Gap);
+            var gridContainer = (Container)row.Grid.displayObject;
+            var nextClip = new Rect(0, 0, p.GridWidth, p.Cell + 2 * p.Gap);
+            if (gridContainer.clipRect == null || gridContainer.clipRect.Value != nextClip) gridContainer.clipRect = nextClip;
             if (row.Signature != row.DataSignature || row.RenderedCount != p.Count || Mathf.Abs(row.RenderedStep - p.Step) > .01f ||
                 Mathf.Abs(row.RenderedCell - p.Cell) > .01f || Mathf.Abs(row.RenderedUnit - p.Unit) > .01f)
             {

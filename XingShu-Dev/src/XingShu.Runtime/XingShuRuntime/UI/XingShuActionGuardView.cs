@@ -33,6 +33,8 @@ namespace XingShuRuntime.UI
         // Card 4: 原生快捷通信卡片
         private Toggle _autoThanksToggle;
         private Toggle _autoPraiseToggle;
+        private Slider _praiseScaleSlider;
+        private Text _praiseScaleValueText;
         private Toggle _dailyShopToggle;
         private Text _dailyShopStatus;
 
@@ -261,7 +263,7 @@ namespace XingShuRuntime.UI
             atRt.sizeDelta = new Vector2(130f, 32f);
 
             // ==========================================
-            // 4B. 原生快捷通信 - 局末全赞独立卡片 (Card 4B: 68px, y: -464)
+            // 4B. 头像点赞与大小设置
             // ==========================================
             GameObject cardPraise = XingShuUIFactory.CreateUIObject("Card_AutoPraise", _root);
             RectTransform cpRt = cardPraise.GetComponent<RectTransform>();
@@ -269,7 +271,7 @@ namespace XingShuRuntime.UI
             cpRt.anchorMax = new Vector2(1f, 1f);
             cpRt.pivot = new Vector2(0.5f, 1f);
             cpRt.anchoredPosition = new Vector2(0f, -464f);
-            cpRt.sizeDelta = new Vector2(0f, 68f);
+            cpRt.sizeDelta = new Vector2(0f, 142f);
 
             Image cpBg = cardPraise.AddComponent<Image>();
             cpBg.sprite = cardBaseSprite;
@@ -289,16 +291,49 @@ namespace XingShuRuntime.UI
             cpdRt.anchorMin = new Vector2(0f, 1f);
             cpdRt.anchorMax = new Vector2(0f, 1f);
             cpdRt.pivot = new Vector2(0f, 1f);
-            cpdRt.anchoredPosition = new Vector2(20f, -38f);
+            cpdRt.anchoredPosition = new Vector2(20f, -36f);
             cpdRt.sizeDelta = new Vector2(500f, 20f);
 
             _autoPraiseToggle = XingShuUIFactory.CreateToggle(cardPraise, "AutoPraiseToggle", "开启", XingShuAutoPraise.IsEnabled, (v) => { if (!_suppressCallbacks) XingShuAutoPraise.IsEnabled = v; });
             RectTransform apRt = _autoPraiseToggle.GetComponent<RectTransform>();
-            apRt.anchorMin = new Vector2(1f, 0.5f);
-            apRt.anchorMax = new Vector2(1f, 0.5f);
-            apRt.pivot = new Vector2(1f, 0.5f);
-            apRt.anchoredPosition = new Vector2(-20f, 0f);
+            apRt.anchorMin = new Vector2(1f, 1f);
+            apRt.anchorMax = new Vector2(1f, 1f);
+            apRt.pivot = new Vector2(1f, 1f);
+            apRt.anchoredPosition = new Vector2(-20f, -10f);
             apRt.sizeDelta = new Vector2(130f, 32f);
+
+            Text scaleLabel = XingShuUIFactory.CreateText(cardPraise, "PraiseScaleLabel", "点赞图标大小（60%–200%）", 12, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft);
+            RectTransform pslRt = scaleLabel.rectTransform;
+            pslRt.anchorMin = new Vector2(0f, 1f);
+            pslRt.anchorMax = new Vector2(0f, 1f);
+            pslRt.pivot = new Vector2(0f, 1f);
+            pslRt.anchoredPosition = new Vector2(20f, -62f);
+            pslRt.sizeDelta = new Vector2(260f, 20f);
+
+            _praiseScaleValueText = XingShuUIFactory.CreateText(cardPraise, "PraiseScaleValue", $"{Mathf.RoundToInt(XingShuAutoPraise.PraiseScale * 100f)}%", 13, XingShuUITheme.NumericAccent, TextAnchor.MiddleRight, FontStyle.Bold);
+            RectTransform psvRt = _praiseScaleValueText.rectTransform;
+            psvRt.anchorMin = new Vector2(1f, 1f);
+            psvRt.anchorMax = new Vector2(1f, 1f);
+            psvRt.pivot = new Vector2(1f, 1f);
+            psvRt.anchoredPosition = new Vector2(-122f, -62f);
+            psvRt.sizeDelta = new Vector2(56f, 20f);
+
+            Button resetPraiseScale = XingShuUIFactory.CreateButton(cardPraise, "ResetPraiseScale", "恢复默认",
+                XingShuUIAssetService.GetSprite("button_secondary.png"), XingShuUITheme.Card, XingShuUITheme.PrimaryText,
+                () => { XingShuAutoPraise.PraiseScale = XingShuConfigKeys.AutoPraiseScaleDefault; SyncPraiseScale(); }, 12);
+            RectTransform resetRt = resetPraiseScale.GetComponent<RectTransform>();
+            resetRt.anchorMin = resetRt.anchorMax = new Vector2(1f, 1f);
+            resetRt.pivot = new Vector2(1f, 1f);
+            resetRt.anchoredPosition = new Vector2(-20f, -58f);
+            resetRt.sizeDelta = new Vector2(88f, 30f);
+
+            _praiseScaleSlider = XingShuUIFactory.CreateSlider(cardPraise, "PraiseScaleSlider", XingShuConfigKeys.AutoPraiseScaleMin, XingShuConfigKeys.AutoPraiseScaleMax, XingShuAutoPraise.PraiseScale, OnPraiseScaleSliderChanged);
+            RectTransform pssRt = _praiseScaleSlider.GetComponent<RectTransform>();
+            pssRt.anchorMin = new Vector2(0f, 1f);
+            pssRt.anchorMax = new Vector2(1f, 1f);
+            pssRt.pivot = new Vector2(0.5f, 1f);
+            pssRt.anchoredPosition = new Vector2(0f, -98f);
+            pssRt.sizeDelta = new Vector2(-40f, 32f);
 
             Text socialDesc = XingShuUIFactory.CreateText(_root, "SocialDesc", "• 怪物索敌已接入：在“击飞预测”页调整地图索敌显示（最大10格推演）。", 11, XingShuUITheme.MutedText, TextAnchor.MiddleLeft);
             RectTransform sdRt = socialDesc.rectTransform;
@@ -529,6 +564,27 @@ namespace XingShuRuntime.UI
                 _autoPraiseToggle.isOn = XingShuAutoPraise.IsEnabled;
                 _suppressCallbacks = false;
             }
+
+            SyncPraiseScale();
+        }
+
+        private void SyncPraiseScale()
+        {
+            float scale = XingShuAutoPraise.PraiseScale;
+            if (_praiseScaleSlider != null && Mathf.Abs(_praiseScaleSlider.value - scale) > .001f)
+            {
+                _suppressCallbacks = true;
+                _praiseScaleSlider.value = scale;
+                _suppressCallbacks = false;
+            }
+            if (_praiseScaleValueText != null) _praiseScaleValueText.text = $"{Mathf.RoundToInt(scale * 100f)}%";
+        }
+
+        private void OnPraiseScaleSliderChanged(float val)
+        {
+            if (_suppressCallbacks) return;
+            XingShuAutoPraise.PraiseScale = Mathf.Round(val * 20f) / 20f;
+            SyncPraiseScale();
         }
     }
 }

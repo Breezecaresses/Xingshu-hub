@@ -184,6 +184,7 @@ def main():
     parser.add_argument('--official-baselines', type=Path, help='Audited directory containing PLATFORM/vanilla.__data for fresh-install checks')
     parser.add_argument('--android-bundle', type=Path, help='Verified Android companion directory from prepare_android_hub_bundle.py')
     parser.add_argument('--release-notes', type=Path, help='Current release notes to include in the verified desktop ZIP')
+    parser.add_argument('--hub-binary', type=Path, help='Completed isolated Hub build; keeps a running development Hub untouched')
     parser.add_argument('--mod-library', type=Path, help='Local texture adaptation candidate; not automatically uploaded or relicensed')
     parser.add_argument('--local-build', action='store_true', help='Mark a local worktree candidate; SourceCommit is a baseline, not a published source tag')
     args = parser.parse_args()
@@ -206,7 +207,7 @@ def main():
     if destination.exists() or archive.exists():
         raise SystemExit('This release already exists; choose a new --version')
     stage = publish / ('.building-' + name + '-' + uuid.uuid4().hex)
-    hub = ROOT / 'AstralParty-Hub/src-tauri/target/release/xingshu-hub.exe'
+    hub = args.hub_binary.resolve(strict=True) if args.hub_binary else ROOT / 'AstralParty-Hub/src-tauri/target/release/xingshu-hub.exe'
     if hub.stat().st_mtime < (ROOT / 'AstralParty-Hub/dist/index.html').stat().st_mtime:
         raise SystemExit('The current Hub production build has not finished')
     if any((ROOT / p).stat().st_mtime > hub.stat().st_mtime for p in (

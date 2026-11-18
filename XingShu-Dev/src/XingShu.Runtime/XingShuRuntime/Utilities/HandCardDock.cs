@@ -135,6 +135,8 @@ namespace XingShuRuntime.Utilities
                 return;
             }
             bool valid = _open && HandCardDisplayManager.IsEnabled && (HandCardDisplayManager.IsPVEMode() || XingShu.Spectator.SpectatorStateStore.IsInSpectatorSession()) &&
+                SimpleSingletonProvider<SceneManager>.hasInstance &&
+                SimpleSingletonProvider<SceneManager>.inst.currentType != null &&
                 SimpleSingletonProvider<SceneManager>.inst.currentType.Value == SceneType.Battle;
             if (!valid)
             {
