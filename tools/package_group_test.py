@@ -10,6 +10,7 @@ import tempfile
 import uuid
 import zipfile
 import re
+from project_paths import publish_directory
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -147,7 +148,7 @@ def verify_installer(package, profiles, release, deployment, official_baselines=
                 assert sha(target) == platform['PayloadSha256']
             finally:
                 payload.write_bytes(saved)
-            for previous_index, (previous_hash, previous_payload) in enumerate(compatible_previous_payloads(ROOT / '发布包', platform).items()):
+            for previous_index, (previous_hash, previous_payload) in enumerate(compatible_previous_payloads(publish_directory(ROOT), platform).items()):
                 # Keep the nested fixture below .NET Framework's legacy path limit.
                 upgrade = temp / (platform['Id'] + '-' + str(previous_index))
                 upgrade.mkdir()
@@ -198,7 +199,7 @@ def main():
     catalog = json.loads((ROOT / 'AstralParty-Hub/src/shared/gameCatalog.generated.json').read_text('utf-8'))
     character_count = len(catalog['characters'])
     preview_count = sum(bool(c.get('preview')) for c in catalog['characters'])
-    publish = ROOT / '发布包'
+    publish = publish_directory(ROOT)
     publish.mkdir(exist_ok=True)
     channel = {'all':'Desktop_','STEAM_CN':'Steam_','TAPTAP':'TapTap_','BILIBILI':'Bilibili_','WEGAME':'WeGame_'}[args.platform]
     name = 'XingShu_' + channel + args.version
@@ -208,6 +209,8 @@ def main():
         raise SystemExit('This release already exists; choose a new --version')
     stage = publish / ('.building-' + name + '-' + uuid.uuid4().hex)
     hub = args.hub_binary.resolve(strict=True) if args.hub_binary else ROOT / 'AstralParty-Hub/src-tauri/target/release/xingshu-hub.exe'
+    if b'assets/index-' not in hub.read_bytes():
+        raise SystemExit('Hub binary lacks embedded frontend assets (built without custom-protocol); run npm run tauri build -- --no-bundle first')
     if hub.stat().st_mtime < (ROOT / 'AstralParty-Hub/dist/index.html').stat().st_mtime:
         raise SystemExit('The current Hub production build has not finished')
     if any((ROOT / p).stat().st_mtime > hub.stat().st_mtime for p in (
@@ -381,20 +384,15 @@ Windows 便携程序未附 Authenticode 代码签名；应用更新清单和手�
     group_note = f'''星枢{edition} {args.version}
 适配吉星派对3.3.0／资源{resource_versions}，包含{channel_label}运行时。
 
-安装：完整解压，退出游戏后用“星枢安装助手.exe”安装；主端、观战端分别安装，可备份还原。
+安装：完整解压，退出游戏后用“星枢安装助手.exe”安装；主端与观战端分别安装，支持备份还原。
 
 更新：
-• 创作者入口加入侧边栏，与投稿及创作说明合并。
-• 手机助手增加登录星枢，衔接 QQ Bot 授权与已验证的游戏 UID。
-• 修复回放和工坊连接，保留原色系并增加桌面窗口控制。
-• 点赞图标放在角色头像上，蓝色未选、彩色已选，结算前可取消。
-• 四个电脑渠道合并一个ZIP，安装助手按各渠道的新资源路径与指纹校验，保留备份还原。
-• Steam国服悬浮球已人工验收；其余电脑渠道通过文件兼容及安装事务检查。
-• {'安卓包同时提供新版手机助手和手动替换／还原文件；增加顶部安装、使用说明和同位置覆盖冲突备份整理。' if args.android_bundle else '本包未附安卓安装组件，请使用已验证的安卓发布。'}
+• 头像手牌移至左侧点击展开；点赞仅显示 3 名队友。
+• 修复建筑牌选格视角拖动、星枢包管理器安装入口及移动端 443/TapTap/B 站登录同步。
+• 四个电脑渠道合并一包，助手按渠道路径与指纹校验。
+• {'安卓包附新版手机助手与手动替换／还原文件，并更新房间模板选项。' if args.android_bundle else '本包未附安卓安装组件，请使用已验证的安卓发布。'}
 
-使用反馈：同房／换房连续两局换牌、观战退房再跟房、自然结算退出、收牌／星币／治疗致谢。
-合作局云端手牌需 Hub 同账号授权；本地观战需登录官方观战端。十倍计时受服务端限制。
-反馈附版本、渠道、步骤、时间及截图；日志隐藏个人信息。
+使用反馈：同房／换房重开、观战重连、结算点赞与手机授权；反馈附版本、渠道、步骤及截图（隐藏账号隐私）。
 源码：https://github.com/Breezecaresses/AstralParty-XingShu
 '''
     if len(group_note) > 600:

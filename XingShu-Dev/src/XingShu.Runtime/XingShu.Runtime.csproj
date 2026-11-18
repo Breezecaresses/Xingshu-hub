@@ -153,5 +153,12 @@
       <Compile Include="XingShu\Cards\CardRegistry.Generated.cs" />
     </ItemGroup>
   </Target>
+  <Target Name="GenerateCharacterEmotes" BeforeTargets="BeforeBuild">
+    <Exec Command="python &quot;$(MSBuildThisFileDirectory)../../tools/generate_character_emotes.py&quot;" ContinueOnError="true" />
+    <ItemGroup>
+      <Compile Remove="XingShu\Cards\CharacterEmoteRegistry.Generated.cs" />
+      <Compile Include="XingShu\Cards\CharacterEmoteRegistry.Generated.cs" />
+    </ItemGroup>
+  </Target>
   <Target Name="GenerateTargetFrameworkMonikerAttribute" />
 </Project>

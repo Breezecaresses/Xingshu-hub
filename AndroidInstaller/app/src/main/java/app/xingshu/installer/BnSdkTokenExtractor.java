@@ -117,7 +117,7 @@ final class BnSdkTokenExtractor {
     static String inferAppIdFromPackage(String text) {
         if (text == null || text.isEmpty()) return "";
         if (text.contains("com.feimo.jxpd.mi")) return "110001934";
-        if (text.contains("com.feimo.astralparty.bilibili")) return "110001957";
+        if (text.contains("com.feimo.astralparty.bilibili") || text.contains("com.feimo.jxpd.bili")) return "110001957";
         if (text.contains("com.feimo.astralparty")) return "110001937";
         return "";
     }

@@ -24,7 +24,7 @@ internal sealed class XingShuHotkeySettingsView
         GameObject header = Card(content, "Header", 100f);
         Text title = XingShuUIFactory.CreateText(header, "Title", "快捷键设置", 20, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
         Place(title.gameObject, 0f, 1f, 20f, -8f, -220f, 32f);
-        Text help = XingShuUIFactory.CreateText(header, "Help", "即时保存 · 支持组合键 · Esc 取消修改\n自由镜头方向键需按住；默认轻按左 Ctrl 快速开关加速。", 13, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
+        Text help = XingShuUIFactory.CreateText(header, "Help", "即时保存 · 支持键盘、鼠标侧键与组合键 · Esc 取消修改\n自由镜头方向键需按住；默认轻按左 Ctrl 快速开关加速。", 13, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
         Place(help.gameObject, 0f, 1f, 20f, -40f, -40f, 52f);
         Button reset = XingShuUIFactory.CreateButton(header, "ResetAll", "恢复全部默认", null, XingShuUITheme.Pink, Color.white, XingShuHotkeys.ResetAll, 13);
         Place(reset.gameObject, 1f, 1f, -176f, -10f, 156f, 32f);
@@ -90,7 +90,7 @@ internal sealed class XingShuHotkeySettingsView
         {
             _revision = XingShuHotkeys.Revision; _capturing = XingShuHotkeys.CapturingIndex;
             for (int i = 0; i < _labels.Length; i++)
-                _labels[i].text = i == _capturing ? "请按键…（Esc 取消）" : XingShuHotkeys.GetAt(i).Display;
+                _labels[i].text = i == _capturing ? "请按键盘或鼠标侧键…（Esc 取消）" : XingShuHotkeys.GetAt(i).Display;
         }
         if (_lastStatus != XingShuHotkeys.Status)
         { _lastStatus = XingShuHotkeys.Status; _status.text = _lastStatus; }

@@ -91,11 +91,8 @@ fn error(message: impl Into<String>) -> HubError {
 
 fn package_root() -> HubResult<PathBuf> {
     let exe = std::env::current_exe().map_err(|e| error(e.to_string()))?;
-    exe.ancestors()
-        .skip(1)
-        .take(4)
+    crate::extension_center::resolve_package_root(&exe, |p| p.join("Android/bridge.json").is_file())
         .map(|p| p.join("Android"))
-        .find(|p| p.join("bridge.json").is_file())
         .ok_or_else(|| {
             error("未找到配套安卓文件。请完整解压电脑版 ZIP，保留 Hub 与 Android 文件夹。")
         })
@@ -127,11 +124,9 @@ fn checked_file(
     let hash = files
         .get(relative)
         .ok_or_else(|| error(format!("安卓清单缺少 {relative}")))?;
-    let target = root
-        .join(path)
-        .canonicalize()
+    let target = dunce::canonicalize(root.join(path))
         .map_err(|_| error(format!("缺少 {relative}，请重新完整解压。")))?;
-    let canonical_root = root.canonicalize().map_err(|e| error(e.to_string()))?;
+    let canonical_root = dunce::canonicalize(root).map_err(|e| error(e.to_string()))?;
     if !target.starts_with(canonical_root) {
         return Err(error("安卓文件路径超出安装包。"));
     }
@@ -483,7 +478,8 @@ mod tests {
             "worker.exe".to_owned(),
             hex::encode(Sha256::digest(b"expected")),
         )]);
-        assert!(checked_file(root.path(), &files, "worker.exe").is_ok());
+        let verified = checked_file(root.path(), &files, "worker.exe").unwrap();
+        assert!(!verified.to_string_lossy().starts_with(r"\\?\"));
         assert!(checked_file(root.path(), &files, "../worker.exe").is_err());
         assert!(checked_file(root.path(), &files, "missing.exe").is_err());
         std::fs::write(root.path().join("worker.exe"), b"changed").unwrap();

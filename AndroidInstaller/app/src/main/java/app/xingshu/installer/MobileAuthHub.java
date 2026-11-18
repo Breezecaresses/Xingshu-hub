@@ -29,6 +29,21 @@ final class MobileAuthHub {
     private static final String PREF_UID = "mobile_hub_uid";
     private static final String PREF_NICK = "mobile_hub_nick";
     private static final String PREF_PLATFORM = "mobile_hub_platform";
+    private static final String PREF_PENDING_WEB_REQUEST_ID = "mobile_hub_pending_web_request_id";
+    private static final String PREF_PENDING_WEB_VERIFIER = "mobile_hub_pending_web_verifier";
+    private static final String PREF_PENDING_WEB_DEADLINE_MS = "mobile_hub_pending_web_deadline_ms";
+
+    static final class PendingWebLogin {
+        final String requestId;
+        final String verifier;
+        final long deadlineEpochMs;
+
+        PendingWebLogin(String requestId, String verifier, long deadlineEpochMs) {
+            this.requestId = requestId;
+            this.verifier = verifier;
+            this.deadlineEpochMs = deadlineEpochMs;
+        }
+    }
 
     static final class BoundAccount {
         final String token;
@@ -112,6 +127,41 @@ final class MobileAuthHub {
             .remove(PREF_UID)
             .remove(PREF_NICK)
             .remove(PREF_PLATFORM)
+            .apply();
+    }
+
+    static void savePendingWebLogin(SharedPreferences prefs, DeviceStart start, long deadlineEpochMs) {
+        if (prefs == null || start == null || start.requestId == null || start.requestId.isEmpty()
+                || start.verifier == null || start.verifier.isEmpty()) {
+            return;
+        }
+        prefs.edit()
+            .putString(PREF_PENDING_WEB_REQUEST_ID, start.requestId)
+            .putString(PREF_PENDING_WEB_VERIFIER, start.verifier)
+            .putLong(PREF_PENDING_WEB_DEADLINE_MS, deadlineEpochMs)
+            .apply();
+    }
+
+    static PendingWebLogin loadPendingWebLogin(SharedPreferences prefs, long nowEpochMs) {
+        if (prefs == null) return null;
+        String rid = prefs.getString(PREF_PENDING_WEB_REQUEST_ID, "");
+        String verifier = prefs.getString(PREF_PENDING_WEB_VERIFIER, "");
+        long deadline = prefs.getLong(PREF_PENDING_WEB_DEADLINE_MS, 0L);
+        if (rid == null || !rid.matches("[A-Za-z0-9_-]{32}")
+                || verifier == null || !verifier.matches("[A-Za-z0-9._~-]{43,128}")
+                || deadline <= nowEpochMs) {
+            clearPendingWebLogin(prefs);
+            return null;
+        }
+        return new PendingWebLogin(rid, verifier, deadline);
+    }
+
+    static void clearPendingWebLogin(SharedPreferences prefs) {
+        if (prefs == null) return;
+        prefs.edit()
+            .remove(PREF_PENDING_WEB_REQUEST_ID)
+            .remove(PREF_PENDING_WEB_VERIFIER)
+            .remove(PREF_PENDING_WEB_DEADLINE_MS)
             .apply();
     }
 
@@ -250,7 +300,7 @@ final class MobileAuthHub {
         body.put("device_id", deviceId);
         body.put("code_challenge", pkce[1]);
         body.put("copy_safe", Boolean.TRUE);
-        HttpReply reply = postJson("/auth/device", body, null, null, null, null, 20000);
+        HttpReply reply = requestJsonWithRetry("POST", "/auth/device", body, null, null, null, null, 20000, 1);
         if (reply.code != 200) {
             throw new IOException(extractError(reply, "无法获取星枢官网授权页"));
         }
@@ -268,7 +318,7 @@ final class MobileAuthHub {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("request_id", requestId);
         body.put("code_verifier", verifier);
-        HttpReply reply = postJson("/auth/device/poll", body, null, null, null, null, 20000);
+        HttpReply reply = requestJsonWithRetry("POST", "/auth/device/poll", body, null, null, null, null, 20000, 1);
         if (reply.code != 200) {
             throw new IOException(extractError(reply, "查询授权状态失败"));
         }
@@ -284,11 +334,13 @@ final class MobileAuthHub {
             }
             return new PollOutcome(status, new BoundAccount(accessToken, uid, nick, platform), "");
         }
-        return new PollOutcome(status, null, MiniJson.stringField(reply.body, "error"));
+        String error = MiniJson.stringField(reply.body, "error");
+        if (error.isEmpty()) error = MiniJson.stringField(reply.body, "message");
+        return new PollOutcome(status, null, error);
     }
 
     static String fetchAccountSummary(String bearerToken) throws Exception {
-        HttpReply reply = requestJson("GET", "/account/data", null, null, null, null, bearerToken, 20000);
+        HttpReply reply = requestJsonWithRetry("GET", "/account/data", null, null, null, null, bearerToken, 20000, 1);
         if (reply.code == 401) throw new IOException("UNAUTHORIZED");
         if (reply.code != 200) throw new IOException(extractError(reply, "读取云端资料失败"));
         Map<String, Object> account = MiniJson.objectField(reply.body, "account");
@@ -326,6 +378,26 @@ final class MobileAuthHub {
         return requestJson("POST", path, jsonBody, reqOrigin, cookie, csrf, bearer, readTimeoutMs);
     }
 
+    private static HttpReply requestJsonWithRetry(String method, String path, Map<String, Object> jsonBody, String reqOrigin,
+            String cookie, String csrf, String bearer, int readTimeoutMs, int maxRetries) throws Exception {
+        IOException last = null;
+        for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                return requestJson(method, path, jsonBody, reqOrigin, cookie, csrf, bearer, readTimeoutMs);
+            } catch (IOException err) {
+                last = err;
+                if (attempt >= maxRetries) break;
+                try {
+                    Thread.sleep(250L);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw err;
+                }
+            }
+        }
+        throw last;
+    }
+
     private static HttpReply requestJson(String method, String path, Map<String, Object> jsonBody, String reqOrigin,
             String cookie, String csrf, String bearer, int readTimeoutMs) throws Exception {
         URL url = new URL(ORIGIN + path);
@@ -340,6 +412,7 @@ final class MobileAuthHub {
         conn.setDoOutput("POST".equals(method));
         conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
         conn.setRequestProperty("User-Agent", "XingShu-Android-Hub/1");
+        conn.setRequestProperty("Connection", "close");
         if (reqOrigin != null) conn.setRequestProperty("Origin", reqOrigin);
         if (cookie != null) conn.setRequestProperty("Cookie", cookie);
         if (csrf != null) conn.setRequestProperty("X-XingShu-CSRF", csrf);

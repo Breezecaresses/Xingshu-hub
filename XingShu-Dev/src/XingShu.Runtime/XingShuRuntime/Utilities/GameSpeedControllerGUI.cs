@@ -88,6 +88,7 @@ internal sealed class GameSpeedControllerGUI : MonoBehaviour
 
 	public static void Install(GameObject host)
 	{
+		PingDisplayTiming.EnsureInitialized();
 		if (host != null && host.GetComponent<GameSpeedControllerGUI>() == null)
 		{
 			host.AddComponent<GameSpeedControllerGUI>();

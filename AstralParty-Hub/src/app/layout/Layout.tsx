@@ -1,15 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { api } from '../../shared/api/tauri';
 import type { DiagnosticReport } from '../../shared/types';
-import { ShieldCheck, AlertTriangle, Menu } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Menu, FolderUp } from 'lucide-react';
 import { useTranslation, LanguageSwitcher } from '../../i18n';
 import { UpdatePromptController } from '../../components/UpdatePromptModal';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { isTauriRuntime } from '../../shared/runtime';
-import { GitHubRepoLink } from '../../components/GitHubRepoLink';
 import { DesktopWindowBar } from './DesktopWindowBar';
+import { enqueueDroppedModPaths } from '../../shared/modDropBridge';
 
 export const Layout: React.FC = () => {
   const [report, setReport] = useState<DiagnosticReport | null>(null);
@@ -18,7 +18,11 @@ export const Layout: React.FC = () => {
   const contentRef = useRef<HTMLElement>(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [dragOverWindow, setDragOverWindow] = useState(false);
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -157,6 +161,45 @@ export const Layout: React.FC = () => {
     }
   }, [appTitle, webMode]);
 
+  useEffect(() => {
+    if (!isTauriRuntime()) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    try {
+      const appWin = getCurrentWebviewWindow();
+      appWin
+        .onDragDropEvent((event) => {
+          if (disposed) return;
+          const payload = event.payload;
+          if (payload.type === 'enter' || payload.type === 'over') {
+            setDragOverWindow(true);
+          } else if (payload.type === 'leave') {
+            setDragOverWindow(false);
+          } else if (payload.type === 'drop') {
+            setDragOverWindow(false);
+            if (payload.paths?.length) {
+              enqueueDroppedModPaths(payload.paths);
+              if (pathnameRef.current !== '/extensions/mods') {
+                navigate('/extensions/mods');
+              }
+            }
+          }
+        })
+        .then((fn) => {
+          if (disposed) fn();
+          else unlisten = fn;
+        })
+        .catch(() => {});
+    } catch {
+      // Ignored outside Tauri webview
+    }
+    return () => {
+      disposed = true;
+      setDragOverWindow(false);
+      unlisten?.();
+    };
+  }, [navigate]);
+
   const statusClass =
     report?.overall_status === 'HEALTHY'
       ? 'healthy'
@@ -202,9 +245,7 @@ export const Layout: React.FC = () => {
             >
               <Menu size={18} />
             </button>
-            <span className="top-bar-app">{appTitle}</span>
-            <span className="top-bar-divider" style={{ color: 'var(--text-muted)' }}>/</span>
-            <span className="top-bar-subtitle" style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>
+            <span className="top-bar-subtitle" style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
               {webMode
                 ? (locale === 'zh-CN' ? '网页版 · 回放分析与公开资料查询' : 'Web Edition · Cloud Replay & Lookup')
                 : (report?.snapshot.primary_game ? report.snapshot.primary_game.install_path : t('common.scanningGameDir'))}
@@ -213,7 +254,6 @@ export const Layout: React.FC = () => {
 
           <div className="top-bar-status">
             <LanguageSwitcher />
-            <GitHubRepoLink variant="pill" label="GitHub" hideLabelOnMobile />
             <div className={`status-pill ${webMode ? 'healthy' : statusClass}`}>
               <span className="pulse-dot" />
               <span>{webMode ? (locale === 'zh-CN' ? '网页版在线' : 'Web Ready') : statusLabel}</span>
@@ -245,8 +285,17 @@ export const Layout: React.FC = () => {
         <span><i className={`desktop-status-dot ${statusClass}`} />{report?.snapshot.primary_game
           ? (locale === 'zh-CN' ? '游戏目录已连接' : 'Game directory connected')
           : (locale === 'zh-CN' ? '等待选择游戏目录' : 'Select a game directory')}</span>
-        <span>{locale === 'zh-CN' ? '星枢工作台' : 'XingShu Workspace'} · v0.1.6-beta.2</span>
+        <span>{locale === 'zh-CN' ? '星枢工作台' : 'XingShu Workspace'} · v0.1.6</span>
       </footer>}
+      {!webMode && dragOverWindow && (
+        <div className="global-mod-drop-overlay" aria-live="polite">
+          <div className="global-mod-drop-card">
+            <FolderUp size={34} />
+            <strong>{locale === 'zh-CN' ? '松开鼠标以检测并安装模组' : 'Drop mod package or folder to inspect'}</strong>
+            <span>{locale === 'zh-CN' ? '支持 .zip、.xspkg、.apmm、.bundle 或解压后的模组文件夹' : 'Supports .zip, .xspkg, .apmm, .bundle, or extracted mod folders'}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

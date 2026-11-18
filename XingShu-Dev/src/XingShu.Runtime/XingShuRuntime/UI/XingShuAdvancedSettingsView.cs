@@ -34,6 +34,7 @@ namespace XingShuRuntime.UI
         private Text _widgetTextValueText;
         private Slider _widgetScaleSlider;
         private Text _widgetScaleValueText;
+        private XingShuStatsMetricsPanel _metricsPanel;
 
         // Card B: 悬浮交互与辅助球 (Assist Ball & Menu)
         private Toggle _autoHideToggle;
@@ -174,7 +175,7 @@ namespace XingShuRuntime.UI
 
         private void BuildStatsWidgetCard(GameObject parent)
         {
-            GameObject cardGo = CreateCardContainer(parent, "Card_StatsWidgetSettings", 356f);
+            GameObject cardGo = CreateCardContainer(parent, "Card_StatsWidgetSettings", 492f);
 
             Text cardTitle = XingShuUIFactory.CreateText(cardGo, "CardTitle", "对局数据挂件设置", 16, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
             RectTransform ctRt = cardTitle.rectTransform;
@@ -297,6 +298,8 @@ namespace XingShuRuntime.UI
             rpbRt.pivot = new Vector2(1f, 1f);
             rpbRt.anchoredPosition = new Vector2(-24f, -298f);
             rpbRt.sizeDelta = new Vector2(130f, 30f);
+
+            _metricsPanel = new XingShuStatsMetricsPanel(cardGo, -340f);
 
             Text noteText = XingShuUIFactory.CreateText(cardGo, "Note", "位置重置为屏幕右上默认停靠点 (X: 1.0, Y: 0.12)；缩放范围为 0.60x ~ 2.00x", 11, XingShuUITheme.MutedText, TextAnchor.MiddleLeft);
             RectTransform ntRt = noteText.rectTransform;
@@ -603,6 +606,8 @@ namespace XingShuRuntime.UI
                     if (_widgetScaleValueText != null) _widgetScaleValueText.text = $"{Mathf.RoundToInt(scale * 100f)}%";
                 }
 
+                _metricsPanel?.SyncFromConfig();
+
                 // Card B
                 bool autoHide = XingShuConfigService.GetBool(XingShuConfigKeys.AssistAutoHide, XingShuConfigKeys.AssistAutoHideDefault);
                 if (!_lastObservedAutoHide.HasValue || _lastObservedAutoHide.Value != autoHide)
@@ -864,6 +869,9 @@ namespace XingShuRuntime.UI
             // F. 统计挂件位置 X/Y
             XingShuConfigService.SetFloat(StatsXKey, XingShuConfigKeys.StatsWidgetXDefault);
             XingShuConfigService.SetFloat(StatsYKey, XingShuConfigKeys.StatsWidgetYDefault);
+
+            // F2. 统计挂件自定义显示指标
+            XingShuConfigService.SetInt(XingShuConfigKeys.StatsWidgetMetrics, XingShuConfigKeys.StatsWidgetMetricsDefault);
 
             // G. Assist AutoHide
             XingShuConfigService.SetBool(XingShuConfigKeys.AssistAutoHide, XingShuConfigKeys.AssistAutoHideDefault);

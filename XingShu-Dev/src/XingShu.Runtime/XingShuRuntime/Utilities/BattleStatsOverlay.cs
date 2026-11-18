@@ -626,13 +626,20 @@ public sealed class BattleStatsOverlay : MonoBehaviour
 				continue;
 			}
 			string text = "未知角色";
+			int heroId = 0;
 			if (player.characterConfig != null)
 			{
+				heroId = player.characterConfig.Id;
 				text = CharacterHandle.GetCharacterName(player.characterConfig.Id, player.characterConfig.CharacterType);
+			}
+			if (heroId <= 0 && player.Hero != null)
+			{
+				heroId = player.Hero.HeroId;
 			}
 			_ledger.Register(player.Id, player.Slot, player.GetNick());
 			var ledgerRow = _ledger.Rows[player.Id];
 			ledgerRow.Character = text;
+			ledgerRow.HeroId = heroId;
 			// Hero.Round is not maintained by the client round notification.
 			ledgerRow.Turns = Math.Max(0, room.Round);
 			ledgerRow.Gold = Math.Max(0, player.Hero?.Gold ?? 0);

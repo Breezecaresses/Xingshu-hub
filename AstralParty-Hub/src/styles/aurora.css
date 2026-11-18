@@ -2122,3 +2122,43 @@ summary:focus-visible {
     min-height: 44px;
   }
 }
+
+.global-mod-drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(252, 251, 248, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.global-mod-drop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 36px 48px;
+  border-radius: 20px;
+  border: 2px dashed var(--accent, #e8680a);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--text-primary, #1c1c1c);
+  box-shadow: 0 24px 60px rgba(28, 28, 28, 0.16);
+  text-align: center;
+}
+
+.global-mod-drop-card svg {
+  color: var(--accent, #e8680a);
+}
+
+.global-mod-drop-card strong {
+  font-size: 17px;
+}
+
+.global-mod-drop-card span {
+  font-size: 12.5px;
+  color: var(--text-secondary, #52504b);
+}

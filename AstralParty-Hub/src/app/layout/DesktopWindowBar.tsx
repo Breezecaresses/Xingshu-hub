@@ -31,9 +31,8 @@ export function DesktopWindowBar({ title, english }: Props) {
       if (event.detail === 2) run('toggleMaximize');
       else getCurrentWindow().startDragging().catch(() => setError(english ? 'Window move failed. Please retry.' : '窗口移动未完成，请重试。'));
     }}>
-      <Sparkles size={14} aria-hidden="true" data-tauri-drag-region />
+      <Sparkles size={13} aria-hidden="true" data-tauri-drag-region />
       <span data-tauri-drag-region>{title}</span>
-      <span className="desktop-workspace-tag" data-tauri-drag-region>{english ? 'Desktop Workspace' : '桌面工作区'}</span>
     </div>
     {error && <span className="desktop-window-error" role="alert">{error}</span>}
     <div className="desktop-window-controls">

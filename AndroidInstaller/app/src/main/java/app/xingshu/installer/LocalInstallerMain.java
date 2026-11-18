@@ -15,7 +15,7 @@ public final class LocalInstallerMain {
         try {
             int uid = android.os.Process.myUid();
             if (uid != 2000 && uid != 0) throw new SecurityException("需要本机无线调试授权");
-            if (args.length < 1 || args.length > 2) throw new IllegalArgumentException("操作不匹配");
+            if (args.length < 1 || args.length > 3) throw new IllegalArgumentException("操作不匹配");
 
             InstallerEngine engine = new InstallerEngine();
             String operation = args[0];
@@ -36,6 +36,13 @@ public final class LocalInstallerMain {
                     break;
                 case "launch":
                     result = engine.launchGame(packageName);
+                    break;
+                case "handoff":
+                    if (args.length != 3 || !args[2].matches("[A-Za-z0-9+/=]{8,512}")) {
+                        throw new IllegalArgumentException("同步凭据格式无效");
+                    }
+                    String json = new String(Base64.getDecoder().decode(args[2]), StandardCharsets.UTF_8);
+                    result = engine.writeGameHandoff(packageName, json);
                     break;
                 case "inspect":
                     result = engine.inspect(packageName);

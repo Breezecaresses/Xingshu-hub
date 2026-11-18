@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using XingShu.Cards;
 using XingShuRuntime.MatchPort;
 using XingShuRuntime.Utilities;
 
@@ -221,6 +222,18 @@ class DecisionAndStatsTests
         Check(retained.Read(101, null) == null, "turning off collection can explicitly clear the retained result");
         ledger.Clear("match-b");
         Check(ledger.Rows.Count == 0 && ledger.Issues.Count == 0, "new match clears observed statistics");
+        Check(StatsWidgetMetricCatalog.Count == 8 && Array.IndexOf(StatsWidgetMetricCatalog.Labels, "对局轮数") == -1 && StatsWidgetMetricCatalog.FrameMetricIndices[7] == 8,
+            "metric catalog removes turns and maps movement to Metrics[8]");
+        Check(StatsWidgetMetricCatalog.NormalizeMask(0) == StatsWidgetMetricCatalog.DefaultMask && StatsWidgetMetricCatalog.SetEnabled(1, 0, false) == 1,
+            "metric catalog enforces at least one enabled metric");
+        Check(StatsWidgetMetricCatalog.CountEnabled(StatsWidgetMetricCatalog.SetEnabled(StatsWidgetMetricCatalog.DefaultMask, 2, false)) == 7,
+            "metric catalog toggles individual metrics cleanly");
+        Check(CharacterEmoteRegistry.PickStaticEmote(101, 0).StartsWith("UT_Item_Emoji_101_") && CharacterEmoteRegistry.PickStaticEmote(307, 0) == "",
+            "static emote registry picks static emoji for regular heroes and skips preview heroes");
+        ledger.Register(1, 0, "Alpha");
+        ledger.Rows[1].HeroId = 101;
+        var heroFrame = StatsWidgetPresenter.Build(ledger, new HashSet<long> { 1 }, true, DateTime.Now, "");
+        Check(heroFrame.Players[0].HeroId == 101, "presenter propagates HeroId to widget frame");
         Console.WriteLine(count + " decision/statistics checks passed");
     }
 }

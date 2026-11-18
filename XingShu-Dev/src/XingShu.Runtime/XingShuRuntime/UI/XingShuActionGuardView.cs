@@ -33,10 +33,12 @@ namespace XingShuRuntime.UI
         // Card 4: 原生快捷通信卡片
         private Toggle _autoThanksToggle;
         private Toggle _autoPraiseToggle;
-        private Slider _praiseScaleSlider;
-        private Text _praiseScaleValueText;
+        private Slider _praiseScaleSlider, _praiseOffsetXSlider, _praiseOffsetYSlider;
+        private Text _praiseScaleValueText, _praiseOffsetXText, _praiseOffsetYText, _praiseParamText;
         private Toggle _dailyShopToggle;
         private Text _dailyShopStatus;
+        private Toggle _settlementScreenshotToggle;
+        private Text _settlementScreenshotPathText;
 
         // 缓存观测值 (0 GC / 仅状态变化时更新 UI)
         private float _lastSyncTime;
@@ -271,7 +273,7 @@ namespace XingShuRuntime.UI
             cpRt.anchorMax = new Vector2(1f, 1f);
             cpRt.pivot = new Vector2(0.5f, 1f);
             cpRt.anchoredPosition = new Vector2(0f, -464f);
-            cpRt.sizeDelta = new Vector2(0f, 142f);
+            cpRt.sizeDelta = new Vector2(0f, 276f);
 
             Image cpBg = cardPraise.AddComponent<Image>();
             cpBg.sprite = cardBaseSprite;
@@ -332,8 +334,25 @@ namespace XingShuRuntime.UI
             pssRt.anchorMin = new Vector2(0f, 1f);
             pssRt.anchorMax = new Vector2(1f, 1f);
             pssRt.pivot = new Vector2(0.5f, 1f);
-            pssRt.anchoredPosition = new Vector2(0f, -98f);
-            pssRt.sizeDelta = new Vector2(-40f, 32f);
+            pssRt.anchoredPosition = new Vector2(0f, -94f);
+            pssRt.sizeDelta = new Vector2(-40f, 28f);
+
+            AddPraiseOffsetRow(cardPraise, "PraiseOffsetX", "点赞 X 偏移", 128f, XingShuConfigKeys.AutoPraiseOffsetMin, XingShuConfigKeys.AutoPraiseOffsetMax,
+                XingShuAutoPraise.OffsetX, v => XingShuAutoPraise.OffsetX = Mathf.Round(v), out _praiseOffsetXSlider, out _praiseOffsetXText);
+            AddPraiseOffsetRow(cardPraise, "PraiseOffsetY", "点赞 Y 偏移", 184f, XingShuConfigKeys.AutoPraiseOffsetMin, XingShuConfigKeys.AutoPraiseOffsetMax,
+                XingShuAutoPraise.OffsetY, v => XingShuAutoPraise.OffsetY = Mathf.Round(v), out _praiseOffsetYSlider, out _praiseOffsetYText);
+
+            _praiseParamText = XingShuUIFactory.CreateText(cardPraise, "PraiseParamSummary", "", 11, XingShuUITheme.MutedText, TextAnchor.MiddleLeft);
+            var ppRt = _praiseParamText.rectTransform;
+            ppRt.anchorMin = ppRt.anchorMax = ppRt.pivot = new Vector2(0f, 1f);
+            ppRt.anchoredPosition = new Vector2(20f, -242f); ppRt.sizeDelta = new Vector2(460f, 22f);
+
+            Button resetPraisePos = XingShuUIFactory.CreateButton(cardPraise, "ResetPraisePos", "重置位置",
+                XingShuUIAssetService.GetSprite("button_secondary.png"), XingShuUITheme.Card, XingShuUITheme.PrimaryText,
+                () => { XingShuAutoPraise.ResetPosition(); SyncPraiseScale(); }, 12);
+            var rpRt = resetPraisePos.GetComponent<RectTransform>();
+            rpRt.anchorMin = rpRt.anchorMax = rpRt.pivot = new Vector2(1f, 1f);
+            rpRt.anchoredPosition = new Vector2(-20f, -238f); rpRt.sizeDelta = new Vector2(88f, 28f);
 
             Text socialDesc = XingShuUIFactory.CreateText(_root, "SocialDesc", "• 怪物索敌已接入：在“击飞预测”页调整地图索敌显示（最大10格推演）。", 11, XingShuUITheme.MutedText, TextAnchor.MiddleLeft);
             RectTransform sdRt = socialDesc.rectTransform;
@@ -364,6 +383,51 @@ namespace XingShuRuntime.UI
             shopToggleRt.anchoredPosition = new Vector2(-20f, -12f);
             shopToggleRt.sizeDelta = new Vector2(165f, 34f);
             shopCard.transform.SetAsFirstSibling();
+
+            GameObject screenshotCard = XingShuUIFactory.CreateUIObject("Card_AutoSettlementScreenshot", _root);
+            screenshotCard.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 148f);
+            Image shotBg = screenshotCard.AddComponent<Image>();
+            shotBg.sprite = cardBaseSprite;
+            shotBg.type = Image.Type.Sliced;
+            shotBg.color = XingShuUIAssetService.IsFallbackSprite(cardBaseSprite) ? XingShuUITheme.Card : Color.white;
+            Text shotTitle = XingShuUIFactory.CreateText(screenshotCard, "Title", "自动结算战绩截图", 20, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
+            PlaceShopText(shotTitle, -12f, 28f);
+            Text shotDesc = XingShuUIFactory.CreateText(screenshotCard, "Description", "对局结算战绩界面稳定后自动保存 PNG 截图，每局仅保存一次。", 13, XingShuUITheme.SecondaryText, TextAnchor.UpperLeft);
+            PlaceShopText(shotDesc, -48f, 26f);
+            _settlementScreenshotPathText = XingShuUIFactory.CreateText(screenshotCard, "Status", FormatScreenshotPathSummary(), 12, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
+            var spRt = _settlementScreenshotPathText.rectTransform;
+            spRt.anchorMin = new Vector2(0f, 1f);
+            spRt.anchorMax = new Vector2(1f, 1f);
+            spRt.pivot = new Vector2(0f, 1f);
+            spRt.anchoredPosition = new Vector2(20f, -86f);
+#if !XINGSHU_ANDROID_PREVIEW
+            spRt.sizeDelta = new Vector2(-190f, 46f);
+            Button openFolderBtn = XingShuUIFactory.CreateButton(
+                screenshotCard,
+                "OpenScreenshotFolder",
+                "打开截图目录",
+                XingShuUIAssetService.GetSprite("button_secondary.png"),
+                XingShuUITheme.Card,
+                XingShuUITheme.PrimaryText,
+                () => XingShuRuntime.MatchPort.SettlementScreenshot.OpenFolder(),
+                12);
+            var ofRt = openFolderBtn.GetComponent<RectTransform>();
+            ofRt.anchorMin = ofRt.anchorMax = new Vector2(1f, 1f);
+            ofRt.pivot = new Vector2(1f, 1f);
+            ofRt.anchoredPosition = new Vector2(-20f, -92f);
+            ofRt.sizeDelta = new Vector2(140f, 34f);
+#else
+            spRt.sizeDelta = new Vector2(-40f, 46f);
+#endif
+            _settlementScreenshotToggle = XingShuUIFactory.CreateToggle(screenshotCard, "AutoScreenshotToggle", "自动截图", XingShuRuntime.MatchPort.SettlementScreenshot.IsEnabled,
+                value => { if (!_suppressCallbacks) XingShuRuntime.MatchPort.SettlementScreenshot.SetEnabled(value); });
+            var shotToggleRt = _settlementScreenshotToggle.GetComponent<RectTransform>();
+            shotToggleRt.anchorMin = shotToggleRt.anchorMax = new Vector2(1f, 1f);
+            shotToggleRt.pivot = new Vector2(1f, 1f);
+            shotToggleRt.anchoredPosition = new Vector2(-20f, -12f);
+            shotToggleRt.sizeDelta = new Vector2(165f, 34f);
+            screenshotCard.transform.SetSiblingIndex(1);
+
             var cards = new System.Collections.Generic.List<RectTransform>();
             foreach (Transform child in _root.transform) cards.Add(child.GetComponent<RectTransform>());
             XingShuUIFactory.CreateVerticalScrollView(_root, "AutomationScroll", out GameObject content);
@@ -378,6 +442,15 @@ namespace XingShuRuntime.UI
                 element.preferredHeight = element.minHeight = height;
                 element.flexibleHeight = 0f;
             }
+        }
+
+        private static string FormatScreenshotPathSummary()
+        {
+            string status = XingShuRuntime.MatchPort.SettlementScreenshot.Status;
+            string lastPath = XingShuRuntime.MatchPort.SettlementScreenshot.LastSavedPath;
+            string folder = XingShuRuntime.MatchPort.SettlementScreenshot.OutputFolder;
+            string target = !string.IsNullOrEmpty(lastPath) ? "最近保存：" + lastPath : "保存目录：" + (folder ?? "未就绪");
+            return status + "\n" + target;
         }
 
         private static void PlaceShopText(Text text, float y, float height)
@@ -436,6 +509,12 @@ namespace XingShuRuntime.UI
             _dailyShopToggle.isOn = DailyStarCoinShop.IsEnabled;
             _dailyShopToggle.interactable = DailyStarCoinShop.CanConfigure;
             if (_dailyShopStatus.text != DailyStarCoinShop.Status) _dailyShopStatus.text = DailyStarCoinShop.Status;
+            if (_settlementScreenshotToggle != null) _settlementScreenshotToggle.isOn = XingShuRuntime.MatchPort.SettlementScreenshot.IsEnabled;
+            if (_settlementScreenshotPathText != null)
+            {
+                string summary = FormatScreenshotPathSummary();
+                if (_settlementScreenshotPathText.text != summary) _settlementScreenshotPathText.text = summary;
+            }
             _suppressCallbacks = false;
 
             bool enabled = AutoResetActionTimeGUI.IsEnabled;
@@ -568,16 +647,49 @@ namespace XingShuRuntime.UI
             SyncPraiseScale();
         }
 
+        private void AddPraiseOffsetRow(GameObject card, string id, string label, float top, float min, float max, float initial,
+            UnityEngine.Events.UnityAction<float> onChanged, out Slider slider, out Text valueText)
+        {
+            Text lbl = XingShuUIFactory.CreateText(card, id + "Label", label, 12, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft);
+            var lRt = lbl.rectTransform;
+            lRt.anchorMin = lRt.anchorMax = lRt.pivot = new Vector2(0f, 1f);
+            lRt.anchoredPosition = new Vector2(20f, -top); lRt.sizeDelta = new Vector2(220f, 20f);
+
+            valueText = XingShuUIFactory.CreateText(card, id + "Value", FormatSignedPx(initial), 12, XingShuUITheme.NumericAccent, TextAnchor.MiddleRight, FontStyle.Bold);
+            var vRt = valueText.rectTransform;
+            vRt.anchorMin = vRt.anchorMax = vRt.pivot = new Vector2(1f, 1f);
+            vRt.anchoredPosition = new Vector2(-20f, -top); vRt.sizeDelta = new Vector2(72f, 20f);
+
+            slider = XingShuUIFactory.CreateSlider(card, id + "Slider", min, max, initial,
+                v => { if (!_suppressCallbacks) { onChanged(v); SyncPraiseScale(); } });
+            var sRt = slider.GetComponent<RectTransform>();
+            sRt.anchorMin = new Vector2(0f, 1f); sRt.anchorMax = new Vector2(1f, 1f); sRt.pivot = new Vector2(0.5f, 1f);
+            sRt.anchoredPosition = new Vector2(0f, -(top + 22f)); sRt.sizeDelta = new Vector2(-40f, 26f);
+        }
+
+        private static string FormatSignedPx(float value)
+        {
+            int rounded = Mathf.RoundToInt(value);
+            return (rounded >= 0 ? "+" : "") + rounded + "px";
+        }
+
         private void SyncPraiseScale()
         {
             float scale = XingShuAutoPraise.PraiseScale;
+            float ox = XingShuAutoPraise.OffsetX;
+            float oy = XingShuAutoPraise.OffsetY;
+            _suppressCallbacks = true;
             if (_praiseScaleSlider != null && Mathf.Abs(_praiseScaleSlider.value - scale) > .001f)
-            {
-                _suppressCallbacks = true;
                 _praiseScaleSlider.value = scale;
-                _suppressCallbacks = false;
-            }
+            if (_praiseOffsetXSlider != null && Mathf.Abs(_praiseOffsetXSlider.value - ox) > .5f)
+                _praiseOffsetXSlider.value = ox;
+            if (_praiseOffsetYSlider != null && Mathf.Abs(_praiseOffsetYSlider.value - oy) > .5f)
+                _praiseOffsetYSlider.value = oy;
+            _suppressCallbacks = false;
             if (_praiseScaleValueText != null) _praiseScaleValueText.text = $"{Mathf.RoundToInt(scale * 100f)}%";
+            if (_praiseOffsetXText != null) _praiseOffsetXText.text = FormatSignedPx(ox);
+            if (_praiseOffsetYText != null) _praiseOffsetYText.text = FormatSignedPx(oy);
+            if (_praiseParamText != null) _praiseParamText.text = $"当前参数：大小 {Mathf.RoundToInt(scale * 100f)}% · 偏移 ({FormatSignedPx(ox)}, {FormatSignedPx(oy)})";
         }
 
         private void OnPraiseScaleSliderChanged(float val)

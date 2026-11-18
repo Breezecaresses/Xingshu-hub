@@ -15,6 +15,7 @@ import { WorkshopCreatorPage } from '../pages/extensions/WorkshopCreatorPage';
 import { PackagesPage } from '../pages/packages/PackagesPage';
 import { SpectatorPage } from '../pages/spectator/SpectatorPage';
 import { BridgePage } from '../pages/bridge/BridgePage';
+import { RoomLobbyPage } from '../pages/room/RoomLobbyPage';
 import { TransactionsPage } from '../pages/maintenance/TransactionsPage';
 import { BackupsPage } from '../pages/maintenance/BackupsPage';
 import { DiagnosticsPage } from '../pages/diagnostics/DiagnosticsPage';
@@ -92,7 +93,11 @@ export const router = createBrowserRouter([
         path: 'player/replay',
         element: <ReplayAnalyzerPage />,
       },
-      // XingShu Core Integration (desktop-only)
+      // XingShu Core Integration
+      {
+        path: 'room',
+        element: <RoomLobbyPage />,
+      },
       {
         path: 'runtime',
         element: desktopOnly(<Navigate to="/diagnostics?section=runtime" replace />),

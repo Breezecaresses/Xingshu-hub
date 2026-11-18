@@ -4,6 +4,11 @@ internal static class CameraSelectionPolicy
 {
 	internal static CameraControlMode Read(bool contract, bool fight, bool monster, bool card, int? screen, int? mode, int? status)
 	{
+		return Read(contract, fight, monster, card, screen, mode, status, selectingLand: false);
+	}
+
+	internal static CameraControlMode Read(bool contract, bool fight, bool monster, bool card, int? screen, int? mode, int? status, bool selectingLand)
+	{
 		if (!contract)
 		{
 			return CameraControlMode.Unavailable;
@@ -16,7 +21,7 @@ internal static class CameraSelectionPolicy
 		{
 			return CameraControlMode.Selection;
 		}
-		if (card)
+		if (card && !selectingLand)
 		{
 			return CameraControlMode.Selection;
 		}

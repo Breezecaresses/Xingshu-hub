@@ -415,7 +415,84 @@ export const api = {
     safeInvoke<WorkshopInstallResult>('workshop_download_and_install', { request }),
   workshopRestoreMod: (installationId: string, modId: string) =>
     safeInvoke<string>('workshop_restore_mod', { installationId, modId }),
+
+  // Drag-and-drop Community Mod / Package Inspector & Installer
+  inspectDroppedMod: (installationId: string, sourcePath: string) =>
+    safeInvoke<DroppedModInspectResult>('inspect_dropped_mod', { installationId, sourcePath }),
+  installDroppedMod: (installationId: string, sourcePath: string, includeCatalog: boolean) =>
+    safeInvoke<DroppedModInstallResult>('install_dropped_mod', { installationId, sourcePath, includeCatalog }),
+  restoreDroppedMod: (installationId: string, modId: string) =>
+    safeInvoke<string>('restore_dropped_mod', { installationId, modId }),
+  listDroppedMods: (installationId: string) =>
+    safeInvoke<DroppedModRecord[]>('list_dropped_mods', { installationId }, []),
+  stageDroppedModBytes: (fileName: string, bytes: number[]) =>
+    safeInvoke<string>('stage_dropped_mod_bytes', { fileName, bytes }),
 };
+
+export interface DroppedModTargetMatch {
+  sourceEntry: string;
+  targetRel: string;
+  bundleId: string;
+  targetKind: string;
+  size: number;
+  sha256: string;
+  currentSha256: string;
+  alreadySame: boolean;
+  isCatalog: boolean;
+  riskLevel: string;
+  conflictWith?: string | null;
+}
+
+export interface DroppedModUnmatchedFile {
+  sourceEntry: string;
+  reason: string;
+  size: number;
+}
+
+export interface DroppedModInspectResult {
+  modId: string;
+  displayName: string;
+  sourcePath: string;
+  sourceKind: string;
+  installationId: string;
+  gamePlatform: string;
+  gameRoot: string;
+  compatible: boolean;
+  canInstall: boolean;
+  alreadyInstalled: boolean;
+  hasCatalogBundle: boolean;
+  warnings: string[];
+  matchedFiles: DroppedModTargetMatch[];
+  unmatchedFiles: DroppedModUnmatchedFile[];
+  conflicts: string[];
+  previewFiles: string[];
+  docFiles: string[];
+  xspkgManifest?: HubPackageManifestV1 | null;
+}
+
+export interface DroppedModInstallResult {
+  modId: string;
+  displayName: string;
+  phase: string;
+  message: string;
+  installedCount: number;
+  backupId?: string | null;
+  transactionId?: string | null;
+}
+
+export interface DroppedModRecord {
+  modId: string;
+  name: string;
+  sourceKind: string;
+  phase: string;
+  installedAt: string;
+  fileCount: number;
+  targets: string[];
+  hasCatalog: boolean;
+  canRestore: boolean;
+  transactionId?: string | null;
+  backupId?: string | null;
+}
 
 export interface WorkshopDownloadFilePayload {
   target: string;

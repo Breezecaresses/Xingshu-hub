@@ -102,8 +102,153 @@ class ThinkingClockPatcher
             PatchObserver(module, library, "GameLogic.AccountLogic", "OnGetShowPlayerS2CServerCallBack", "ObserveCareer", true);
             PatchObserver(module, library, "GameLogic.AccountLogic", "OnGetPlayerFightRecordS2CServerCallBack", "ObserveDetail", true);
             PatchProgress(module, enabled.DeclaringType);
+            PatchPingTimers(module, hooks.MainModule);
+            PatchMarkEffects(module, hooks.MainModule);
+            PatchCameraJumps(module, hooks.MainModule);
             game.Write(args[2]);
             Console.WriteLine("Real-clock decision timers: " + count);
+        }
+    }
+
+    static void PatchPingTimers(ModuleDefinition module, ModuleDefinition hooksModule)
+    {
+        var pingTiming = hooksModule.Types.Single(t => t.FullName == "XingShuRuntime.Utilities.PingDisplayTiming");
+        var ensureInit = module.ImportReference(pingTiming.Methods.Single(m => m.Name == "EnsureInitialized"));
+        var pingState = hooksModule.Types.Single(t => t.FullName == "XingShuRuntime.Utilities.PingClockState");
+        var ctor = pingState.Methods.Single(m => m.IsConstructor && m.IsPublic);
+        var attach = pingState.Methods.Single(m => m.Name == "AttachStop");
+        var cancelField = pingState.Fields.Single(f => f.Name == "Cancelled");
+        var tickField = pingState.Fields.Single(f => f.Name == "Tick");
+        var owner = module.Types.FirstOrDefault(t => t.Name == "XingShuPingTimer");
+        if (owner == null)
+        {
+            owner = new TypeDefinition("", "XingShuPingTimer", TypeAttributes.NotPublic | TypeAttributes.Abstract | TypeAttributes.Sealed, module.TypeSystem.Object);
+            module.Types.Add(owner);
+        }
+        int pingCount = 0;
+        foreach (string typeName in new[] { "UI.UIExpression_Com_ChatItem", "UI.UIExpression_Com_ExpressionItem" })
+        {
+            var type = module.Types.Single(t => t.FullName == typeName);
+            var method = type.Methods.Single(m => m.Name == "RefreshInfo" && m.HasBody);
+            if (method.Body.Instructions.Any(i => i.Operand is MethodReference && ((MethodReference)i.Operand).DeclaringType.Name == owner.Name))
+            {
+                pingCount++;
+                continue;
+            }
+            var registrations = method.Body.Instructions.Where(i => IsTimerRegistration(i, owner.Name)).ToArray();
+            if (registrations.Length != 1)
+                throw new Exception("Expected one ping timer in " + method.FullName + ", found " + registrations.Length);
+            var call = registrations[0];
+            var register = (MethodReference)call.Operand;
+            if (register.Parameters.Count != 13 || register.Parameters[2].ParameterType.FullName != "System.Action" ||
+                register.Parameters[4].ParameterType.FullName != "System.Action" || register.Parameters[7].ParameterType.FullName != "System.Action`1<System.Single>")
+                throw new Exception("Unexpected ping timer signature in " + method.FullName);
+            var wrapper = new MethodDefinition("Register" + pingCount, MethodAttributes.Static | MethodAttributes.Assembly, module.ImportReference(register.ReturnType));
+            foreach (var p in register.Parameters) wrapper.Parameters.Add(new ParameterDefinition(p.Name, ParameterAttributes.None, module.ImportReference(p.ParameterType)));
+            owner.Methods.Add(wrapper);
+            wrapper.Body.InitLocals = true;
+            var state = new VariableDefinition(module.ImportReference(pingState));
+            wrapper.Body.Variables.Add(state);
+            var timer = new VariableDefinition(module.ImportReference(register.ReturnType));
+            wrapper.Body.Variables.Add(timer);
+            var il = wrapper.Body.GetILProcessor();
+            il.Emit(OpCodes.Call, ensureInit);
+            foreach (int i in new[] { 0, 1, 2, 4, 7 }) il.Emit(OpCodes.Ldarg, wrapper.Parameters[i]);
+            il.Emit(OpCodes.Newobj, module.ImportReference(ctor));
+            il.Emit(OpCodes.Stloc, state);
+            for (int i = 0; i < 13; i++)
+            {
+                if (i == 1) il.Emit(OpCodes.Ldc_R4, float.MaxValue);
+                else if (i == 2) il.Emit(OpCodes.Ldnull);
+                else if (i == 4 || i == 7)
+                {
+                    il.Emit(OpCodes.Ldloc, state);
+                    il.Emit(OpCodes.Ldfld, module.ImportReference(i == 4 ? cancelField : tickField));
+                }
+                else il.Emit(OpCodes.Ldarg, wrapper.Parameters[i]);
+            }
+            il.Emit(OpCodes.Call, register);
+            il.Emit(OpCodes.Stloc, timer);
+            var cancel = new MethodReference("Cancel", module.TypeSystem.Void, module.ImportReference(register.ReturnType)) { HasThis = true };
+            var actionCtor = new MethodReference(".ctor", module.TypeSystem.Void, module.ImportReference(register.Parameters[2].ParameterType)) { HasThis = true };
+            actionCtor.Parameters.Add(new ParameterDefinition(module.TypeSystem.Object));
+            actionCtor.Parameters.Add(new ParameterDefinition(module.TypeSystem.IntPtr));
+            il.Emit(OpCodes.Ldloc, state);
+            il.Emit(OpCodes.Ldloc, timer);
+            il.Emit(OpCodes.Ldftn, cancel);
+            il.Emit(OpCodes.Newobj, actionCtor);
+            il.Emit(OpCodes.Callvirt, module.ImportReference(attach));
+            il.Emit(OpCodes.Ldloc, timer);
+            il.Emit(OpCodes.Ret);
+            call.Operand = wrapper;
+            pingCount++;
+        }
+        if (pingCount != 2) throw new Exception("Expected two right-side ping timers, found " + pingCount);
+    }
+
+    static void PatchMarkEffects(ModuleDefinition module, ModuleDefinition hooksModule)
+    {
+        var pingTiming = hooksModule.Types.Single(t => t.FullName == "XingShuRuntime.Utilities.PingDisplayTiming");
+        var resolve = module.ImportReference(pingTiming.Methods.Single(m => m.Name == "ResolveEffectDuration"));
+        var effectType = module.Types.Single(t => t.FullName == "Core.Effect");
+        var keyField = module.ImportReference(effectType.Fields.Single(f => f.Name == "effectPoolKey"));
+
+        var gameEffect = module.Types.Single(t => t.FullName == "Core.GameEffect");
+        var play = gameEffect.Methods.Single(m => m.Name == "Play" && m.HasBody);
+        if (!Calls(play, "PingDisplayTiming::ResolveEffectDuration"))
+        {
+            var anchor = play.Body.Instructions.Single(i => i.OpCode.Code == Code.Ldfld && ((FieldReference)i.Operand).FullName.EndsWith("Core.GameEffect::duration"));
+            InsertDurationScaleAfter(play, anchor, keyField, resolve);
+        }
+        var playTimeline = gameEffect.Methods.Single(m => m.Name == "PlayTimeline" && m.HasBody);
+        if (!Calls(playTimeline, "PingDisplayTiming::ResolveEffectDuration"))
+        {
+            var anchor = playTimeline.Body.Instructions.Single(i => i.OpCode.Code == Code.Conv_R4 &&
+                i.Previous != null && i.Previous.Operand is MethodReference && ((MethodReference)i.Previous.Operand).Name == "get_duration");
+            InsertDurationScaleAfter(playTimeline, anchor, keyField, resolve);
+        }
+        var cycleEffect = module.Types.Single(t => t.FullName == "Core.GameCycleEffect");
+        var playLoop = cycleEffect.Methods.Single(m => m.Name == "PlayLoopEffect" && m.HasBody);
+        if (!Calls(playLoop, "PingDisplayTiming::ResolveEffectDuration"))
+        {
+            var anchor = playLoop.Body.Instructions.Single(i => i.OpCode.Code == Code.Div &&
+                i.Previous != null && i.Previous.Operand is MethodReference && ((MethodReference)i.Previous.Operand).Name == "get_effectSpeed");
+            InsertDurationScaleAfter(playLoop, anchor, keyField, resolve);
+        }
+    }
+
+    static void InsertDurationScaleAfter(MethodDefinition method, Instruction anchor, FieldReference keyField, MethodReference resolve)
+    {
+        method.Body.SimplifyMacros();
+        var il = method.Body.GetILProcessor();
+        var ldThis = il.Create(OpCodes.Ldarg_0);
+        var ldKey = il.Create(OpCodes.Ldfld, keyField);
+        var callResolve = il.Create(OpCodes.Call, resolve);
+        il.InsertAfter(anchor, callResolve);
+        il.InsertAfter(anchor, ldKey);
+        il.InsertAfter(anchor, ldThis);
+        method.Body.OptimizeMacros();
+    }
+
+    static void PatchCameraJumps(ModuleDefinition module, ModuleDefinition hooksModule)
+    {
+        var mapGui = hooksModule.Types.Single(t => t.FullName == "XingShuRuntime.Utilities.MapCameraGUI");
+        var jump = module.ImportReference(mapGui.Methods.Single(m => m.Name == "JumpToFreeCameraTarget"));
+        foreach (var target in new[] {
+            new[] { "GameLogic.BattleLandMessage", "ShowAddressInfo" },
+            new[] { "GameLogic.BattlePlayerMarkMessage", "ShowAddressInfo" },
+            new[] { "UI.BattleInfoPanel", "OnClickMiniMap" }
+        })
+        {
+            var type = module.Types.Single(t => t.FullName == target[0]);
+            var method = type.Methods.Single(m => m.Name == target[1] && m.HasBody);
+            if (Calls(method, "MapCameraGUI::JumpToFreeCameraTarget")) continue;
+            var calls = method.Body.Instructions.Where(i =>
+                i.Operand is MethodReference && ((MethodReference)i.Operand).FullName.Contains("CameraManager::ControlFreeCamera(")).ToArray();
+            if (calls.Length != 1)
+                throw new Exception("Expected one ControlFreeCamera jump in " + method.FullName + ", found " + calls.Length);
+            calls[0].OpCode = OpCodes.Call;
+            calls[0].Operand = jump;
         }
     }
 

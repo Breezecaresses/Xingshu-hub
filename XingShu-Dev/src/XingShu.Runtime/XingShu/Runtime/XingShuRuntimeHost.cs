@@ -47,6 +47,8 @@ namespace XingShu.Runtime
 
         public GameObject HostObject => gameObject;
 
+        public static string LastSettlementScreenshotPath => XingShuRuntime.MatchPort.SettlementScreenshot.LastSavedPath;
+
         public event Action<XingShuRuntimeContext> OnInitialized;
         public event Action OnShutdown;
 
@@ -70,6 +72,7 @@ namespace XingShu.Runtime
             {
                 GameObject targetHost = hostObject != null ? hostObject : gameObject;
                 XingShu.SpectatorTelemetry.SpectatorEventInterceptor.Initialize(targetHost);
+                XingShuRuntime.MatchPort.SettlementScreenshot.Install(targetHost);
                 LogLifecycle("[XingShuRuntimeHost.Initialize] SpectatorEventInterceptor 初始化完成");
             }
             catch (Exception ex)
@@ -263,6 +266,13 @@ namespace XingShu.Runtime
         private int _handshakePending;
         private float _lastMatchContextCheckTime = 0f;
         private bool _libraryWasPlaying;
+
+#if XINGSHU_ANDROID_PREVIEW
+        private void OnApplicationFocus(bool hasFocus)
+        {
+            AndroidCloudHands.OnAppFocusChanged(hasFocus);
+        }
+#endif
 
         private void Update()
         {

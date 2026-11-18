@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke, isTauri } from '@tauri-apps/api/core';
+import { NavLink } from 'react-router-dom';
 import { assetUrl, isTauriRuntime } from '../../shared/runtime';
 import { api } from '../../shared/api/tauri';
 import { accountKey, defaultLibraryKey, gameCatalog, plainGameText, platformName, sessionKey } from '../../shared/gameLibrary';
@@ -149,8 +150,16 @@ export function LibraryModal({ title, close, children }: { title: string; close:
     <header><h2>{title}</h2><button className="btn btn-secondary" aria-label="关闭详情" onClick={close}>关闭 ×</button></header><div className="library-modal-body">{children}</div>
   </dialog>;
 }
-export function LibraryStats({ items }: { items: { label: string; value: React.ReactNode }[] }) {
-  return <div className="library-stats">{items.map(i => <div className="stat-card" key={i.label}><span>{i.label}</span><strong>{i.value}</strong></div>)}</div>;
+export function LibraryStats({ items, className = '' }: { items: { label: string; value: React.ReactNode }[]; className?: string }) {
+  return <div className={`library-stats ${className}`.trim()}>{items.map(i => <div className="stat-card" key={i.label}><span>{i.label}</span><strong>{i.value}</strong></div>)}</div>;
+}
+export function EncyclopediaTabs() {
+  return <nav className="encyclopedia-subnav" aria-label="图鉴百科分页">
+    <NavLink to="/player/characters" className={({ isActive }) => `btn btn-sm ${isActive ? 'btn-primary' : 'btn-secondary'}`}>角色中心</NavLink>
+    <NavLink to="/player/cards" className={({ isActive }) => `btn btn-sm ${isActive ? 'btn-primary' : 'btn-secondary'}`}>卡牌图鉴</NavLink>
+    <NavLink to="/player/chips" className={({ isActive }) => `btn btn-sm ${isActive ? 'btn-primary' : 'btn-secondary'}`}>筹码图鉴</NavLink>
+    <NavLink to="/player/maps" className={({ isActive }) => `btn btn-sm ${isActive ? 'btn-primary' : 'btn-secondary'}`}>地图与场地</NavLink>
+  </nav>;
 }
 export function RewardItems({ items }: { items?: Record<string, number> }) {
   return <span>{items && Object.keys(items).length ? Object.entries(items).map(([id, qty]) => `${gameCatalog.itemNames?.[id] || `道具 #${id}`} × ${qty}`).join('、') : '无额外道具奖励'}</span>;

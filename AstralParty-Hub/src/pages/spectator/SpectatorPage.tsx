@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { isTauriRuntime, assetUrl } from '../../shared/runtime';
 import { DesktopOnlyBanner } from '../../components/DesktopOnlyBanner';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Eye,
   RefreshCw,
@@ -83,6 +83,7 @@ export const SpectatorPage: React.FC = () => {
     return true;
   });
   const [selectorForceVisible, setSelectorForceVisible] = useState(false);
+  const [showLegacyDualSetup, setShowLegacyDualSetup] = useState(false);
   type CloudHandState = { enabled: boolean; status: string };
   const [cloudHands, setCloudHands] = useState<CloudHandState>({ enabled: false, status: 'disabled' });
   const [cloudHandPending, setCloudHandPending] = useState(false);
@@ -284,20 +285,64 @@ export const SpectatorPage: React.FC = () => {
       <DesktopOnlyBanner feature="spectator" />
       <section className="card" style={{ padding: 16, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <strong>{isZh ? '游戏内队友手牌' : 'Teammate hands in game'}</strong>
-            <p style={{ margin: '6px 0', color: 'var(--text-secondary)' }}>
-              {isZh ? 'Hub 登录后默认开启，无需本地观战端。保持 Hub 运行，用当前 Hub 登录账号进入允许观战的合作对局，再展开队友头像旁的「手牌」；多开时自动匹配与当前 Hub 账号 UID 一致的对局。'
-                : 'Enabled by default after Hub sign-in; no local spectator client needed. Join an observable co-op match with the same Hub-signed-in account (multi-open matches by signed-in UID), then expand Hands next to a teammate’s avatar.'}
+          <div style={{ flex: 1, minWidth: 260 }}>
+            <strong>{isZh ? '游戏内队友手牌 · 云端自动推送' : 'Teammate hands in game · Auto Cloud Push'}</strong>
+            <p style={{ margin: '6px 0', color: 'var(--text-secondary)', fontSize: 13 }}>
+              {isZh ? '登录后默认开启，无需再绑定本地观战角色或手动设置。保持 Hub 运行，用当前 Hub 登录账号进入允许观战的合作对局，游戏内即自动同步队友手牌；多开时按登录 UID 自动匹配。'
+                : 'Enabled automatically after Hub sign-in with no local spectator binding required. Keep Hub running and join an observable co-op match with the same account to sync teammate hands automatically.'}
             </p>
-            <span role="status">{cloudHandLabels[cloudHands.status]?.[isZh ? 0 : 1]}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span role="status" style={{
+                fontSize: 12,
+                fontWeight: 600,
+                padding: '3px 10px',
+                borderRadius: 999,
+                backgroundColor: cloudHands.status === 'forwarded' ? 'rgba(34, 197, 94, 0.14)' : cloudHands.status === 'signed_out' ? 'rgba(245, 158, 11, 0.14)' : 'rgba(99, 102, 241, 0.12)',
+                color: cloudHands.status === 'forwarded' ? '#15803d' : cloudHands.status === 'signed_out' ? '#b45309' : 'var(--text-primary)',
+              }}>
+                {cloudHandLabels[cloudHands.status]?.[isZh ? 0 : 1] ?? cloudHands.status}
+              </span>
+              {cloudHands.status === 'signed_out' && (
+                <Link className="btn btn-primary" to="/player/accounts" style={{ fontSize: 12, padding: '4px 12px' }}>
+                  {isZh ? '前往登录星枢账号' : 'Sign in to XingShu'}
+                </Link>
+              )}
+            </div>
           </div>
-          <button className={cloudHands.enabled ? 'btn btn-secondary' : 'btn btn-primary'}
-            onClick={toggleCloudHands} disabled={cloudHandPending} aria-pressed={cloudHands.enabled}>
-            {cloudHands.enabled ? (isZh ? '关闭云端手牌' : 'Disable cloud hands') : (isZh ? '开启云端手牌' : 'Enable cloud hands')}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button className={cloudHands.enabled ? 'btn btn-secondary' : 'btn btn-primary'}
+              onClick={toggleCloudHands} disabled={cloudHandPending} aria-pressed={cloudHands.enabled}>
+              {cloudHands.enabled ? (isZh ? '关闭云端推送' : 'Disable cloud hands') : (isZh ? '开启云端推送' : 'Enable cloud hands')}
+            </button>
+          </div>
         </div>
       </section>
+      {cloudHands.enabled && cloudHands.status !== 'signed_out' && !hasActiveRoom && !spectatorSession && (
+        <div className="panel" style={{
+          padding: '10px 16px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            {isZh
+              ? '当前已启用云端自动推送，无需额外配置本地双开观战；如需手动使用双开/托管观战可展开设置。'
+              : 'Auto cloud push is active; local dual-client setup is collapsed as an optional fallback.'}
+          </span>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowLegacyDualSetup(prev => !prev)}
+            style={{ fontSize: 12, padding: '5px 12px' }}
+          >
+            {showLegacyDualSetup
+              ? (isZh ? '收起本地观战设置' : 'Hide local setup')
+              : (isZh ? '展开本地观战 / 托管设置' : 'Show local / managed setup')}
+          </button>
+        </div>
+      )}
       {/* 1. Header */}
       <div
         style={{
@@ -399,6 +444,8 @@ export const SpectatorPage: React.FC = () => {
         </div>
       </div>
 
+      {(!cloudHands.enabled || cloudHands.status === 'signed_out' || showLegacyDualSetup || selectorForceVisible || hasActiveRoom || !!spectatorSession) && (
+      <>
       {/* 2. Top Stepper (SpectatorStepIndicator) */}
       <SpectatorStepIndicator
         accountMode={accountMode}
@@ -810,6 +857,8 @@ export const SpectatorPage: React.FC = () => {
           onLaunchGame={launchGame}
           isZh={isZh}
         />
+      )}
+      </>
       )}
 
       {/* 5. Top Status Bar (Glassmorphism Dashboard Strip) */}

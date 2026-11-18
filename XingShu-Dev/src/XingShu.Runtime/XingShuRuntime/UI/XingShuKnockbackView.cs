@@ -19,6 +19,7 @@ namespace XingShuRuntime.UI
         private Toggle _enableToggle;
         private Text _statusText;
         private Toggle _targetingToggle;
+        private Toggle _arrowBoostToggle;
         private Text _targetingSummary;
         private Toggle _defenseHintToggle;
 
@@ -265,7 +266,13 @@ namespace XingShuRuntime.UI
             RectTransform toggleRt = _targetingToggle.GetComponent<RectTransform>();
             toggleRt.anchorMin = toggleRt.anchorMax = toggleRt.pivot = new Vector2(1f, 1f);
             toggleRt.anchoredPosition = new Vector2(-24f, -16f);
-            toggleRt.sizeDelta = new Vector2(180f, 32f);
+            toggleRt.sizeDelta = new Vector2(160f, 32f);
+            _arrowBoostToggle = XingShuUIFactory.CreateToggle(card, "ArrowBoostToggle", "放大怪物箭头", MonsterTargetRuntime.ArrowBoostEnabled,
+                value => { if (!_suppressCallbacks) MonsterTargetRuntime.SetArrowBoostEnabled(value); });
+            RectTransform boostRt = _arrowBoostToggle.GetComponent<RectTransform>();
+            boostRt.anchorMin = boostRt.anchorMax = boostRt.pivot = new Vector2(1f, 1f);
+            boostRt.anchoredPosition = new Vector2(-196f, -16f);
+            boostRt.sizeDelta = new Vector2(180f, 32f);
             Text hint = XingShuUIFactory.CreateText(card, "Hint", "沿怪物箭头前进，不掉头；最大10格（先行1格＋剩余9格），技能加步暂不计入。", 12, XingShuUITheme.SecondaryText, TextAnchor.MiddleLeft);
             PlaceTargetControl(hint.rectTransform, new Vector2(24f, -52f), new Vector2(820f, 24f));
             _targetingSummary = XingShuUIFactory.CreateText(card, "Summary", "等待进入 PVE 对局", 13, XingShuUITheme.PrimaryText, TextAnchor.UpperLeft);
@@ -734,6 +741,12 @@ namespace XingShuRuntime.UI
             {
                 _suppressCallbacks = true;
                 _targetingToggle.isOn = MonsterTargetRuntime.IsEnabled;
+                _suppressCallbacks = false;
+            }
+            if (_arrowBoostToggle != null && _arrowBoostToggle.isOn != MonsterTargetRuntime.ArrowBoostEnabled)
+            {
+                _suppressCallbacks = true;
+                _arrowBoostToggle.isOn = MonsterTargetRuntime.ArrowBoostEnabled;
                 _suppressCallbacks = false;
             }
             bool curEnabled = MonsterKillProbability.IsEnabled;

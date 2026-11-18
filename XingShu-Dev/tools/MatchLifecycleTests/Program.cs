@@ -72,6 +72,25 @@ class Program {
             "cloud mirror rematch epoch accepts updated empty hand");
         Check(store.TryGetPlayerCards(71, 202, out var emptyCards, t0.AddSeconds(115)) && emptyCards.Count == 0,
             "cloud mirror preserves empty teammate hand");
+
+        // Mobile handoff & cloud hand diagnostic tests
+        string validHandoff = new string('a', 43);
+        Check(XingShu.Runtime.MobileCloudPollPolicy.TryAcceptAppHandoff(validHandoff, "1556514", null),
+            "valid 43-char app handoff and UID are accepted");
+        Check(!XingShu.Runtime.MobileCloudPollPolicy.TryAcceptAppHandoff(validHandoff, "1556514", validHandoff),
+            "already-consumed app handoff is deduplicated");
+        Check(!XingShu.Runtime.MobileCloudPollPolicy.TryAcceptAppHandoff("bad", "1556514", null),
+            "malformed app handoff is rejected");
+        Check(XingShu.Runtime.MobileCloudPollPolicy.ClassifyLiveHandsStatus(200, "idle") == XingShu.Runtime.CloudHandDiagnosticState.NoObserverInRoom,
+            "idle status maps to NoObserverInRoom");
+        Check(XingShu.Runtime.MobileCloudPollPolicy.ClassifyLiveHandsStatus(200, "connecting") == XingShu.Runtime.CloudHandDiagnosticState.Connecting,
+            "connecting status maps to Connecting");
+        Check(XingShu.Runtime.MobileCloudPollPolicy.ClassifyLiveHandsStatus(502, "") == XingShu.Runtime.CloudHandDiagnosticState.ServerUnavailable,
+            "non-200 HTTP maps to ServerUnavailable");
+        Check(XingShu.Runtime.MobileCloudPollPolicy.ShortRosterTileLabel(XingShu.Runtime.CloudHandDiagnosticState.Unbound, false, 3, false) == "未绑定\n账号",
+            "unbound diagnostic renders short tile label");
+        Check(XingShu.Runtime.MobileCloudPollPolicy.ShortRosterTileLabel(XingShu.Runtime.CloudHandDiagnosticState.NoObserverInRoom, true, 3, false) == "人机房\n无观战",
+            "bot room without observer renders short tile label");
     }
 }
 namespace Tools { public static class SimpleSingletonProvider<T> where T:new() { public static T inst = new T(); } }

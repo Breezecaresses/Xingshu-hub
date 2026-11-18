@@ -506,6 +506,32 @@ final class InstallerEngine {
         }
     }
 
+    String writeGameHandoff(String packageName, String payloadJson) {
+        try {
+            String pkg = GamePackageCatalog.requireValidPackageName(packageName);
+            if (payloadJson == null || payloadJson.isEmpty() || payloadJson.length() > 256 || payloadJson.indexOf('\0') >= 0) {
+                throw new IllegalArgumentException("同步凭据无效");
+            }
+            File filesRoot = GamePackageCatalog.filesRoot(pkg);
+            if (!filesRoot.isDirectory()) {
+                return "SKIP:NO_DIR";
+            }
+            File tmp = new File(filesRoot, "xingshu_handoff.json.tmp");
+            File target = new File(filesRoot, "xingshu_handoff.json");
+            try (FileOutputStream out = new FileOutputStream(tmp)) {
+                out.write(payloadJson.getBytes(StandardCharsets.UTF_8));
+                out.getFD().sync();
+            }
+            if (!tmp.renameTo(target)) {
+                copy(tmp, target);
+                tmp.delete();
+            }
+            return "OK";
+        } catch (Exception e) {
+            return "ERR:" + friendly(e);
+        }
+    }
+
     private boolean known(String hash) {
         return hash.equals(PayloadSpec.VANILLA) || hash.equals(PayloadSpec.PATCH)
             || Arrays.asList(PayloadSpec.PREVIOUS).contains(hash);

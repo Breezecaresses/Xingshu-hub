@@ -17,6 +17,7 @@ internal sealed class MatchLedger
 		internal long Deaths, Taken, Healing, Coins, Turns, Gold;
 		internal string Character;
 		internal string HeadUrl;
+		internal int HeroId;
 		internal bool MetricsReady, HealingKnown = true, HealingFromServer, Settled;
 
 		internal long Movement;

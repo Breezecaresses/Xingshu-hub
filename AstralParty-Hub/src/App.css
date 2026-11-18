@@ -66,10 +66,10 @@ body {
 }
 
 .sidebar-header {
-  padding: 20px 18px;
+  padding: 14px 16px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 11px;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -105,32 +105,32 @@ body {
 .nav-menu {
   flex: 1;
   overflow-y: auto;
-  padding: 14px 10px;
+  padding: 10px 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .nav-section-title {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.7px;
   color: var(--text-muted);
-  padding: 12px 10px 4px 10px;
+  padding: 10px 10px 3px 10px;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
+  padding: 6px 11px;
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   text-decoration: none;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 500;
-  min-height: 38px;
+  min-height: 34px;
   transition: all 0.15s ease;
 }
 
@@ -146,7 +146,7 @@ body {
 }
 
 .sidebar-footer {
-  padding: 14px 16px;
+  padding: 10px 14px;
   border-top: 1px solid var(--border-color);
   font-size: 12px;
   color: var(--text-muted);
@@ -187,18 +187,18 @@ body {
 }
 
 .top-bar {
-  height: 54px;
+  height: 44px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 20px;
   background: rgba(11, 13, 20, 0.8);
   backdrop-filter: blur(8px);
 }
 
 .top-bar-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
   display: flex;
@@ -209,13 +209,13 @@ body {
 .top-bar-status {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .content-area {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 30px;
+  padding: 20px 26px;
 }
 
 /* Badges & Status Pills */

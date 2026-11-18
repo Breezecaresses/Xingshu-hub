@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Heart, Sparkles, Sword, Shield, Users } from 'lucide-react';
 import { gameCatalog, libraryCharacterName, isPreviewCharacter, pickStaticEmoteAsset } from '../../shared/gameLibrary';
 import type { HeroProgress, LibraryCharacter, LibrarySkin } from '../../shared/gameLibrary';
-import { GameImage, GameText, LibraryHeader, RewardItems, useGameLibrary } from './LibraryUI';
+import { EncyclopediaTabs, GameImage, GameText, LibraryHeader, RewardItems, useGameLibrary } from './LibraryUI';
 
 type CharacterDetails = LibraryCharacter & {
   pveProgression?: { level: number; description: string }[];
@@ -40,6 +40,7 @@ export function CharactersPage() {
   if (detail?.preview) tabs.push(['preview', '预装配置']);
   if (!detail) return <div className="library-empty">角色配置尚未准备好。</div>;
   return <div>
+    <EncyclopediaTabs />
     <LibraryHeader title="角色中心" description="走近每位角色，查看技能、成长、皮肤与羁绊" state={state} />
     <div className="character-collection-line"><span><Users size={15} /> 角色图鉴 <strong>{characters.length}</strong></span><span>官方预更新 <strong>{characters.filter(isPreviewCharacter).length}</strong></span><span>已持有 <strong>{knownOwned ?? '待同步'}</strong>{knownOwned !== undefined && ` / ${releasedCharacters.length}`}</span><span>满羁绊 <strong>{progress ? progress.filter(h => characters.some(c => c.id === h.id) && h.level >= maxBond).length : '待同步'}</strong></span><span>皮肤与装扮 <strong>{characters.reduce((n, c) => n + c.skins.length, 0)}</strong></span></div>
     {preview && <div className="character-preview-notice">官方预更新角色 · 已收录当前预装数值、技能参数、关联状态与成长。名称和完整效果尚未提供，借用其他角色的名称或形象已收起；内容可能在正式上线前调整。</div>}

@@ -25,7 +25,8 @@ Get-TaskMethods $taskOld.MainModule.Types | ForEach-Object { $taskOldMethods[$_.
 Get-TaskMethods $taskNew.MainModule.Types | ForEach-Object { $taskNewMethods[$_.FullName] = $_ }
 $taskAdded = @($taskNewMethods.Keys | Where-Object { !$taskOldMethods.ContainsKey($_) })
 foreach ($taskName in $taskAdded) {
-    if ($taskName -notmatch 'XingShuDecisionTimer::Register[012]\(') { throw "Unexpected new method: $taskName" }
+    if ($taskName -notmatch 'XingShuDecisionTimer::Register[012]\(' -and
+        $taskName -notmatch 'XingShuPingTimer::Register[01]\(') { throw "Unexpected new method: $taskName" }
 }
 $taskChanged = @()
 foreach($taskName in $taskOldMethods.Keys) {
@@ -44,7 +45,12 @@ foreach($taskName in $taskOldMethods.Keys) {
             $taskName -notmatch 'GameLogic.AccountLogic::OnGet(ShowPlayer|PlayerFightRecord)S2CServerCallBack\(' -and
             $taskName -notmatch 'GameLogic.OperationTimer/[^:]+::<ActionDownTime>b__[012]\(' -and
             $taskName -notmatch 'GameLogic.OperationTimer::Dispose\(' -and
-            $taskName -notmatch 'UI.OperateTimeWindow::UpdateShowProgress\(') { throw "Unexpected method change: $taskName" }
+            $taskName -notmatch 'UI.OperateTimeWindow::UpdateShowProgress\(' -and
+            $taskName -notmatch 'UI.UIExpression_(Com_ChatItem|Com_ExpressionItem)::RefreshInfo\(' -and
+            $taskName -notmatch 'Core.GameEffect::(Play|PlayTimeline)\(' -and
+            $taskName -notmatch 'Core.GameCycleEffect::PlayLoopEffect\(' -and
+            $taskName -notmatch 'GameLogic\.(BattleLandMessage|BattlePlayerMarkMessage)::ShowAddressInfo\(' -and
+            $taskName -notmatch 'UI\.BattleInfoPanel::OnClickMiniMap\(') { throw "Unexpected method change: $taskName" }
     }
 }
 $taskHeroTimers = @($taskNewMethods.Values | Where-Object {
@@ -73,7 +79,15 @@ foreach ($taskTarget in @(
     @('GameLogic.BattleLogic::OnRoundStartS2CServerCallBack(', 'MonsterCooldownRuntime::ObserveRound'),
     @('GameLogic.BattleLogic::OnActionStartNotifyS2CServerCallBack(', 'MonsterCooldownRuntime::ObserveAction'),
     @('GameLogic.AccountLogic::OnGetShowPlayerS2CServerCallBack(', 'GameLibraryReplies::ObserveCareer'),
-    @('GameLogic.AccountLogic::OnGetPlayerFightRecordS2CServerCallBack(', 'GameLibraryReplies::ObserveDetail')
+    @('GameLogic.AccountLogic::OnGetPlayerFightRecordS2CServerCallBack(', 'GameLibraryReplies::ObserveDetail'),
+    @('UI.UIExpression_Com_ChatItem::RefreshInfo(', 'XingShuPingTimer::Register'),
+    @('UI.UIExpression_Com_ExpressionItem::RefreshInfo(', 'XingShuPingTimer::Register'),
+    @('Core.GameEffect::Play(', 'PingDisplayTiming::ResolveEffectDuration'),
+    @('Core.GameEffect::PlayTimeline(', 'PingDisplayTiming::ResolveEffectDuration'),
+    @('Core.GameCycleEffect::PlayLoopEffect(', 'PingDisplayTiming::ResolveEffectDuration'),
+    @('GameLogic.BattleLandMessage::ShowAddressInfo(', 'MapCameraGUI::JumpToFreeCameraTarget'),
+    @('GameLogic.BattlePlayerMarkMessage::ShowAddressInfo(', 'MapCameraGUI::JumpToFreeCameraTarget'),
+    @('UI.BattleInfoPanel::OnClickMiniMap(', 'MapCameraGUI::JumpToFreeCameraTarget')
 )) {
     $taskMethod = @($taskNewMethods.Values | Where-Object { $_.FullName.Contains($taskTarget[0]) })
     if ($taskMethod.Count -ne 1) { throw "Ambiguous method: $($taskTarget[0])" }
@@ -92,6 +106,12 @@ if ($taskWrappers.Count -ne 3) { throw 'Expected exactly 3 decision-clock wrappe
 foreach ($taskMethod in $taskWrappers) {
     $taskCalls = @($taskMethod.Body.Instructions | Where-Object { $_.Operand -and $_.Operand.ToString().Contains('ThinkingClock::.ctor') })
     if ($taskCalls.Count -ne 1) { throw "Missing real clock: $taskMethod" }
+}
+$taskPingWrappers = @($taskNewMethods.Values | Where-Object { $_.DeclaringType.Name -eq 'XingShuPingTimer' })
+if ($taskPingWrappers.Count -ne 2) { throw 'Expected exactly 2 ping-clock wrappers' }
+foreach ($taskMethod in $taskPingWrappers) {
+    $taskCalls = @($taskMethod.Body.Instructions | Where-Object { $_.Operand -and $_.Operand.ToString().Contains('PingClockState::.ctor') })
+    if ($taskCalls.Count -ne 1) { throw "Missing real ping clock: $taskMethod" }
 }
 function Get-TaskInstructions($method, $skip) {
     $taskInstructions = $method.Body.Instructions

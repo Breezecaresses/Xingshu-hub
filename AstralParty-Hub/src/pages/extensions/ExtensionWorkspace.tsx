@@ -9,6 +9,7 @@ import type { GameInstallation } from '../../shared/types';
 import { AndroidInstallPanel } from './AndroidInstallPanel';
 import { ExternalModsPanel } from './ExternalModsPanel';
 import { ImportPackagePage } from './ImportPackagePage';
+import { ModDropInspector } from './ModDropInspector';
 import { WorkshopPanel } from './WorkshopPanel';
 import './extensions.css';
 
@@ -124,6 +125,14 @@ export function ExtensionManager({ view }: { view: 'packages' | 'mods' }) {
     {packages && <AndroidInstallPanel />}
     {packages && <h2 className="extension-section-title">电脑端星枢</h2>}
     <ExtensionTargetPicker target={target} disabled={actionBusy} />
+    {!packages && (
+      <ModDropInspector
+        installationId={target.selected?.id ?? null}
+        onBusy={setActionBusy}
+        disabled={actionBusy}
+        onInstalled={() => void refresh()}
+      />
+    )}
     {!packages && (
       <WorkshopPanel
         installationId={target.selected?.id ?? null}

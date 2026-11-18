@@ -67,6 +67,18 @@ public sealed class MapCameraGUI : MonoBehaviour
 
 	internal static bool IsCameraEnabled => Instance != null && Instance._camera != null && Instance._camera.Enabled;
 
+	public static void JumpToFreeCameraTarget(global::Core.Camera.CameraManager manager, Vector3 position)
+	{
+		if (Instance != null && Instance._camera != null && Instance._camera.FocusWorldPosition(position))
+		{
+			return;
+		}
+		if (manager != null)
+		{
+			manager.ControlFreeCamera(position);
+		}
+	}
+
 	internal static string StatusDescription
 	{
 		get

@@ -43,6 +43,15 @@ internal static class XingShuConfigKeys
 
 	internal const int GameSpeedEngineModeDefault = 0;
 
+	// 加速模式下右侧标点/表情延长时长 (秒)
+	internal const string PingAccelExtendSeconds = "XINGSHU_PING_ACCEL_EXTEND_SECONDS";
+
+	internal const float PingAccelExtendSecondsDefault = 5.0f;
+
+	internal const float PingAccelExtendSecondsMin = 0.0f;
+
+	internal const float PingAccelExtendSecondsMax = 15.0f;
+
 	internal const string NativeSpeedEnabled = "XINGSHU_NATIVE_SPEED_ENABLED";
 
 	internal const bool NativeSpeedEnabledDefault = false;
@@ -109,6 +118,21 @@ internal static class XingShuConfigKeys
 	internal const string HandRosterScale = "XINGSHU_HAND_ROSTER_SCALE";
 
 	internal const string HandRosterCompactDefaultApplied = "XINGSHU_HAND_ROSTER_COMPACT_DEFAULT_APPLIED";
+
+	internal const string HandRosterToggleOffsetX = "XINGSHU_HAND_ROSTER_TOGGLE_OFFSET_X";
+	internal const float HandRosterToggleOffsetXDefault = 20f;
+	internal const string HandRosterToggleOffsetY = "XINGSHU_HAND_ROSTER_TOGGLE_OFFSET_Y";
+	internal const float HandRosterToggleOffsetYDefault = -25f;
+	internal const string HandRosterGridOffsetX = "XINGSHU_HAND_ROSTER_GRID_OFFSET_X";
+	internal const float HandRosterGridOffsetXDefault = 15f;
+	internal const string HandRosterGridOffsetY = "XINGSHU_HAND_ROSTER_GRID_OFFSET_Y";
+	internal const float HandRosterGridOffsetYDefault = -25f;
+	internal const float HandRosterOffsetMinX = -80f;
+	internal const float HandRosterToggleOffsetMaxX = 280f;
+	internal const float HandRosterGridOffsetMinX = -120f;
+	internal const float HandRosterGridOffsetMaxX = 320f;
+	internal const float HandRosterOffsetMinY = -80f;
+	internal const float HandRosterOffsetMaxY = 80f;
 
 	// Phase HS4-P1.6: 实时手牌悬浮窗进入观战自动开启偏好
 	internal const string HandCardSpectatorAutoOpen = "XINGSHU_HAND_CARD_SPECTATOR_AUTO_OPEN";
@@ -205,6 +229,10 @@ internal static class XingShuConfigKeys
 	internal const string MonsterTargetEnabled = "XINGSHU_MONSTER_TARGET_ENABLED_V1";
 
 	internal const bool MonsterTargetEnabledDefault = true;
+
+	internal const string MonsterArrowBoostEnabled = "XINGSHU_MONSTER_ARROW_BOOST_ENABLED_V1";
+
+	internal const bool MonsterArrowBoostEnabledDefault = true;
 
 	internal const string MatchKillFightSize = "XINGSHU_MATCH_KILL_FIGHT_SIZE";
 
@@ -336,9 +364,32 @@ internal static class XingShuConfigKeys
 
 	internal const string AutoPraiseScale = "XINGSHU_AUTO_PRAISE_SCALE";
 
+#if XINGSHU_ANDROID_PREVIEW
 	internal const float AutoPraiseScaleDefault = 1.0f;
+#else
+	internal const float AutoPraiseScaleDefault = 2.0f;
+#endif
 
 	internal const float AutoPraiseScaleMin = 0.6f;
 
 	internal const float AutoPraiseScaleMax = 2.0f;
+
+	internal const string AutoPraiseOffsetX = "XINGSHU_AUTO_PRAISE_OFFSET_X";
+	internal const float AutoPraiseOffsetXDefault = 0f;
+	internal const string AutoPraiseOffsetY = "XINGSHU_AUTO_PRAISE_OFFSET_Y";
+	internal const float AutoPraiseOffsetYDefault = 73f;
+	internal const float AutoPraiseOffsetMin = -120f;
+	internal const float AutoPraiseOffsetMax = 120f;
+
+	// 结算战绩自动截图 (SettlementScreenshot)
+	internal const string AutoSettlementScreenshotEnabled = "XINGSHU_AUTO_SETTLEMENT_SCREENSHOT_ENABLED";
+
+	internal const bool AutoSettlementScreenshotEnabledDefault = true;
+
+	internal const string AutoSettlementScreenshotLastPath = "XINGSHU_AUTO_SETTLEMENT_SCREENSHOT_LAST_PATH";
+
+	// 自定义显示统计项掩码 (8项: 击杀/死亡/输出/承伤/治疗/累计金币/转账/移动步数，默认全选 255)
+	internal const string StatsWidgetMetrics = "XINGSHU_STATS_WIDGET_METRICS";
+
+	internal const int StatsWidgetMetricsDefault = 255;
 }

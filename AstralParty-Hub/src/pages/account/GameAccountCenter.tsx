@@ -629,6 +629,11 @@ export const GameAccountCenter: React.FC = () => {
             </div>
           </div>
         )}
+        <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+          {isZh
+            ? '提示：日常游戏内队友手牌会在上方「星枢账号登录」后自动通过云端推送，无需额外绑定本地观战角色；下方角色绑定仅用于本地双开/专用观战端。'
+            : 'Tip: In-game teammate hands auto-push after signing into XingShu above; local role bindings below are only needed for dual-client spectating.'}
+        </p>
       </div>
 
       {/* 4. Section 1 & Section 2: Account Role Cards */}

@@ -9,6 +9,7 @@ import {
   Info,
   Layers,
   Package,
+  Paintbrush,
   RefreshCw,
   RotateCcw,
   Search,
@@ -200,6 +201,10 @@ export function WorkshopPanel({
           <p>{targetSummary}</p>
         </div>
         <div className="workshop-hero-actions">
+          <Link to="/extensions/creator" className="btn btn-secondary">
+            <Paintbrush size={14} />
+            创作者入口
+          </Link>
           <button
             type="button"
             className="btn btn-secondary"
@@ -273,7 +278,7 @@ export function WorkshopPanel({
         <div className="panel workshop-empty">
           <Package size={28} />
           <h3>当前筛选下暂无工坊条目</h3>
-          <p>你可以切换分类或搜索关键词，或前往侧边栏的<Link to="/extensions/creator">「创作者入口」</Link>分享自己的 Mod / 卡面 / 皮肤包。</p>
+          <p>你可以切换分类或搜索关键词，或点击右上角<Link to="/extensions/creator">「创作者入口」</Link>分享自己的 Mod / 卡面 / 皮肤包。</p>
         </div>
       ) : (
         <div className="workshop-grid">
@@ -301,10 +306,6 @@ export function WorkshopPanel({
                   ) : (
                     <div className={`workshop-preview-fallback cat-${item.category}`}>
                       <CategoryGlyph category={item.category} />
-                      <span className="workshop-preview-cat">{item.categoryLabel}</span>
-                      <code className="workshop-preview-asset">
-                        {item.assets?.[0] || item.targetInfo || `${item.files.length} 个资源文件`}
-                      </code>
                     </div>
                   )}
                   <div className="workshop-preview-badges">
@@ -327,28 +328,12 @@ export function WorkshopPanel({
                   </div>
 
                   <div className="workshop-meta">
-                    <span>作者：{item.author}</span>
-                    <span>大小：{formatModBytes(item.sizeBytes)}</span>
-                    <span>
-                      {(item.platforms || ['STEAM_CN']).join('/')} · v{item.gameVersion || '3.3.0'}
-                    </span>
+                    <span>{item.author}</span>
+                    <span>{formatModBytes(item.sizeBytes)}</span>
+                    <span>v{item.gameVersion || '3.3.0'}</span>
                   </div>
 
                   <p className="workshop-desc">{item.description}</p>
-
-                  {item.tags.length > 0 && (
-                    <div className="workshop-tags">
-                      {item.tags.slice(0, 4).map((tag) => (
-                        <span key={tag}>{tag}</span>
-                      ))}
-                    </div>
-                  )}
-
-                  {item.targetInfo && (
-                    <code className="workshop-target" title={item.targetInfo}>
-                      目标：{item.targetInfo}
-                    </code>
-                  )}
                 </div>
 
                 <footer className="workshop-card-footer">

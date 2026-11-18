@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Coins, Map, ChevronRight, Sparkles } from 'lucide-react';
 import { gameCatalog, plainGameText } from '../../shared/gameLibrary';
-import { GameImage, GameText, LibraryHeader, LibraryModal, useGameLibrary } from './LibraryUI';
+import { EncyclopediaTabs, GameImage, GameText, LibraryHeader, LibraryModal, useGameLibrary } from './LibraryUI';
 
 type LibraryChip = { id: number; name: string; description: string; image: string; quality?: number; qualityName?: string; type?: number; typeName?: string; tags?: (number | string)[]; params?: number[] };
 type LibraryMap = { id: number; name: string; description?: string; galleryDescription?: string; image?: string; sceneImage?: string; sceneIds?: number[]; modeIds?: number[]; galleryTypes?: number[]; specialChipIds?: number[]; difficulties?: { index?: number; name?: string; description?: string; turnLimit?: number; monsters?: { id: number; name: string; title: string }[] }[] };
@@ -22,6 +22,7 @@ export function ChipsPage() {
   const filtered = useMemo(() => chips.filter(c => `${c.name} ${plainGameText(c.description)} ${c.id}`.toLowerCase().includes(query.toLowerCase()) && (quality === 'all' || c.quality === Number(quality))), [chips, query, quality]);
   const qualityLabel = (chip: LibraryChip) => chip.qualityName || (chip.quality !== undefined ? `品质 ${chip.quality}` : '合作挑战筹码');
   return <div>
+    <EncyclopediaTabs />
     <LibraryHeader title="筹码图鉴" description="合作挑战中的强化选择，查看筹码品质与完整效果" state={state} />
     <div className="encyclopedia-banner"><div className="encyclopedia-banner-icon"><Coins size={30} /></div><div><h2>为每一次冒险做好准备</h2><p>{chips.length ? `${chips.length} 个筹码配置 · 所有效果来自当前游戏版本` : '筹码配置正在准备中'}</p></div><Link to="/player/maps">查看地图 <ChevronRight size={17} /></Link></div>
     <div className="library-filters"><input aria-label="搜索筹码" placeholder="搜索筹码名称或效果…" value={query} onChange={e => setQuery(e.target.value)} /><select aria-label="筹码品质" value={quality} onChange={e => setQuality(e.target.value)}><option value="all">全部品质</option>{qualities.map(q => <option value={q} key={q}>{chips.find(c => c.quality === q)?.qualityName || `品质 ${q}`}</option>)}</select><span>{filtered.length} 个筹码</span></div>
@@ -46,6 +47,7 @@ export function MapsPage() {
   const rules = (mode: LibraryMode) => Array.isArray(mode.rules) ? mode.rules.join('\n') : mode.rules;
   const effects = gameCatalog.mutators.filter(m => `${m.name} ${plainGameText(m.description)} ${m.id}`.toLowerCase().includes(query.toLowerCase()));
   return <div>
+    <EncyclopediaTabs />
     <LibraryHeader title="地图与场地" description="地图详情、玩法规则与特殊场地效果" state={state} />
     <div className="encyclopedia-banner map-banner"><div className="encyclopedia-banner-icon"><Map size={30} /></div><div><h2>下一站，去哪里？</h2><p>{galleryMaps.length} 张地图 · {modes.length} 种玩法</p></div><Link to="/player/chips">查看筹码 <ChevronRight size={17} /></Link></div>
     <div className="library-tabs"><button className={`btn ${tab === 'maps' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab('maps')}>地图详情</button><button className={`btn ${tab === 'modes' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab('modes')}>玩法规则</button><button className={`btn ${tab === 'effects' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab('effects')}>特殊场地效果</button></div>

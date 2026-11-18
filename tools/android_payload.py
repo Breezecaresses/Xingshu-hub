@@ -2,6 +2,7 @@
 import hashlib
 import json
 from pathlib import Path
+from project_paths import publish_directory
 
 ROOT = Path(__file__).resolve().parents[1]
 BASELINES = {
@@ -49,7 +50,7 @@ def previous_hashes(manifest, additional_manifests=()):
     found = set()
     if manifest['originalSha256'] == '01ee8b4332fdb024fd4c5b9bfdb38ce25f9d42e0b07941765bc7cd06efdaaaa4':
         found.add('3d94697f4dc6d64c2cb5fcca56339090f54e920cd7dab6de7bcc1912347e5a0f')
-    releases = ROOT / '发布包'
+    releases = publish_directory(ROOT)
     manifests = set(releases.glob('XingShu_Android_*/candidate.json'))
     manifests.update(releases.glob('XingShu_*/Android/candidate.json'))
     # Local hotfixes need the same verified upgrade path before they are packaged.

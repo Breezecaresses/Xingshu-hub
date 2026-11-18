@@ -8,7 +8,7 @@ import shutil
 import tempfile
 import zipfile
 from android_payload import previous_hashes
-from project_paths import project_document
+from project_paths import project_document, publish_directory
 
 ROOT = Path(__file__).resolve().parents[1]
 APK_NAME = '星枢手机安装助手.apk'
@@ -75,7 +75,7 @@ def main():
     assert sha(candidate) == manifest['candidateSha256'] and sha(args.vanilla) == manifest['originalSha256']
     assert manifest['platform'] == 'ANDROID_CN' and manifest['nativeLibraries'] == []
     name = 'XingShu_Android_' + args.version
-    publish = (ROOT / '发布包').resolve()
+    publish = publish_directory(ROOT)
     publish.mkdir(exist_ok=True)
     destination, archive, phone_asset = publish / name, publish / (name + '.zip'), publish / (name + '.apk')
     outputs = [destination, archive, phone_asset, Path(str(archive) + '.sha256'), Path(str(phone_asset) + '.sha256')]

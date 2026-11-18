@@ -9,4 +9,5 @@ interface IInstaller {
     String apply(String packageName, boolean restore, String conflictHash, in ParcelFileDescriptor candidate, in ParcelFileDescriptor vanilla) = 3;
     String readChannelLogcat() = 4;
     String launchGame(String packageName) = 5;
+    String writeGameHandoff(String packageName, String payloadJson) = 6;
 }

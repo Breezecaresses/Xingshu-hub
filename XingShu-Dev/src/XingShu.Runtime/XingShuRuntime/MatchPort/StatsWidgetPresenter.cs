@@ -92,7 +92,7 @@ internal static class StatsWidgetPresenter
 			if (row != null)
 			{
 				settled |= row.Settled;
-				var player = new StatsWidgetFrame.Player { Name = row.Name, Character = row.Character, HeadUrl = row.HeadUrl, State = row.Settled ? "已结算" : "实时参考" };
+				var player = new StatsWidgetFrame.Player { Name = row.Name, Character = row.Character, HeadUrl = row.HeadUrl, HeroId = row.HeroId, State = row.Settled ? "已结算" : "实时参考" };
 				long[] values = { row.Kills, row.Deaths, row.Damage, row.Taken, row.Healing, row.Coins, row.Transferred, row.Turns, row.Movement };
 				bool[] known = { row.KillsKnown, true, row.DamageKnown, true, row.HealingKnown, true, row.TransferKnown, true, row.MovementKnown };
 				for (int c = 0; c < values.Length; c++)

@@ -14,6 +14,13 @@ function Get-TaskTypes($types) {
 foreach ($taskType in (Get-TaskTypes $taskAssembly.MainModule.Types)) {
     foreach ($taskMethod in $taskType.Methods) {
         if ($taskMethod.IsPInvokeImpl) { throw "Native import in managed Android preview: $($taskMethod.FullName)" }
+        if ($taskMethod.HasBody) {
+            foreach ($ins in $taskMethod.Body.Instructions) {
+                if ($ins.Operand -and $ins.Operand.ToString().Contains('System.DateTimeOffset::TryParse')) {
+                    throw "IL2CPP stripped method referenced in Android preview: $($ins.Operand) in $($taskMethod.FullName)"
+                }
+            }
+        }
     }
 }
 $taskHost = $taskAssembly.MainModule.Types | Where-Object FullName -eq 'XingShu.Runtime.XingShuRuntimeHost'

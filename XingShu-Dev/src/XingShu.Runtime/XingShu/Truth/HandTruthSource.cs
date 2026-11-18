@@ -108,6 +108,105 @@ namespace XingShu.Truth
         }
 #endif
 
+        internal static bool TryParseIso8601Utc(string text, out DateTime utc)
+        {
+            utc = default;
+            if (string.IsNullOrEmpty(text)) return false;
+            string s = text.Trim();
+            // Minimum length: YYYY-MM-DDTHH:MM:SS (19 chars).
+            if (s.Length < 19) return false;
+            if (s[4] != '-' || s[7] != '-' || (s[10] != 'T' && s[10] != 't' && s[10] != ' ') || s[13] != ':' || s[16] != ':')
+                return false;
+            if (!TryParseDigits(s, 0, 4, out int year)
+                || !TryParseDigits(s, 5, 2, out int month)
+                || !TryParseDigits(s, 8, 2, out int day)
+                || !TryParseDigits(s, 11, 2, out int hour)
+                || !TryParseDigits(s, 14, 2, out int minute)
+                || !TryParseDigits(s, 17, 2, out int second))
+            {
+                return false;
+            }
+            int idx = 19;
+            long fracTicks = 0;
+            if (idx < s.Length && s[idx] == '.')
+            {
+                idx++;
+                int fracStart = idx;
+                long scale = 1000000L; // 10^6 ticks = 0.1s; 7 digits = 1 tick (100ns)
+                while (idx < s.Length && s[idx] >= '0' && s[idx] <= '9')
+                {
+                    if (scale >= 1L)
+                    {
+                        fracTicks += (s[idx] - '0') * scale;
+                        scale /= 10L;
+                    }
+                    idx++;
+                }
+                if (idx == fracStart) return false;
+            }
+            TimeSpan offset = TimeSpan.Zero;
+            if (idx < s.Length)
+            {
+                char tz = s[idx];
+                if (tz == 'Z' || tz == 'z')
+                {
+                    if (idx + 1 != s.Length) return false;
+                }
+                else if (tz == '+' || tz == '-')
+                {
+                    int sign = tz == '+' ? 1 : -1;
+                    idx++;
+                    int rem = s.Length - idx;
+                    int offHour, offMin;
+                    if (rem == 5 && s[idx + 2] == ':')
+                    {
+                        if (!TryParseDigits(s, idx, 2, out offHour) || !TryParseDigits(s, idx + 3, 2, out offMin))
+                            return false;
+                    }
+                    else if (rem == 4)
+                    {
+                        if (!TryParseDigits(s, idx, 2, out offHour) || !TryParseDigits(s, idx + 2, 2, out offMin))
+                            return false;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                    if (offHour > 14 || offMin > 59) return false;
+                    offset = new TimeSpan(sign * offHour, sign * offMin, 0);
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            try
+            {
+                var dt = new DateTime(year, month, day, hour, minute, second, DateTimeKind.Utc);
+                if (fracTicks > 0) dt = dt.AddTicks(fracTicks);
+                if (offset != TimeSpan.Zero) dt = dt.Subtract(offset);
+                utc = dt;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool TryParseDigits(string s, int start, int length, out int value)
+        {
+            value = 0;
+            if (start + length > s.Length) return false;
+            for (int i = 0; i < length; i++)
+            {
+                char c = s[start + i];
+                if (c < '0' || c > '9') return false;
+                value = value * 10 + (c - '0');
+            }
+            return true;
+        }
+
         internal static bool RecordCloudMirror(SpectatorHandPayload payload, long matchSequence)
         {
             var manager = SimpleSingletonProvider<GameLogicManager>.inst;
@@ -121,8 +220,7 @@ namespace XingShu.Truth
                 || payload.spectatorSessionEpoch <= 0
                 || payload.spectatorSessionEpoch > matchSequence
                 || payload.roomPlayers == null || payload.roomPlayers.Count == 0 || payload.roomPlayers.Count > 16
-                || !DateTimeOffset.TryParse(payload.snapshotTimestamp, CultureInfo.InvariantCulture,
-                    DateTimeStyles.AssumeUniversal, out var observedAt))
+                || !TryParseIso8601Utc(payload.snapshotTimestamp, out var observedAtUtc))
             {
                 return false;
             }
@@ -131,12 +229,29 @@ namespace XingShu.Truth
             foreach (var player in payload.roomPlayers.Values)
             {
                 if (player == null || player.playerId <= 0
-                    || player.cardIds == null || player.cardIds.Count > 128 || player.cardIds.Any(id => id <= 0))
+                    || player.cardIds == null || player.cardIds.Count > 128)
                 {
                     return false;
                 }
-                if (player.playerId == payload.playerId
-                    || room.Players == null || !room.Players.Any(p => p != null && p.Id == player.playerId))
+                for (int i = 0; i < player.cardIds.Count; i++)
+                {
+                    if (player.cardIds[i] <= 0) return false;
+                }
+                if (player.playerId == payload.playerId || room.Players == null)
+                {
+                    continue;
+                }
+                bool inRoom = false;
+                for (int i = 0; i < room.Players.Count; i++)
+                {
+                    var rp = room.Players[i];
+                    if (rp != null && rp.Id == player.playerId)
+                    {
+                        inRoom = true;
+                        break;
+                    }
+                }
+                if (!inRoom)
                 {
                     continue;
                 }
@@ -151,7 +266,7 @@ namespace XingShu.Truth
                 payload.roomId,
                 matchSequence,
                 payload.sequenceNumber,
-                observedAt.UtcDateTime,
+                observedAtUtc,
                 hands,
                 DateTime.UtcNow);
         }
@@ -169,6 +284,42 @@ namespace XingShu.Truth
         internal static bool TryGetCloudHand(long roomId, long playerId, out IReadOnlyList<int> cards)
         {
             return _cloudMirrorStore.TryGetPlayerCards(roomId, playerId, out cards, DateTime.UtcNow);
+        }
+
+        internal static bool AllTeammatesBotInActiveRoom()
+        {
+            try
+            {
+                var manager = SimpleSingletonProvider<GameLogicManager>.inst;
+                var players = manager?.room?.curRoomInfo?.Players;
+                if (players == null || players.Count == 0) return false;
+                bool sawTeammate = false;
+                foreach (var p in players)
+                {
+                    if (p == null || p.Id <= 0 || manager.account?.IsSelf(p.Id) == true) continue;
+                    sawTeammate = true;
+                    if (!p.IsBot) return false;
+                }
+                return sawTeammate;
+            }
+            catch { return false; }
+        }
+
+        internal static string GetPendingHandReason()
+        {
+#if XINGSHU_ANDROID_PREVIEW
+            return XingShu.Runtime.MobileCloudPollPolicy.DescribePendingHandTag(
+                XingShu.Runtime.AndroidCloudHands.CurrentHandDiagnostic,
+                AllTeammatesBotInActiveRoom());
+#else
+            if (SpectatorStateStore.IsInSpectatorSession())
+            {
+                return "等待观战端完整手牌数据";
+            }
+            return AllTeammatesBotInActiveRoom()
+                ? "人机房未开观战/无QQ Bot接入"
+                : "等待观战端/QQ Bot接入房间";
+#endif
         }
 
         public static HandTruthSnapshot CurrentSnapshot
@@ -607,7 +758,7 @@ namespace XingShu.Truth
                         int heldCount = (container != null) ? container.CardCount : 0;
                         cardIds.Clear();
                         isAuth = false;
-                        statusDesc = heldCount > 0 ? $"等待观战端完整手牌数据 (持有 {heldCount} 张)" : "无手牌 (0 张)";
+                        statusDesc = heldCount > 0 ? $"{GetPendingHandReason()} (持有 {heldCount} 张)" : "无手牌 (0 张)";
                     }
                 }
 

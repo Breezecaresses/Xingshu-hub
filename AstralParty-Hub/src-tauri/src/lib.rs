@@ -20,6 +20,8 @@ pub mod android_installer;
 #[cfg(feature = "web-ui")]
 pub mod external_mods;
 #[cfg(feature = "web-ui")]
+pub mod dropped_mods;
+#[cfg(feature = "web-ui")]
 pub mod workshop;
 #[cfg(feature = "web-ui")]
 pub mod app_update;
@@ -216,6 +218,11 @@ pub fn run() {
             external_mods::get_external_mod_report,
             external_mods::external_mod_action,
             external_mods::archive_external_mod_report,
+            dropped_mods::inspect_dropped_mod,
+            dropped_mods::install_dropped_mod,
+            dropped_mods::restore_dropped_mod,
+            dropped_mods::list_dropped_mods,
+            dropped_mods::stage_dropped_mod_bytes,
             workshop::workshop_list_local_state,
             workshop::workshop_download_and_install,
             workshop::workshop_restore_mod,

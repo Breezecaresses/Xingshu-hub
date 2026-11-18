@@ -8,6 +8,7 @@ import {deriveQqAuthorizedBanner, type CloudAccount} from './cloudLoginStatus';
 type Account = CloudAccount;
 type Grant = {loginUrl: string; qrPng: string; expiresIn: number};
 type LoginState = {status: string; account?: Account; message?: string};
+type CloudHandState = {enabled: boolean; status: string};
 type DetectedChannel = {platform: string; appId: string; label: string; updatedAt: number};
 type NoticeTone = 'info' | 'ok' | 'error';
 const channelKey = (ch: Pick<DetectedChannel, 'platform' | 'appId'>) => `${ch.platform}:${ch.appId}`;
@@ -35,21 +36,44 @@ export function CloudLoginCard({isZh}: {isZh: boolean}) {
   const [qqLink, setQqLink] = useState('');
   const [qqChannelKey, setQqChannelKey] = useState('');
   const [qqPairedAccount, setQqPairedAccount] = useState<Account | null>(null);
+  const [cloudHands, setCloudHands] = useState<CloudHandState>({enabled: true, status: 'signed_out'});
+  const [cloudHandPending, setCloudHandPending] = useState(false);
 
   const selectedChannel = channels.find(ch => channelKey(ch) === qqChannelKey) ?? channels[0] ?? null;
   const qqAuthorizedBanner = deriveQqAuthorizedBanner(account, qqPairedAccount, isZh);
 
+  const refreshCloudHands = async () => {
+    try {
+      const state = await invoke<CloudHandState>('cloud_hand_sync_status');
+      if (state) setCloudHands(state);
+    } catch { /* non-tauri or not ready */ }
+  };
+
+  const toggleCloudHands = async () => {
+    setCloudHandPending(true);
+    try {
+      const state = await invoke<CloudHandState>('set_cloud_hand_sync', {enabled: !cloudHands.enabled});
+      setCloudHands(state);
+    } catch (error) {
+      setNotice(readable(error), 'error');
+    } finally {
+      setCloudHandPending(false);
+    }
+  };
+
   const refresh = async () => {
     setBusy(true); setNotice('');
     try {
-      const [result, ch] = await Promise.all([
+      const [result, ch, hands] = await Promise.all([
         invoke<LoginState>('get_cloud_account'),
         invoke<{channels: DetectedChannel[]}>('detect_local_channel_tokens').catch(() => ({channels: []})),
+        invoke<CloudHandState>('cloud_hand_sync_status').catch(() => null),
       ]);
       const list = ch.channels ?? [];
       setAccount(result.account ?? null);
       setChannels(list);
       setQqChannelKey(prev => (prev && list.some(item => channelKey(item) === prev)) ? prev : (list[0] ? channelKey(list[0]) : ''));
+      if (hands) setCloudHands(hands);
       setLoaded(true);
     } catch (error) { setNotice(readable(error), 'error'); }
     finally { setBusy(false); }
@@ -67,7 +91,8 @@ export function CloudLoginCard({isZh}: {isZh: boolean}) {
         failures = 0; setStage(result.status);
         if (result.status === 'succeeded') {
           setAccount(result.account ?? null); setGrant(null); setPolling(false); setVisible(false); setLoaded(true);
-          setNotice(isZh ? '登录成功。' : 'Signed in.', 'ok'); return;
+          void refreshCloudHands();
+          setNotice(isZh ? '登录成功，合作对局云端手牌将自动同步。' : 'Signed in. Co-op cloud hands will sync automatically.', 'ok'); return;
         }
         if (result.status === 'failed') {
           setGrant(null); setPolling(false);
@@ -128,7 +153,7 @@ export function CloudLoginCard({isZh}: {isZh: boolean}) {
   };
   const logout = async () => {
     setBusy(true); setNotice('');
-    try { await invoke('logout_cloud_account'); setAccount(null); setQqPairedAccount(null); setGrant(null); setPolling(false); setLoaded(true); }
+    try { await invoke('logout_cloud_account'); setAccount(null); setQqPairedAccount(null); setGrant(null); setPolling(false); setLoaded(true); void refreshCloudHands(); }
     catch (error) { setNotice(readable(error), 'error'); }
     finally { setBusy(false); }
   };
@@ -140,7 +165,7 @@ export function CloudLoginCard({isZh}: {isZh: boolean}) {
           <h3 style={{margin: '0 0 7px'}}>{isZh ? '星枢账号登录' : 'XingShu sign in'}</h3>
           <div style={{fontSize: 14, color: 'var(--text-secondary)'}}>
             {account ? <><strong style={{color: 'var(--text-primary)'}}>{account.nick}</strong> · UID {account.uid}</> :
-              isZh ? '用游戏账号绑定的手机号登录，QQ Bot 和 Hub 均可使用。' : 'Sign in with the phone number linked to your game account.'}
+              isZh ? '支持手机号、Steam、B 站与 TapTap 登录；登录后自动同步合作对局云端手牌，QQ Bot 与 Hub 通用。' : 'Sign in with Phone, Steam, Bilibili, or TapTap; auto-pushes co-op cloud hands after sign-in.'}
           </div>
         </div>
         {grant && <button className="btn btn-secondary" onClick={() => setVisible(true)}>{isZh ? '查看登录进度' : 'View login'}</button>}
@@ -149,9 +174,24 @@ export function CloudLoginCard({isZh}: {isZh: boolean}) {
         {account&&<Link className="btn btn-secondary" to="/player/profile" onClick={()=>localStorage.setItem('library.account',`PHONE_CN:${account.uid}`)}>{isZh ? '查看游戏资料' : 'Game profile'}</Link>}
         <button className="btn btn-secondary" disabled={busy} onClick={refresh} aria-label={isZh ? '刷新登录状态' : 'Refresh login'}><RefreshCw size={15}/></button>
       </div>
+      {account && (
+        <div style={{marginTop: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--bg-subtle)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap'}}>
+          <div style={{fontSize: 13, color: 'var(--text-secondary)'}}>
+            <strong style={{color: 'var(--text-primary)'}}>{isZh ? '游戏内云端手牌自动推送：' : 'In-game Cloud Hand Auto-Push: '}</strong>
+            <span>{cloudHands.enabled
+              ? (cloudHands.status === 'forwarded'
+                ? (isZh ? '已开启并正在转发手牌' : 'Enabled · Forwarding hands')
+                : (isZh ? '已开启，进入允许观战的合作对局即自动推送队友手牌' : 'Enabled · Auto-syncs teammate hands in co-op matches'))
+              : (isZh ? '已关闭' : 'Off')}</span>
+          </div>
+          <button className="btn btn-secondary" disabled={cloudHandPending} onClick={toggleCloudHands} style={{padding: '5px 12px', fontSize: 12}}>
+            {cloudHands.enabled ? (isZh ? '关闭云端推送' : 'Disable push') : (isZh ? '开启云端推送' : 'Enable push')}
+          </button>
+        </div>
+      )}
       <p style={{fontSize: 12, lineHeight: 1.7, color: 'var(--text-secondary)', margin: '14px 0 0'}}>
-        {isZh ? '登录只确认账号身份；若该账号正在游戏中，校验票据会顶下该游戏客户端一次，登录后重开游戏即可。日常手牌与战绩同步不会再顶号，多开时请用与主对局相同的账号登录，下方角色绑定仍由你管理。' :
-          'Login confirms identity (an active game on the same account will be signed out once during verification; reopen afterwards). Routine hand sync does not kick active sessions.'}
+        {isZh ? '登录只确认账号身份并自动开启云端手牌推送；若该账号正在游戏中，首次校验票据会顶下该游戏客户端一次，重开游戏即可。日常手牌与战绩同步不会再顶号，多开时会自动匹配与登录 UID 一致的对局。' :
+          'Login confirms identity and enables cloud hand push (an active game on the same account is signed out once during verification; reopen afterwards). Routine sync does not kick active sessions.'}
       </p>
       {channels.length > 0 && (
         <div style={{marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 10}}>
@@ -205,7 +245,7 @@ export function CloudLoginCard({isZh}: {isZh: boolean}) {
         <h2 style={{fontSize: 21, margin: '10px 0 12px'}}>{isZh ? '扫码登录星枢' : 'Sign in to XingShu'}</h2>
         {grant && stage === 'pending' ? <>
           <img src={`data:image/png;base64,${grant.qrPng}`} width={250} height={250} alt={isZh ? '星枢手机号授权二维码' : 'Phone authorization QR code'} style={{maxWidth: '100%', height: 'auto', borderRadius: 12, background: 'white', padding: 8}}/>
-          <p style={{lineHeight: 1.7, color: 'var(--text-secondary)', fontSize: 13}}>{isZh ? '使用手机扫码，在授权页填写手机号和短信验证码。二维码有效期 2 分钟。' : 'Scan with your phone and sign in by SMS. QR expires in 2 minutes.'}</p>
+          <p style={{lineHeight: 1.7, color: 'var(--text-secondary)', fontSize: 13}}>{isZh ? '使用手机扫码，或在浏览器中用手机号、Steam、B 站、TapTap 完成授权。二维码有效期 2 分钟。' : 'Scan with your phone or authorize in browser with Phone, Steam, Bilibili, or TapTap. QR expires in 2 minutes.'}</p>
           <button className="btn btn-primary" onClick={() => openUrl(grant.loginUrl).catch(() => setNotice(isZh ? '无法打开浏览器，请使用手机扫码。' : 'Unable to open browser. Please scan the QR.'))}>{isZh ? '在浏览器打开登录页' : 'Open login page'}</button>
         </> : grant ? <p style={{padding: '50px 0', lineHeight: 1.8}}>{isZh ? '授权页已打开，请完成手机号登录。成功后此处将自动更新。' : 'Authorization page opened. Finish sign in to continue.'}</p> :
           <p style={{lineHeight: 1.8}}>{notice}</p>}

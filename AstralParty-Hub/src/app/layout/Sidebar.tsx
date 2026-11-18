@@ -1,15 +1,12 @@
 import React from 'react';
 import { assetUrl, isTauriRuntime } from '../../shared/runtime';
 import { Sparkles as ReplayIcon } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   User,
   UserCheck,
-  Users,
-  Layers,
-  Coins,
-  Map,
+  BookOpen,
   History,
   Sparkles,
   Activity,
@@ -17,7 +14,7 @@ import {
   Eye,
   Radio,
   PackageCheck,
-  Paintbrush,
+  DoorOpen,
   X,
 } from 'lucide-react';
 import { useTranslation } from '../../i18n';
@@ -28,9 +25,15 @@ export interface SidebarProps {
   onClose?: () => void;
 }
 
+const ENCYCLOPEDIA_PATHS = ['/player/characters', '/player/cards', '/player/chips', '/player/maps'];
+const MODS_PATHS = ['/extensions/mods', '/extensions/creator'];
+
 export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onClose }) => {
   const { locale, t } = useTranslation();
   const isDesktop = isTauriRuntime();
+  const { pathname } = useLocation();
+  const isEncyclopediaActive = ENCYCLOPEDIA_PATHS.some((p) => pathname.startsWith(p));
+  const isModsActive = MODS_PATHS.some((p) => pathname.startsWith(p));
 
   return (
     <aside className={`sidebar${mobileOpen ? ' is-mobile-open' : ''}`}>
@@ -86,31 +89,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onClose })
         </NavLink>
         <NavLink
           to="/player/characters"
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+          className={() => `nav-item ${isEncyclopediaActive ? 'active' : ''}`}
         >
-          <Users size={17} />
-          <span>{t('nav.characters')}</span>
-        </NavLink>
-        <NavLink
-          to="/player/cards"
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <Layers size={17} />
-          <span>{t('nav.cards')}</span>
-        </NavLink>
-        <NavLink
-          to="/player/chips"
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <Coins size={17} />
-          <span>{locale === 'zh-CN' ? '筹码图鉴' : 'Battle tokens'}</span>
-        </NavLink>
-        <NavLink
-          to="/player/maps"
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <Map size={17} />
-          <span>{locale === 'zh-CN' ? '地图与场地' : 'Maps & fields'}</span>
+          <BookOpen size={17} />
+          <span>{locale === 'zh-CN' ? '图鉴百科' : 'Encyclopedia'}</span>
         </NavLink>
         <NavLink
           to="/player/matches"
@@ -127,9 +109,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onClose })
           <span>{locale === 'zh-CN' ? '回放分析' : 'Replay Lab'}</span>
         </NavLink>
 
+        <div className="nav-section-title">{t('nav.xingshuCore')}</div>
+        <NavLink
+          to="/room"
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+          style={{ justifyContent: 'space-between' }}
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+            <DoorOpen size={17} />
+            <span>{t('nav.roomLobby')}</span>
+          </span>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              padding: '1px 6px',
+              borderRadius: 999,
+              background: 'var(--accent-soft)',
+              color: 'var(--accent-text)',
+              border: '1px solid var(--accent-border)',
+            }}
+          >
+            {locale === 'zh-CN' ? '趴开房' : 'Preview'}
+          </span>
+        </NavLink>
+
         {isDesktop && (
           <>
-            <div className="nav-section-title">{t('nav.xingshuCore')}</div>
             <NavLink
               to="/spectator"
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
@@ -159,17 +165,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onClose })
         )}
         <NavLink
           to="/extensions/mods"
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+          className={() => `nav-item ${isModsActive ? 'active' : ''}`}
         >
           <Sparkles size={17} />
           <span>{t('nav.gameMods')}</span>
-        </NavLink>
-        <NavLink
-          to="/extensions/creator"
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-          <Paintbrush size={17} />
-          <span>{locale === 'zh-CN' ? '创作者入口' : 'Creator Center'}</span>
         </NavLink>
 
         {isDesktop && (

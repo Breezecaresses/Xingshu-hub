@@ -102,10 +102,80 @@ pub struct ExtensionInventory {
     pub entries: Vec<ExtensionEntry>, pub plugin_directory: String, pub mod_directory: String,
     pub resource_directory: String, pub warnings: Vec<String>, pub installer_available: bool,
 }
+fn release_sort_key(package: &Path) -> (bool, u64, std::time::SystemTime) {
+    let manifest_path = package.join("release.json");
+    let parsed = std::fs::read(&manifest_path)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok());
+    let current_ver = env!("CARGO_PKG_VERSION");
+    let version_matches = parsed.as_ref().is_some_and(|v| {
+        v["Version"].as_str() == Some(current_ver)
+            || v["HubVersion"].as_str() == Some(current_ver)
+            || v["HubBuildVersion"].as_str() == Some(current_ver)
+    });
+    let sequence = parsed
+        .as_ref()
+        .and_then(|v| v["HubBuildSequence"].as_u64())
+        .unwrap_or(0);
+    let modified = std::fs::metadata(&manifest_path)
+        .and_then(|m| m.modified())
+        .unwrap_or(std::time::UNIX_EPOCH);
+    (version_matches, sequence, modified)
+}
+
+fn dev_publish_dir(exe: &Path) -> Option<PathBuf> {
+    let exe = dunce::simplified(exe);
+    let profile = exe.parent()?.file_name().and_then(|n| n.to_str())?;
+    if !matches!(profile, "debug" | "release") {
+        return None;
+    }
+    for ancestor in exe.ancestors().skip(2).take(5) {
+        if ancestor.join("AstralParty-Hub/src-tauri/Cargo.toml").is_file()
+            && ancestor.join("发布包").is_dir()
+        {
+            return Some(ancestor.join("发布包"));
+        }
+    }
+    None
+}
+
+pub(crate) fn resolve_package_root<F>(exe: &Path, predicate: F) -> Option<PathBuf>
+where
+    F: Fn(&Path) -> bool,
+{
+    let exe = dunce::simplified(exe);
+    if let Some(found) = exe
+        .ancestors()
+        .skip(1)
+        .take(4)
+        .find(|p| p.join("release.json").is_file() && predicate(p))
+    {
+        return Some(dunce::canonicalize(found).unwrap_or_else(|_| found.to_path_buf()));
+    }
+    let publish_dir = dev_publish_dir(exe)?;
+    let entries = std::fs::read_dir(publish_dir).ok()?;
+    let mut best: Option<((bool, u64, std::time::SystemTime), PathBuf)> = None;
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+        if name_str.starts_with('.') || !name_str.starts_with("XingShu_Desktop_") {
+            continue;
+        }
+        let path = entry.path();
+        if !path.is_dir() || !path.join("release.json").is_file() || !predicate(&path) {
+            continue;
+        }
+        let key = release_sort_key(&path);
+        if best.as_ref().is_none_or(|(best_key, _)| key > *best_key) {
+            best = Some((key, path));
+        }
+    }
+    best.map(|(_, path)| dunce::canonicalize(&path).unwrap_or(path))
+}
+
 fn package_root() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
-    exe.ancestors().skip(1).take(4)
-        .find(|p| p.join("release.json").is_file() && installer_path(p).is_some()).map(Path::to_path_buf)
+    resolve_package_root(&exe, |p| installer_path(p).is_some())
 }
 fn installer_path(package: &Path) -> Option<PathBuf> {
     ["星枢安装助手.exe", "星枢群测助手.exe"].into_iter()
@@ -138,7 +208,7 @@ pub fn inventory(db: &Database, game: &GameInstallation) -> HubResult<ExtensionI
                     name: "星枢运行时与内置功能".into(), category: "xingshu-plugin".into(), version: runtime["version"].as_str().map(String::from),
                     path: path.display().to_string(), source: "游戏文件 SHA256 核验".into(), status: "文件已核验".into(),
                     description: "包含观战手牌、角色与战绩同步、功能中心及本地计时。内置功能随运行时一起更新，请在游戏中查看启用状态。".into(), managed: false });
-            } else { out.warnings.push("当前游戏资源与本版运行时指纹不同；不将其视为已安装最新版。请使用群测助手检查。".into()); }
+            } else { out.warnings.push("当前游戏资源与本版运行时指纹不同；不将其视为已安装最新版。请使用安装助手检查。".into()); }
         }
     }
     let mut apx_markers = Vec::new();
@@ -226,8 +296,9 @@ pub async fn open_group_installer(installation_id: String, center: State<'_, Ext
     let root = game_root(&game)?;
     let package = package_root().ok_or_else(|| HubError::game_not_found("请完整解压发布包，并从其中的 Hub 目录运行。"))?;
     let installer = installer_path(&package).ok_or_else(|| HubError::game_not_found("安装助手不存在，请重新完整解压发布包。"))?;
-    let mut command = std::process::Command::new(installer);
-    command.args(["--ui", &game.platform, &root.display().to_string()]);
+    let mut command = std::process::Command::new(&installer);
+    command.current_dir(&package);
+    command.args(["--ui", &game.platform, &dunce::simplified(&root).display().to_string()]);
     command.spawn().map_err(|e| HubError::game_not_found(&e.to_string()))?;
     Ok(())
 }
@@ -338,5 +409,61 @@ mod tests {
         assert_eq!(games.len(),5);
         let ids: std::collections::HashSet<_> = games.iter().map(|g| scoped_package_id("same.package",g)).collect();
         assert_eq!(ids.len(),5);
+    }
+
+    #[test]
+    fn resolves_portable_package_and_dev_publish_fallback_without_verbatim_prefix() {
+        let temp = tempfile::tempdir().unwrap();
+        let pkg = temp.path().join("pkg/XingShu_Desktop_0.1.6-beta.2");
+        std::fs::create_dir_all(pkg.join("Hub")).unwrap();
+        std::fs::write(pkg.join("release.json"), "{}").unwrap();
+        std::fs::write(pkg.join("星枢安装助手.exe"), b"helper").unwrap();
+        let hub_exe = pkg.join("Hub/xingshu-hub.exe");
+        std::fs::write(&hub_exe, b"hub").unwrap();
+
+        let verbatim_exe = PathBuf::from(format!(r"\\?\{}", dunce::canonicalize(&hub_exe).unwrap().display()));
+        let resolved = resolve_package_root(&verbatim_exe, |p| installer_path(p).is_some()).unwrap();
+        assert_eq!(resolved, dunce::canonicalize(&pkg).unwrap());
+        assert!(!resolved.to_string_lossy().starts_with(r"\\?\"));
+
+        let repo = temp.path().join("repo");
+        let target_release = repo.join("AstralParty-Hub/src-tauri/target/release");
+        std::fs::create_dir_all(&target_release).unwrap();
+        std::fs::write(repo.join("AstralParty-Hub/src-tauri/Cargo.toml"), "[package]\nname=\"xingshu-hub\"\n").unwrap();
+        let dev_exe = target_release.join("xingshu-hub.exe");
+        std::fs::write(&dev_exe, b"hub").unwrap();
+
+        let staging = repo.join("发布包/.building-XingShu_Desktop_9.9.9-tmp");
+        std::fs::create_dir_all(&staging).unwrap();
+        std::fs::write(staging.join("release.json"), r#"{"Version":"9.9.9","HubBuildSequence":9999999999}"#).unwrap();
+        std::fs::write(staging.join("星枢安装助手.exe"), b"helper").unwrap();
+
+        let older = repo.join("发布包/XingShu_Desktop_0.1.6-beta.1");
+        std::fs::create_dir_all(&older).unwrap();
+        std::fs::write(older.join("release.json"), r#"{"Version":"0.1.6-beta.1","HubBuildSequence":100}"#).unwrap();
+        std::fs::write(older.join("星枢安装助手.exe"), b"helper").unwrap();
+
+        let matched = repo.join(format!("发布包/XingShu_Desktop_{}", env!("CARGO_PKG_VERSION")));
+        std::fs::create_dir_all(&matched).unwrap();
+        std::fs::write(
+            matched.join("release.json"),
+            format!(r#"{{"Version":"{}","HubBuildSequence":200}}"#, env!("CARGO_PKG_VERSION")),
+        )
+        .unwrap();
+        std::fs::write(matched.join("星枢安装助手.exe"), b"helper").unwrap();
+
+        let dev_resolved = resolve_package_root(&dev_exe, |p| installer_path(p).is_some()).unwrap();
+        assert_eq!(dev_resolved, dunce::canonicalize(&matched).unwrap());
+
+        let isolated_exe = repo.join("XingShu-Dev/build/hub-release-target/release/xingshu-hub.exe");
+        std::fs::create_dir_all(isolated_exe.parent().unwrap()).unwrap();
+        std::fs::write(&isolated_exe, b"hub").unwrap();
+        let isolated_resolved = resolve_package_root(&isolated_exe, |p| installer_path(p).is_some()).unwrap();
+        assert_eq!(isolated_resolved, dunce::canonicalize(&matched).unwrap());
+
+        let loose = temp.path().join("Desktop/xingshu-hub.exe");
+        std::fs::create_dir_all(loose.parent().unwrap()).unwrap();
+        std::fs::write(&loose, b"hub").unwrap();
+        assert!(resolve_package_root(&loose, |p| installer_path(p).is_some()).is_none());
     }
 }

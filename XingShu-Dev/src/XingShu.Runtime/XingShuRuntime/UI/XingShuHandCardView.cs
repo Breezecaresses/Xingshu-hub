@@ -38,8 +38,8 @@ namespace XingShuRuntime.UI
         private Text _copyCloudHandLabel;
 #endif
         private Toggle _rosterToggle;
-        private Slider _rosterScaleSlider;
-        private Text _rosterScaleText;
+        private Slider _rosterScaleSlider, _rosterToggleXSlider, _rosterToggleYSlider, _rosterGridXSlider, _rosterGridYSlider;
+        private Text _rosterScaleText, _rosterToggleXText, _rosterToggleYText, _rosterGridXText, _rosterGridYText, _rosterSummaryText;
 
         // Card Scale Card
         private Slider _scaleSlider;
@@ -325,24 +325,79 @@ namespace XingShuRuntime.UI
 
         private void BuildRosterCard(GameObject parent)
         {
-            var card = CreateCardContainer(parent, "RosterHandCard", 164f);
+            var card = CreateCardContainer(parent, "RosterHandCard", 408f);
             XingShuDetailLayout.Text(card.transform, "角色框旁手牌", 24, 16, 320, 28, 16).fontStyle = FontStyle.Bold;
             _rosterToggle = XingShuUIFactory.CreateToggle(card, "RosterHandToggle", "显示入口", HandCardRoster.Enabled,
                 value => { if (!_suppressCallbacks) HandCardRoster.Enabled = value; });
             var toggle = _rosterToggle.GetComponent<RectTransform>();
             toggle.anchorMin = toggle.anchorMax = toggle.pivot = new Vector2(1, 1);
             toggle.anchoredPosition = new Vector2(-24, -16); toggle.sizeDelta = new Vector2(150, 32);
-            XingShuDetailLayout.Text(card.transform, "点“手牌”展开或收起；牌多轻叠，超出可左右拖动；选筹码时自动隐藏", 24, 52, 640, 24, 12, true);
-            XingShuDetailLayout.Text(card.transform, "角色旁卡牌大小（默认 80%）", 24, 84, 300, 24, 13);
-            _rosterScaleText = XingShuDetailLayout.Text(card.transform, "80%", 0, 84, 100, 24, 14);
+            XingShuDetailLayout.Text(card.transform, "点入口展开并覆盖信息条，不随头像晃动；可先微调偏移再固定默认位置", 24, 52, 640, 22, 12, true);
+            XingShuDetailLayout.Text(card.transform, "角色旁卡牌大小（默认 80%）", 24, 80, 300, 22, 13);
+            _rosterScaleText = XingShuDetailLayout.Text(card.transform, "80%", 0, 80, 100, 22, 14);
             var valueRect = _rosterScaleText.rectTransform;
             valueRect.anchorMin = valueRect.anchorMax = valueRect.pivot = new Vector2(1, 1);
-            valueRect.anchoredPosition = new Vector2(-24, -84); _rosterScaleText.alignment = TextAnchor.MiddleRight;
+            valueRect.anchoredPosition = new Vector2(-24, -80); _rosterScaleText.alignment = TextAnchor.MiddleRight;
             _rosterScaleSlider = XingShuUIFactory.CreateSlider(card, "RosterScaleSlider", .6f, 1.5f, HandCardRoster.Scale,
                 value => { if (!_suppressCallbacks) HandCardRoster.Scale = value; });
             var slider = _rosterScaleSlider.GetComponent<RectTransform>();
             slider.anchorMin = new Vector2(0, 1); slider.anchorMax = new Vector2(1, 1); slider.pivot = new Vector2(.5f, 1);
-            slider.anchoredPosition = new Vector2(0, -116); slider.sizeDelta = new Vector2(-48, 28);
+            slider.anchoredPosition = new Vector2(0, -106); slider.sizeDelta = new Vector2(-48, 26);
+
+            AddRosterOffsetRow(card, "RosterToggleX", "卡背开关 X 偏移", 140, -80f, 280f, HandCardRoster.ToggleOffsetX,
+                v => HandCardRoster.ToggleOffsetX = Mathf.Round(v), out _rosterToggleXSlider, out _rosterToggleXText);
+            AddRosterOffsetRow(card, "RosterToggleY", "卡背开关 Y 偏移", 196, -80f, 80f, HandCardRoster.ToggleOffsetY,
+                v => HandCardRoster.ToggleOffsetY = Mathf.Round(v), out _rosterToggleYSlider, out _rosterToggleYText);
+            AddRosterOffsetRow(card, "RosterGridX", "展开手牌 X 偏移", 252, -120f, 320f, HandCardRoster.GridOffsetX,
+                v => HandCardRoster.GridOffsetX = Mathf.Round(v), out _rosterGridXSlider, out _rosterGridXText);
+            AddRosterOffsetRow(card, "RosterGridY", "展开手牌 Y 偏移", 308, -80f, 80f, HandCardRoster.GridOffsetY,
+                v => HandCardRoster.GridOffsetY = Mathf.Round(v), out _rosterGridYSlider, out _rosterGridYText);
+
+            _rosterSummaryText = XingShuDetailLayout.Text(card.transform, "", 24, 368, 480, 24, 12, true);
+            Button resetBtn = XingShuUIFactory.CreateButton(card, "ResetRosterOffsets", "恢复位置默认",
+                XingShuUIAssetService.GetSprite("button_secondary.png"), XingShuUITheme.Card, XingShuUITheme.PrimaryText,
+                () => { HandCardRoster.ResetOffsets(); SyncRosterOffsetControls(); }, 12);
+            var rb = resetBtn.GetComponent<RectTransform>();
+            rb.anchorMin = rb.anchorMax = rb.pivot = new Vector2(1, 1);
+            rb.anchoredPosition = new Vector2(-24, -364); rb.sizeDelta = new Vector2(116, 28);
+        }
+
+        private void AddRosterOffsetRow(GameObject card, string id, string label, float top, float min, float max, float initial,
+            UnityAction<float> onChanged, out Slider slider, out Text valueText)
+        {
+            XingShuDetailLayout.Text(card.transform, label, 24, top, 240, 22, 13);
+            valueText = XingShuDetailLayout.Text(card.transform, FormatSignedPx(initial), 0, top, 100, 22, 13);
+            var vt = valueText.rectTransform;
+            vt.anchorMin = vt.anchorMax = vt.pivot = new Vector2(1, 1);
+            vt.anchoredPosition = new Vector2(-24, -top); valueText.alignment = TextAnchor.MiddleRight;
+            slider = XingShuUIFactory.CreateSlider(card, id + "Slider", min, max, initial,
+                v => { if (!_suppressCallbacks) { onChanged(v); SyncRosterOffsetControls(); } });
+            var rt = slider.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1); rt.pivot = new Vector2(.5f, 1);
+            rt.anchoredPosition = new Vector2(0, -(top + 24)); rt.sizeDelta = new Vector2(-48, 24);
+        }
+
+        private void SyncRosterOffsetControls()
+        {
+            _suppressCallbacks = true;
+            float tx = HandCardRoster.ToggleOffsetX, ty = HandCardRoster.ToggleOffsetY, gx = HandCardRoster.GridOffsetX, gy = HandCardRoster.GridOffsetY;
+            if (_rosterToggleXSlider != null && Mathf.Abs(_rosterToggleXSlider.value - tx) > .5f) _rosterToggleXSlider.value = tx;
+            if (_rosterToggleYSlider != null && Mathf.Abs(_rosterToggleYSlider.value - ty) > .5f) _rosterToggleYSlider.value = ty;
+            if (_rosterGridXSlider != null && Mathf.Abs(_rosterGridXSlider.value - gx) > .5f) _rosterGridXSlider.value = gx;
+            if (_rosterGridYSlider != null && Mathf.Abs(_rosterGridYSlider.value - gy) > .5f) _rosterGridYSlider.value = gy;
+            if (_rosterToggleXText != null) _rosterToggleXText.text = FormatSignedPx(tx);
+            if (_rosterToggleYText != null) _rosterToggleYText.text = FormatSignedPx(ty);
+            if (_rosterGridXText != null) _rosterGridXText.text = FormatSignedPx(gx);
+            if (_rosterGridYText != null) _rosterGridYText.text = FormatSignedPx(gy);
+            if (_rosterSummaryText != null)
+                _rosterSummaryText.text = $"当前参数：入口({FormatSignedPx(tx)}, {FormatSignedPx(ty)}) · 卡牌({FormatSignedPx(gx)}, {FormatSignedPx(gy)})";
+            _suppressCallbacks = false;
+        }
+
+        private static string FormatSignedPx(float value)
+        {
+            int rounded = Mathf.RoundToInt(value);
+            return (rounded >= 0 ? "+" : "") + rounded + "px";
         }
 
         private void BuildCardScaleCard(GameObject parent)
@@ -623,6 +678,7 @@ namespace XingShuRuntime.UI
             if (_rosterScaleSlider != null && Mathf.Abs(_rosterScaleSlider.value - HandCardRoster.Scale) > .005f) _rosterScaleSlider.value = HandCardRoster.Scale;
             if (_rosterScaleText != null) _rosterScaleText.text = HandCardRoster.Scale.ToString("P0");
             _suppressCallbacks = false;
+            SyncRosterOffsetControls();
             bool curSpectatorAutoOpen = HandCardDisplayManager.SpectatorAutoOpen;
             float curScale = HandCardDock.Scale;
             float curBtnSize = HandCardDisplayManager.PlayBtnSize;
@@ -936,11 +992,13 @@ namespace XingShuRuntime.UI
                 else if (knownCount > 0)
                 {
                     int remainingMasked = Math.Max(unknownCount, h.MaskedHandCount - knownCount);
-                    displayText = $"{knownCount} 张已识别: {cardsDesc}+ <color=#f59e0b>[等待观战端完整手牌数据]</color> <color=#94a3b8>(另持有 {remainingMasked} 张)</color>";
+                    string pendingReason = HandTruthSource.GetPendingHandReason();
+                    displayText = $"{knownCount} 张已识别: {cardsDesc}+ <color=#f59e0b>[{pendingReason}]</color> <color=#94a3b8>(另持有 {remainingMasked} 张)</color>";
                 }
                 else if (totalCount > 0)
                 {
-                    displayText = $"<color=#f59e0b>[等待观战端完整手牌数据]</color> <color=#94a3b8>(持有 {totalCount} 张)</color>";
+                    string pendingReason = HandTruthSource.GetPendingHandReason();
+                    displayText = $"<color=#f59e0b>[{pendingReason}]</color> <color=#94a3b8>(持有 {totalCount} 张)</color>";
                 }
                 else
                 {

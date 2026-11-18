@@ -627,6 +627,24 @@ internal sealed class MapCamera
 		}
 	}
 
+	internal bool FocusWorldPosition(Vector3 worldPos)
+	{
+		if (!Enabled || !CanControl() || _control.Yielded || _camera == null || !_camera)
+		{
+			return false;
+		}
+		if (!PortMath.Finite(worldPos.x) || !PortMath.Finite(worldPos.z))
+		{
+			return false;
+		}
+		CancelDrag();
+		_pointerBlocked = null;
+		_focus = new Vector3(worldPos.x, _boardHeight, worldPos.z);
+		ClampFocus();
+		ApplyPose();
+		return true;
+	}
+
 	internal void Restore()
 	{
 		if (_cameraUpdatedEvent != null)

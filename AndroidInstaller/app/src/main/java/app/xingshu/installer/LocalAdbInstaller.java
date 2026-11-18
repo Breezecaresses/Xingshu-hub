@@ -182,6 +182,12 @@ final class LocalAdbInstaller implements Closeable {
         return operation("launch", pkg);
     }
 
+    String writeGameHandoff(String packageName, String payloadJson) throws Exception {
+        String pkg = GamePackageCatalog.requireValidPackageName(packageName);
+        String b64 = Base64.getEncoder().encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
+        return operation("handoff", pkg, b64);
+    }
+
     String inspect(String packageName) throws Exception {
         String pkg = GamePackageCatalog.requireValidPackageName(packageName);
         return operation("inspect", pkg);
@@ -212,10 +218,17 @@ final class LocalAdbInstaller implements Closeable {
     }
 
     private String operation(String operation, String packageName) throws Exception {
+        return operation(operation, packageName, null);
+    }
+
+    private String operation(String operation, String packageName, String extraArg) throws Exception {
         String cmd = "CLASSPATH=" + quote(context.getApplicationInfo().sourceDir)
             + " /system/bin/app_process / app.xingshu.installer.LocalInstallerMain " + quote(operation);
         if (packageName != null && !packageName.isEmpty()) {
             cmd += " " + quote(GamePackageCatalog.requireValidPackageName(packageName));
+        }
+        if (extraArg != null && !extraArg.isEmpty()) {
+            cmd += " " + quote(extraArg);
         }
         String output = shell(cmd, 180000);
         String marker = "XINGSHU_RESULT:";

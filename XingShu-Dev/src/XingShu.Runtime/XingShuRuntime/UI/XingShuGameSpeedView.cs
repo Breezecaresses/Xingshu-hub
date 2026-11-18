@@ -39,7 +39,10 @@ namespace XingShuRuntime.UI
         private Text _speedCardTitle;
         private Slider _speedSlider;
         private Text _speedValueText;
+        private Slider _pingExtendSlider;
+        private Text _pingExtendValueText;
         private Text _tipText;
+        private float _lastObservedPingExtend = -1f;
 
         private readonly List<Button> _presetButtons = new List<Button>();
         private readonly List<Image> _presetImages = new List<Image>();
@@ -297,7 +300,7 @@ namespace XingShuRuntime.UI
             }
 
             // ==========================================
-            // 3. 核心调速卡片 (Speed Control Card: 236px, y: -220px)
+            // 3. 核心调速卡片 (Speed Control Card: 196px, y: -220px)
             // ==========================================
             GameObject speedCard = XingShuUIFactory.CreateUIObject("SpeedControlCard", _root);
             RectTransform speedCardRt = speedCard.GetComponent<RectTransform>();
@@ -305,7 +308,7 @@ namespace XingShuRuntime.UI
             speedCardRt.anchorMax = new Vector2(1f, 1f);
             speedCardRt.pivot = new Vector2(0.5f, 1f);
             speedCardRt.anchoredPosition = new Vector2(0f, -220f);
-            speedCardRt.sizeDelta = new Vector2(0f, 236f);
+            speedCardRt.sizeDelta = new Vector2(0f, 196f);
 
             Image speedCardBg = speedCard.AddComponent<Image>();
             speedCardBg.sprite = cardBaseSprite;
@@ -360,15 +363,76 @@ namespace XingShuRuntime.UI
             CreatePresetButtons(speedCard, 1.0f);
 
             // ==========================================
-            // 4. 底部说明贴士卡片 (Tip Card: 42px, y: -468px)
+            // 3.5 加速模式右侧标点延长卡片 (Ping Extend Card: 68px, y: -424px)
+            // ==========================================
+            GameObject pingCard = XingShuUIFactory.CreateUIObject("PingExtendCard", _root);
+            RectTransform pingRt = pingCard.GetComponent<RectTransform>();
+            pingRt.anchorMin = new Vector2(0f, 1f);
+            pingRt.anchorMax = new Vector2(1f, 1f);
+            pingRt.pivot = new Vector2(0.5f, 1f);
+            pingRt.anchoredPosition = new Vector2(0f, -424f);
+            pingRt.sizeDelta = new Vector2(0f, 68f);
+
+            Image pingBg = pingCard.AddComponent<Image>();
+            pingBg.sprite = cardBaseSprite;
+            pingBg.type = Image.Type.Sliced;
+            pingBg.color = XingShuUIAssetService.IsFallbackSprite(cardBaseSprite) ? XingShuUITheme.Card : Color.white;
+
+            Text pingTitle = XingShuUIFactory.CreateText(pingCard, "PingTitle", "加速模式右侧标点延长", 14, XingShuUITheme.PrimaryText, TextAnchor.MiddleLeft, FontStyle.Bold);
+            RectTransform ptRt = pingTitle.rectTransform;
+            ptRt.anchorMin = new Vector2(0f, 1f);
+            ptRt.anchorMax = new Vector2(0f, 1f);
+            ptRt.pivot = new Vector2(0f, 1f);
+            ptRt.anchoredPosition = new Vector2(24f, -10f);
+            ptRt.sizeDelta = new Vector2(220f, 22f);
+
+            Text pingSub = XingShuUIFactory.CreateText(pingCard, "PingSub", "加速时按真实时间并额外延长气泡与标记显示", 11, XingShuUITheme.MutedText, TextAnchor.MiddleLeft);
+            RectTransform psRt = pingSub.rectTransform;
+            psRt.anchorMin = new Vector2(0f, 1f);
+            psRt.anchorMax = new Vector2(0f, 1f);
+            psRt.pivot = new Vector2(0f, 1f);
+            psRt.anchoredPosition = new Vector2(24f, -34f);
+            psRt.sizeDelta = new Vector2(310f, 20f);
+
+            float initExtend = PingDisplayTiming.ExtensionSeconds;
+            _lastObservedPingExtend = initExtend;
+            _pingExtendValueText = XingShuUIFactory.CreateText(pingCard, "PingExtendVal", FormatExtend(initExtend), 16, XingShuUITheme.NumericAccent, TextAnchor.MiddleRight, FontStyle.Bold);
+            RectTransform pevRt = _pingExtendValueText.rectTransform;
+            pevRt.anchorMin = new Vector2(1f, 0.5f);
+            pevRt.anchorMax = new Vector2(1f, 0.5f);
+            pevRt.pivot = new Vector2(1f, 0.5f);
+            pevRt.anchoredPosition = new Vector2(-24f, 0f);
+            pevRt.sizeDelta = new Vector2(96f, 26f);
+
+            _pingExtendSlider = XingShuUIFactory.CreateSlider(pingCard, "PingExtendSlider",
+                XingShuConfigKeys.PingAccelExtendSecondsMin,
+                XingShuConfigKeys.PingAccelExtendSecondsMax,
+                initExtend,
+                delegate(float val)
+                {
+                    if (_suppressCallbacks) return;
+                    float snapped = Mathf.Round(val * 2f) * 0.5f;
+                    PingDisplayTiming.ExtensionSeconds = snapped;
+                    _lastObservedPingExtend = snapped;
+                    if (_pingExtendValueText != null) _pingExtendValueText.text = FormatExtend(snapped);
+                });
+            RectTransform peSlRt = _pingExtendSlider.GetComponent<RectTransform>();
+            peSlRt.anchorMin = new Vector2(1f, 0.5f);
+            peSlRt.anchorMax = new Vector2(1f, 0.5f);
+            peSlRt.pivot = new Vector2(1f, 0.5f);
+            peSlRt.anchoredPosition = new Vector2(-128f, 0f);
+            peSlRt.sizeDelta = new Vector2(210f, 26f);
+
+            // ==========================================
+            // 4. 底部说明贴士卡片 (Tip Card: 38px, y: -500px)
             // ==========================================
             GameObject tipCard = XingShuUIFactory.CreateUIObject("TipCard", _root);
             RectTransform tipRt = tipCard.GetComponent<RectTransform>();
             tipRt.anchorMin = new Vector2(0f, 1f);
             tipRt.anchorMax = new Vector2(1f, 1f);
             tipRt.pivot = new Vector2(0.5f, 1f);
-            tipRt.anchoredPosition = new Vector2(0f, -468f);
-            tipRt.sizeDelta = new Vector2(0f, 42f);
+            tipRt.anchoredPosition = new Vector2(0f, -500f);
+            tipRt.sizeDelta = new Vector2(0f, 38f);
 
             Image tipBg = tipCard.AddComponent<Image>();
             tipBg.sprite = cardBaseSprite;
@@ -387,6 +451,8 @@ namespace XingShuRuntime.UI
             RefreshEngineModeVisuals(_lastObservedEngine, force: true);
         }
 
+        private static string FormatExtend(float seconds) => seconds <= 0.05f ? "仅原真实时长" : $"+{seconds:0.0}s";
+
         private static string ShortcutTip() => "[" + XingShuHotkeys.Display(XingShuShortcut.SpeedPanel) + "] 呼出控制面板 · [" + XingShuHotkeys.Display(XingShuShortcut.Acceleration) + "] 快速开关加速";
 
         private void CreatePresetButtons(GameObject parent, float currentSpeed)
@@ -396,8 +462,8 @@ namespace XingShuRuntime.UI
             containerRt.anchorMin = new Vector2(0f, 1f);
             containerRt.anchorMax = new Vector2(1f, 1f);
             containerRt.pivot = new Vector2(0.5f, 1f);
-            containerRt.anchoredPosition = new Vector2(0f, -154f);
-            containerRt.sizeDelta = new Vector2(-48f, 42f);
+            containerRt.anchoredPosition = new Vector2(0f, -134f);
+            containerRt.sizeDelta = new Vector2(-48f, 40f);
 
             HorizontalLayoutGroup hlg = container.AddComponent<HorizontalLayoutGroup>();
             hlg.spacing = 14f;
@@ -845,6 +911,18 @@ namespace XingShuRuntime.UI
             {
                 _lastShortcutRevision = XingShuHotkeys.Revision;
                 if (!XingShuMobileUIHelper.IsMobile && _tipText != null) _tipText.text = ShortcutTip();
+            }
+            float curExtend = PingDisplayTiming.ExtensionSeconds;
+            if (Mathf.Abs(curExtend - _lastObservedPingExtend) > 0.05f)
+            {
+                _lastObservedPingExtend = curExtend;
+                if (_pingExtendSlider != null && Mathf.Abs(_pingExtendSlider.value - curExtend) > 0.05f)
+                {
+                    _suppressCallbacks = true;
+                    try { _pingExtendSlider.value = curExtend; }
+                    finally { _suppressCallbacks = false; }
+                }
+                if (_pingExtendValueText != null) _pingExtendValueText.text = FormatExtend(curExtend);
             }
             string curHotkey = XingShuHotkeys.Display(XingShuShortcut.SpeedPanel);
             if (curHotkey != _lastObservedHotkey)

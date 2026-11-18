@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cardTypes, gameCatalog } from '../../shared/gameLibrary';
 import type { LibraryCard } from '../../shared/gameLibrary';
-import { GameImage, GameText, LibraryHeader, LibraryModal, LibraryStats, useGameLibrary } from './LibraryUI';
+import { EncyclopediaTabs, GameImage, GameText, LibraryHeader, LibraryModal, LibraryStats, useGameLibrary } from './LibraryUI';
 import { AltArtImage, FullGameCard } from './FullGameCard';
 import type { AnimatedAltArt } from './FullGameCard';
 
@@ -27,6 +27,7 @@ export function CardsPage() {
     if (list.length) { const next = list[(index + direction + list.length) % list.length]; openCard(next.card!, next.art); }
   };
   return <div>
+    <EncyclopediaTabs />
     <LibraryHeader title="卡牌图鉴" description="完整竖版卡面、详细效果与动态异画收藏" state={state} />
     <LibraryStats items={[{ label: '卡牌图鉴', value: gameCatalog.cards.length }, { label: '角色专属卡', value: gameCatalog.cards.filter(c => c.dedicated).length }, { label: '异画卡牌', value: altArts.length }, { label: '已持有异画', value: state.account ? altArts.filter(a => state.account!.snapshot.altArts.includes(a.id)).length : '待同步' }]} />
     <div className="card-library-toolbar"><div className="library-tabs">{[['cards', '全部卡牌'], ['dedicated', '角色专属'], ['art', '异画卡牌']].map(([key, label]) => <button key={key} className={`btn ${tab === key ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab(key)}>{label}</button>)}</div><Link to="/player/chips">筹码图鉴 <ChevronRight size={15} /></Link></div>

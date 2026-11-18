@@ -69,6 +69,7 @@ public final class MainActivity extends Activity {
     private static final int TAB_LOGIN = 1;
     private static final int TAB_WIRELESS = 2;
     private static final int TAB_UPDATES = 3;
+    private static final int TAB_ROOM = 4;
     // Only one worker request may write update.apk or update.download at a time.
     private static final AtomicBoolean updateTaskActive = new AtomicBoolean(false);
 
@@ -105,6 +106,8 @@ public final class MainActivity extends Activity {
     private MobileAuthHub.BoundAccount boundSession;
     private String pendingQqHandoff = "";
     private String pendingQqRequester = "";
+    private String lastAutoSyncedKey = "";
+    private long lastAutoSyncedAtMs = 0L;
     private BnSdkTokenExtractor.ChannelToken quickSelectedToken;
     private boolean quickAutoPending;
     private TextView quickLoginStatusView;
@@ -138,13 +141,16 @@ public final class MainActivity extends Activity {
     private final Runnable startPairingMdnsTask = this::startPairingMdnsIfActive;
     private ProgressBar updateProgress;
     private View updateBanner;
-    private View[] tabContainers = new View[4];
-    private TextView[] tabPills = new TextView[4];
+    private View[] tabContainers = new View[5];
+    private TextView[] tabPills = new TextView[5];
     private Button installBtn, restoreBtn, inspectBtn, scanPackagesBtn, pairBtn, connectBtn, shizukuBtn, updateCheckBtn, exportLogBtn;
     private Button scanTokenBtn, bindQqBtn, hubTokenLoginBtn, webAuthBtn, webAuthCancelBtn, refreshCloudBtn, hubLogoutBtn, launchGameBtn;
-    private Button starLoginBtn, starLaunchBtn, starRefreshBtn, starLogoutBtn;
+    private Button starLoginBtn, starLaunchBtn, starRefreshBtn, starLogoutBtn, starWebCancelBtn;
     private TextView starAccountSummaryView;
     private String unifiedLoginMessage = "";
+    private volatile boolean activityVisible = false;
+    private volatile boolean webPollActive = false;
+    private final Object webPollSignal = new Object();
     private EditText pairingPort, pairingCode, connectionPort, qqLinkInput;
     private Switch previewUpdates;
 
@@ -251,6 +257,7 @@ public final class MainActivity extends Activity {
         tabContainers[TAB_LOGIN] = buildLoginTab();
         tabContainers[TAB_WIRELESS] = buildWirelessTab();
         tabContainers[TAB_UPDATES] = buildUpdatesHelpTab();
+        tabContainers[TAB_ROOM] = RoomLobbyTemplateView.build(this);
         for (View tab : tabContainers) {
             body.addView(tab);
         }
@@ -266,7 +273,9 @@ public final class MainActivity extends Activity {
         refreshPackageChips();
         refreshAuthUi();
         refresh();
-        handleQqLoginIntent(getIntent());
+        if (!handleSyncGameIntent(getIntent())) {
+            handleQqLoginIntent(getIntent());
+        }
 
         // Silently check GitHub/mirror for newer helper builds once on launch
         progressHandler.postDelayed(() -> checkAssistantUpdate(true), 650);
@@ -275,7 +284,39 @@ public final class MainActivity extends Activity {
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        handleQqLoginIntent(intent);
+        if (!handleSyncGameIntent(intent)) {
+            handleQqLoginIntent(intent);
+        }
+    }
+
+    private boolean handleSyncGameIntent(Intent intent) {
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction()) || intent.getData() == null) return false;
+        android.net.Uri uri = intent.getData();
+        if (!"xingshu-installer".equals(uri.getScheme()) || !"sync-game".equals(uri.getHost())) return false;
+        String pkgParam = uri.getQueryParameter("pkg");
+        String uidParam = uri.getQueryParameter("uid");
+        if (pkgParam != null && GamePackageCatalog.isValidPackageName(pkgParam)) {
+            selectedPackageName = pkgParam;
+            getPreferences(0).edit().putString("selectedPackageName", selectedPackageName).apply();
+            refreshPackageChips();
+        }
+        intent.setData(null);
+        if (boundSession != null && !boundSession.token.isEmpty()) {
+            selectTab(TAB_LOGIN);
+            if (uidParam != null && uidParam.matches("[1-9][0-9]{0,18}") && !uidParam.equals(boundSession.uid)) {
+                unifiedLoginMessage = "当前游戏内账号为 UID " + uidParam + "，但助手已登录的是 "
+                    + (boundSession.nick.isEmpty() ? ("UID " + boundSession.uid) : (boundSession.nick + "（UID " + boundSession.uid + "）"))
+                    + "。请点「切换星枢账号」切回对应账号后再同步。";
+                refreshAuthUi();
+                return true;
+            }
+            launchSelectedGame();
+        } else {
+            selectTab(TAB_LOGIN);
+            unifiedLoginMessage = "请先登录一次星枢账号，登录后即可自动同步到游戏内并推送云端手牌。";
+            refreshAuthUi();
+        }
+        return true;
     }
 
     private void handleQqLoginIntent(Intent intent) {
@@ -378,6 +419,7 @@ public final class MainActivity extends Activity {
                         MobileAuthHub.saveSession(getPreferences(0), result);
                         boundSession = result;
                         cloudSummaryLine = "";
+                        syncSessionToGameInBackground(result);
                     }
                     pendingQqHandoff = "";
                     pendingQqRequester = "";
@@ -550,13 +592,14 @@ public final class MainActivity extends Activity {
         int p = AuroraUi.dp(this, 4);
         track.setPadding(p, p, p, p);
 
-        String[] labels = { "安装维护", "全端登录", "无线配对", "更新与帮助" };
+        String[] labels = { "安装维护", "全端登录", "无线配对", "更新帮助", "开房组队" };
         for (int i = 0; i < labels.length; i++) {
             final int idx = i;
             TextView pill = new TextView(this);
             pill.setText(labels[i]);
+            pill.setSingleLine(true);
             pill.setGravity(Gravity.CENTER);
-            pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
+            pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
             pill.setTypeface(Typeface.DEFAULT_BOLD);
             pill.setPadding(0, AuroraUi.dp(this, 8), 0, AuroraUi.dp(this, 8));
             pill.setOnClickListener(v -> selectTab(idx));
@@ -672,6 +715,9 @@ public final class MainActivity extends Activity {
         accountCard.addView(starAccountSummaryView);
         starLoginBtn = AuroraUi.button(this, "登录星枢", AuroraUi.BtnStyle.PRIMARY, v -> startWebAuth());
         accountCard.addView(starLoginBtn);
+        starWebCancelBtn = AuroraUi.button(this, "取消等待网页授权", AuroraUi.BtnStyle.SUBTLE, v -> cancelWebAuth());
+        starWebCancelBtn.setVisibility(View.GONE);
+        accountCard.addView(starWebCancelBtn);
         starLaunchBtn = AuroraUi.button(this, "启动游戏并同步当前账号", AuroraUi.BtnStyle.ACCENT, v -> launchSelectedGame());
         accountCard.addView(starLaunchBtn);
         starRefreshBtn = AuroraUi.button(this, "刷新账号数据", AuroraUi.BtnStyle.SECONDARY, v -> refreshHubAccountSummary());
@@ -770,11 +816,7 @@ public final class MainActivity extends Activity {
         webCard.addView(webAuthStatusView);
         webAuthBtn = AuroraUi.button(this, "打开官服 / Steam 授权网页", AuroraUi.BtnStyle.SECONDARY, v -> startWebAuth());
         webCard.addView(webAuthBtn);
-        webAuthCancelBtn = AuroraUi.button(this, "停止等待网页授权", AuroraUi.BtnStyle.SUBTLE, v -> {
-            webPollCancelled = true;
-            webAuthStatusView.setText("已取消网页授权轮询。");
-            refreshAuthUi();
-        });
+        webAuthCancelBtn = AuroraUi.button(this, "停止等待网页授权", AuroraUi.BtnStyle.SUBTLE, v -> cancelWebAuth());
         webCard.addView(webAuthCancelBtn);
         otherMethods.addView(webCard);
 
@@ -1402,10 +1444,20 @@ public final class MainActivity extends Activity {
             else if (!parsed.isEmpty()) nextSelected = parsed.get(0).packageName;
         }
         final String chosen = nextSelected;
+        final boolean hasDiscovered = !parsed.isEmpty();
         runOnUiThread(() -> {
             discoveredPackages.clear();
             discoveredPackages.addAll(parsed);
             selectPackage(chosen);
+            if (hasDiscovered && boundSession != null && !boundSession.token.isEmpty()) {
+                long now = System.currentTimeMillis();
+                String syncKey = boundSession.uid + "|" + chosen;
+                if (!syncKey.equals(lastAutoSyncedKey) || now - lastAutoSyncedAtMs > 5000L) {
+                    lastAutoSyncedKey = syncKey;
+                    lastAutoSyncedAtMs = now;
+                    syncSessionToGameInBackground(boundSession);
+                }
+            }
         });
         return chosen;
     }
@@ -1539,7 +1591,10 @@ public final class MainActivity extends Activity {
         boolean loggedIn = boundSession != null && !boundSession.token.isEmpty();
         if (starLoginBtn != null) {
             starLoginBtn.setEnabled(!authBusy);
-            starLoginBtn.setText(authBusy ? "正在处理登录…" : loggedIn ? "切换星枢账号" : "登录星枢");
+            starLoginBtn.setText(authBusy ? "正在等待网页授权…" : loggedIn ? "切换星枢账号" : "登录星枢");
+        }
+        if (starWebCancelBtn != null) {
+            starWebCancelBtn.setVisibility(authBusy && webPollActive && !webPollCancelled ? View.VISIBLE : View.GONE);
         }
         if (starAccountSummaryView != null) starAccountSummaryView.setText(loggedIn
             ? (boundSession.nick.isEmpty() ? "游戏账号" : boundSession.nick) + "\n游戏 UID：" + boundSession.uid
@@ -1723,8 +1778,17 @@ public final class MainActivity extends Activity {
             try {
                 MobileAuthHub.DeviceStart start = MobileAuthHub.startChannelHubLogin(deviceId, tok);
                 long deadline = SystemClock.elapsedRealtime() + 75000L;
+                int netErrors = 0;
                 while (SystemClock.elapsedRealtime() < deadline && !destroyed && !webPollCancelled) {
-                    MobileAuthHub.PollOutcome poll = MobileAuthHub.pollDeviceLogin(start.requestId, start.verifier);
+                    MobileAuthHub.PollOutcome poll;
+                    try {
+                        poll = MobileAuthHub.pollDeviceLogin(start.requestId, start.verifier);
+                        netErrors = 0;
+                    } catch (IOException transientErr) {
+                        if (++netErrors >= 5) throw transientErr;
+                        Thread.sleep(1500);
+                        continue;
+                    }
                     if ("succeeded".equals(poll.status) && poll.account != null) {
                         MobileAuthHub.saveSession(getPreferences(0), poll.account);
                         String summary = "";
@@ -1736,7 +1800,9 @@ public final class MainActivity extends Activity {
                             boundSession = acct;
                             cloudSummaryLine = sum;
                             if (tokenStatusView != null) tokenStatusView.setText("助手渠道登录成功：" + acct.nick + "（UID " + acct.uid + "）");
+                            selectPackageForAccountPlatform(acct);
                             refreshAuthUi();
+                            syncSessionToGameInBackground(acct);
                             if (!pendingQqHandoff.isEmpty()) continueQuickQqLogin();
                         });
                         return;
@@ -1759,69 +1825,148 @@ public final class MainActivity extends Activity {
         });
     }
 
+    private void cancelWebAuth() {
+        webPollCancelled = true;
+        MobileAuthHub.clearPendingWebLogin(getPreferences(0));
+        synchronized (webPollSignal) {
+            webPollSignal.notifyAll();
+        }
+        unifiedLoginMessage = "已取消网页授权等待，可重新点击登录星枢。";
+        if (webAuthStatusView != null) webAuthStatusView.setText("已取消网页授权轮询。");
+        refreshAuthUi();
+    }
+
+    private void resumePendingWebLoginIfNeeded() {
+        if (authBusy || webPollActive || destroyed || webPollCancelled) return;
+        final MobileAuthHub.PendingWebLogin pending = MobileAuthHub.loadPendingWebLogin(getPreferences(0), System.currentTimeMillis());
+        if (pending == null) return;
+        authBusy = true;
+        webPollActive = true;
+        unifiedLoginMessage = "正在同步网页授权结果…";
+        if (webAuthStatusView != null) webAuthStatusView.setText("已返回助手，正在同步网页授权结果…");
+        refreshAuthUi();
+        authWorker.execute(() -> runWebPollLoop(pending.requestId, pending.verifier, pending.deadlineEpochMs));
+    }
+
     private void startWebAuth() {
         if (authBusy) return;
         authBusy = true;
         webPollCancelled = false;
-        unifiedLoginMessage = "请在浏览器选择登录渠道，验证完成后会自动同步回此处。";
+        webPollActive = true;
+        unifiedLoginMessage = "请在浏览器选择登录渠道，验证完成后切回本助手会自动同步。";
         if (webAuthStatusView != null) webAuthStatusView.setText("正在打开星枢统一登录页…");
         refreshAuthUi();
         final String deviceId = MobileAuthHub.getOrCreateDeviceId(getPreferences(0));
         authWorker.execute(() -> {
             try {
                 final MobileAuthHub.DeviceStart start = MobileAuthHub.startWebDeviceLogin(deviceId);
+                final long deadlineEpochMs = System.currentTimeMillis() + 600000L;
+                MobileAuthHub.savePendingWebLogin(getPreferences(0), start, deadlineEpochMs);
                 runOnUiThread(() -> {
+                    if (destroyed || webPollCancelled) return;
                     if (webAuthStatusView != null) {
-                        webAuthStatusView.setText("请在浏览器选择官服、Steam、B 站或 TapTap。完成后本助手会自动取得账号与 UID。");
+                        webAuthStatusView.setText("请在浏览器选择官服、Steam、B 站或 TapTap。完成后切回本助手会自动取得账号与 UID。");
                     }
                     open(start.loginUrl);
                 });
-                long deadline = SystemClock.elapsedRealtime() + 600000L;
-                while (SystemClock.elapsedRealtime() < deadline && !destroyed && !webPollCancelled) {
-                    Thread.sleep(2000);
-                    if (webPollCancelled || destroyed) break;
-                    MobileAuthHub.PollOutcome poll = MobileAuthHub.pollDeviceLogin(start.requestId, start.verifier);
-                    if ("succeeded".equals(poll.status) && poll.account != null) {
-                        MobileAuthHub.saveSession(getPreferences(0), poll.account);
-                        String summary = "";
-                        try { summary = MobileAuthHub.fetchAccountSummary(poll.account.token); } catch (Exception ignored) { }
-                        final MobileAuthHub.BoundAccount acct = poll.account;
-                        final String sum = summary;
-                        runOnUiThread(() -> {
-                            authBusy = false;
-                            boundSession = acct;
-                            unifiedLoginMessage = "";
-                            cloudSummaryLine = sum;
-                            if (webAuthStatusView != null) {
-                                webAuthStatusView.setText("已通过官网验证登录：" + acct.nick + "（UID " + acct.uid + "）");
-                            }
-                            refreshAuthUi();
-                            if (!pendingQqHandoff.isEmpty()) continueQuickQqLogin();
-                        });
-                        return;
-                    }
-                    if ("failed".equals(poll.status) || "expired".equals(poll.status) || "superseded".equals(poll.status)) {
-                        throw new IOException(poll.error != null && !poll.error.isEmpty() ? poll.error : "网页授权已取消或超时");
-                    }
-                }
-                if (!webPollCancelled && !destroyed) {
-                    throw new IOException("等待网页验证超时，请重新点击发起。");
-                }
-                runOnUiThread(() -> {
-                    authBusy = false;
-                    unifiedLoginMessage = "已取消等待，可重新点击登录星枢。";
-                    refreshAuthUi();
-                });
+                runWebPollLoop(start.requestId, start.verifier, deadlineEpochMs);
             } catch (Exception e) {
+                MobileAuthHub.clearPendingWebLogin(getPreferences(0));
                 String msg = e.getMessage() == null ? "网页授权失败" : e.getMessage();
                 runOnUiThread(() -> {
                     authBusy = false;
+                    webPollActive = false;
                     unifiedLoginMessage = msg;
                     if (webAuthStatusView != null) webAuthStatusView.setText(msg);
                     refreshAuthUi();
                 });
             }
         });
+    }
+
+    private void runWebPollLoop(String requestId, String verifier, long deadlineEpochMs) {
+        try {
+            while (System.currentTimeMillis() < deadlineEpochMs && !destroyed && !webPollCancelled) {
+                if (!activityVisible) {
+                    synchronized (webPollSignal) {
+                        if (!activityVisible && !destroyed && !webPollCancelled) {
+                            webPollSignal.wait(5000L);
+                        }
+                    }
+                    continue;
+                }
+                MobileAuthHub.PollOutcome poll;
+                try {
+                    poll = MobileAuthHub.pollDeviceLogin(requestId, verifier);
+                } catch (IOException transientErr) {
+                    String errTip = transientErr.getMessage() == null ? "连接中断" : transientErr.getMessage();
+                    runOnUiThread(() -> {
+                        if (destroyed || webPollCancelled) return;
+                        unifiedLoginMessage = "网络波动（" + errTip + "），正在自动重连同步登录结果…";
+                        if (webAuthStatusView != null) webAuthStatusView.setText(unifiedLoginMessage);
+                        refreshAuthUi();
+                    });
+                    synchronized (webPollSignal) {
+                        if (!destroyed && !webPollCancelled) {
+                            webPollSignal.wait(2000L);
+                        }
+                    }
+                    continue;
+                }
+                if ("succeeded".equals(poll.status) && poll.account != null) {
+                    MobileAuthHub.clearPendingWebLogin(getPreferences(0));
+                    MobileAuthHub.saveSession(getPreferences(0), poll.account);
+                    String summary = "";
+                    try { summary = MobileAuthHub.fetchAccountSummary(poll.account.token); } catch (Exception ignored) { }
+                    final MobileAuthHub.BoundAccount acct = poll.account;
+                    final String sum = summary;
+                    runOnUiThread(() -> {
+                        authBusy = false;
+                        webPollActive = false;
+                        boundSession = acct;
+                        unifiedLoginMessage = "";
+                        cloudSummaryLine = sum;
+                        if (webAuthStatusView != null) {
+                            webAuthStatusView.setText("已通过官网验证登录：" + acct.nick + "（UID " + acct.uid + "）");
+                        }
+                        selectPackageForAccountPlatform(acct);
+                        refreshAuthUi();
+                        syncSessionToGameInBackground(acct);
+                        if (!pendingQqHandoff.isEmpty()) continueQuickQqLogin();
+                    });
+                    return;
+                }
+                if ("failed".equals(poll.status) || "expired".equals(poll.status) || "superseded".equals(poll.status)) {
+                    MobileAuthHub.clearPendingWebLogin(getPreferences(0));
+                    throw new IOException(poll.error != null && !poll.error.isEmpty() ? poll.error : "网页授权已取消或超时");
+                }
+                synchronized (webPollSignal) {
+                    if (!destroyed && !webPollCancelled) {
+                        webPollSignal.wait(2000L);
+                    }
+                }
+            }
+            MobileAuthHub.clearPendingWebLogin(getPreferences(0));
+            if (!webPollCancelled && !destroyed) {
+                throw new IOException("等待网页验证超时，请重新点击发起。");
+            }
+            runOnUiThread(() -> {
+                authBusy = false;
+                webPollActive = false;
+                unifiedLoginMessage = "已取消等待，可重新点击登录星枢。";
+                refreshAuthUi();
+            });
+        } catch (Exception e) {
+            MobileAuthHub.clearPendingWebLogin(getPreferences(0));
+            String msg = e.getMessage() == null ? "网页授权失败" : e.getMessage();
+            runOnUiThread(() -> {
+                authBusy = false;
+                webPollActive = false;
+                unifiedLoginMessage = msg;
+                if (webAuthStatusView != null) webAuthStatusView.setText(msg);
+                refreshAuthUi();
+            });
+        }
     }
 
     private void refreshHubAccountSummary() {
@@ -1870,6 +2015,47 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private void selectPackageForAccountPlatform(MobileAuthHub.BoundAccount acct) {
+        if (acct == null || acct.platform == null || acct.platform.isEmpty()) return;
+        String plat = acct.platform.trim().toUpperCase(java.util.Locale.ROOT);
+        String targetPlat = "PHONE_CN".equals(plat) ? "TAPTAP" : plat;
+        for (DiscoveredPkg item : discoveredPackages) {
+            if (targetPlat.equalsIgnoreCase(item.platform)) {
+                selectPackage(item.packageName);
+                return;
+            }
+        }
+        String candidate = "BILIBILI".equals(targetPlat) ? "com.feimo.astralparty.bilibili"
+            : "XIAOMI".equals(targetPlat) ? "com.feimo.jxpd.mi"
+            : "TAPTAP".equals(targetPlat) ? GamePackageCatalog.DEFAULT_PACKAGE : null;
+        if (candidate != null && getPackageManager().getLaunchIntentForPackage(candidate) != null) {
+            selectPackage(candidate);
+        }
+    }
+
+    private void syncSessionToGameInBackground(MobileAuthHub.BoundAccount account) {
+        if (account == null || account.token.isEmpty()) return;
+        final String pkg = GamePackageCatalog.isValidPackageName(selectedPackageName)
+            ? selectedPackageName : GamePackageCatalog.DEFAULT_PACKAGE;
+        authWorker.execute(() -> {
+            try {
+                MobileAuthHub.GameHandoff handoff = MobileAuthHub.prepareGameHandoff(account);
+                LocalHandoffBridge.publish(handoff.token, handoff.uid);
+                pushHandoffFileBestEffort(pkg, LocalHandoffBridge.buildHandoffJson(handoff.token, handoff.uid));
+            } catch (Exception ignored) { }
+        });
+    }
+
+    private void pushHandoffFileBestEffort(String pkg, String payloadJson) {
+        try {
+            if (useShizuku && remote != null) {
+                remote.writeGameHandoff(pkg, payloadJson);
+            } else if (!useShizuku && local != null && local.connected()) {
+                local().writeGameHandoff(pkg, payloadJson);
+            }
+        } catch (Exception ignored) { }
+    }
+
     private void launchSelectedGame() {
         if (authBusy) return;
         if (boundSession == null || boundSession.token.isEmpty()) {
@@ -1883,16 +2069,18 @@ public final class MainActivity extends Activity {
         authWorker.execute(() -> {
             try {
                 final MobileAuthHub.GameHandoff handoff = MobileAuthHub.prepareGameHandoff(account);
+                LocalHandoffBridge.publish(handoff.token, handoff.uid);
+                pushHandoffFileBestEffort(pkg, LocalHandoffBridge.buildHandoffJson(handoff.token, handoff.uid));
                 runOnUiThread(() -> {
                     authBusy = false;
                     if (destroyed) return;
                     Intent launch = getPackageManager().getLaunchIntentForPackage(pkg);
                     if (launch != null) {
-                        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
                         launch.putExtra("xingshu_session_handoff", handoff.token);
                         launch.putExtra("xingshu_account_uid", handoff.uid);
                         try { startActivity(launch); }
-                        catch (Exception failure) { write("系统未允许启动，请从桌面打开游戏并使用游戏内绑定。"); }
+                        catch (Exception failure) { write("系统未允许启动，请从桌面打开游戏并使用游戏内同步。"); }
                     } else write("请先安装选中的游戏渠道，再从助手启动。游戏内绑定仍可使用。");
                     refreshAuthUi();
                 });
@@ -2515,8 +2703,13 @@ public final class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        activityVisible = true;
+        synchronized (webPollSignal) {
+            webPollSignal.notifyAll();
+        }
         startMdnsDiscovery();
         if (connBadge != null) refresh();
+        resumePendingWebLoginIfNeeded();
         if (waitingInstallPermission) {
             waitingInstallPermission = false;
             if (pendingUpdate != null && (Build.VERSION.SDK_INT < 26 || getPackageManager().canRequestPackageInstalls())) {
@@ -2526,12 +2719,17 @@ public final class MainActivity extends Activity {
     }
 
     @Override protected void onPause() {
+        activityVisible = false;
         stopMdnsDiscovery();
         super.onPause();
     }
 
     @Override protected void onDestroy() {
         destroyed = true;
+        activityVisible = false;
+        synchronized (webPollSignal) {
+            webPollSignal.notifyAll();
+        }
         stopMdnsDiscovery();
         checkStage = null;
         progressHandler.removeCallbacks(checkTick);
@@ -2560,7 +2758,7 @@ public final class MainActivity extends Activity {
     }
 
     /** XingShu Aurora Light UI toolkit shared across tabs and dialogs. */
-    private static final class AuroraUi {
+    static final class AuroraUi {
         static final int CANVAS = 0xFFFCFBF8;
         static final int HEADER_TOP = 0xFFFFF4EA;
         static final int HEADER_MID = 0xFFFDF2F7;

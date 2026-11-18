@@ -14,7 +14,8 @@ namespace UnityEngine
         F1 = 282, F6 = 287, F7 = 288, F8 = 289, F9 = 290, F10 = 291, F11 = 292,
         RightShift = 303, LeftShift = 304, RightControl = 305, LeftControl = 306,
         RightAlt = 307, LeftAlt = 308, RightCommand = 309, LeftCommand = 310,
-        LeftWindows = 311, RightWindows = 312, AltGr = 313, Mouse0 = 323
+        LeftWindows = 311, RightWindows = 312, AltGr = 313,
+        Mouse0 = 323, Mouse1 = 324, Mouse2 = 325, Mouse3 = 326, Mouse4 = 327, Mouse5 = 328, Mouse6 = 329
     }
     internal static class Time { internal static int frameCount; internal static float realtimeSinceStartup; }
     internal static class Application { internal static bool isFocused = true; }
@@ -92,7 +93,20 @@ internal static class HotkeySettingsTests
         Check(!Set(XingShuShortcut.ReplayPanel, KeyCode.K, XingShuHotkeyModifiers.Ctrl), "duplicate chord rejected");
         Check(Set(XingShuShortcut.ReplayPanel, KeyCode.K, XingShuHotkeyModifiers.Shift), "same key with different modifiers allowed");
         Check(!Set(XingShuShortcut.Center, KeyCode.None) && !Set(XingShuShortcut.ReplayPanel, KeyCode.Mouse0) &&
+            !Set(XingShuShortcut.ReplayPanel, KeyCode.Mouse1) && !Set(XingShuShortcut.ReplayPanel, KeyCode.Mouse2) &&
             !Set(XingShuShortcut.ReplayPanel, KeyCode.LeftShift) && !Set(XingShuShortcut.ReplayPanel, KeyCode.F10, (XingShuHotkeyModifiers)8), "invalid and inaccessible bindings rejected");
+        Check(Set(XingShuShortcut.ReplayPanel, KeyCode.Mouse3) && XingShuHotkeys.Display(XingShuShortcut.ReplayPanel) == "鼠标侧键 1", "mouse side button 1 binds directly");
+        Frame(); Frame(KeyCode.Mouse3);
+        Check(XingShuHotkeys.TryConsume(XingShuShortcut.ReplayPanel, "test"), "mouse side button 1 triggers bound action");
+        Frame(); XingShuHotkeys.BeginCapture((int)XingShuShortcut.ReplayPanel);
+        Frame(KeyCode.LeftControl, KeyCode.Mouse4);
+        Check(XingShuHotkeys.Display(XingShuShortcut.ReplayPanel) == "Ctrl + 鼠标侧键 2" && !XingShuCentralInputManager.Captured, "capture saves Ctrl + mouse side button 2");
+        Check(!XingShuHotkeys.TryConsume(XingShuShortcut.ReplayPanel, "test"), "mouse side button cannot fire on capture frame");
+        Frame(KeyCode.LeftControl, KeyCode.Mouse4);
+        Check(!XingShuHotkeys.TryConsume(XingShuShortcut.ReplayPanel, "test"), "holding captured mouse side button cannot fire");
+        Frame(); Frame(KeyCode.LeftControl, KeyCode.Mouse4);
+        Check(XingShuHotkeys.TryConsume(XingShuShortcut.ReplayPanel, "test"), "captured mouse side button chord fires after release");
+        Frame();
         Check(Set(XingShuShortcut.ReplayPanel, KeyCode.None) && XingShuHotkeys.Display(XingShuShortcut.ReplayPanel) == "未绑定", "optional action disabled");
         Frame(KeyCode.K, KeyCode.LeftControl);
         Check(XingShuHotkeys.TryConsume(XingShuShortcut.SpeedPanel, "test"), "chord dispatch");

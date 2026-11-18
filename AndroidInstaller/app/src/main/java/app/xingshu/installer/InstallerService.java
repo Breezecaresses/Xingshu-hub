@@ -60,4 +60,10 @@ public final class InstallerService extends IInstaller.Stub {
         caller();
         return engine.launchGame(packageName);
     }
+
+    @Override
+    public synchronized String writeGameHandoff(String packageName, String payloadJson) {
+        caller();
+        return engine.writeGameHandoff(packageName, payloadJson);
+    }
 }

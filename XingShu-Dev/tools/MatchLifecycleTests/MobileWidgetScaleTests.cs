@@ -20,12 +20,16 @@ internal static class MobileWidgetScaleTests
             var prefs = new StatsWidgetPreferences { Scale = .8f };
             var safe = Screen.safeArea;
             var bounds = prefs.Layout(safe.x, 0, safe.width, safe.height, baseline);
-            Check(bounds.Width < safe.width * .25f && bounds.Height < safe.height * .40f, "Default statistics widget must stay compact");
+            Check(bounds.Width < safe.width * .35f && bounds.Height < safe.height * .40f, "Default 4-player statistics widget must stay compact");
             Check(bounds.X >= safe.x && bounds.X + bounds.Width <= safe.xMax && bounds.Y + bounds.Height <= safe.height, "Widget stays in the safe area");
             prefs.Scale = 1.2f;
             var larger = prefs.Layout(safe.x, 0, safe.width, safe.height, baseline);
             Check(larger.Width > bounds.Width && larger.Height > bounds.Height, "Independent widget adjustment remains effective");
         }
+        Check(StatsWidgetPreferences.PanelWidth(8) == StatsWidgetPreferences.Width, "Full 8-metric width matches default panel width");
+        Check(StatsWidgetPreferences.PanelWidth(4) < StatsWidgetPreferences.PanelWidth(8), "Fewer enabled metrics narrow the horizontal strip");
+        Check(StatsWidgetPreferences.PanelHeight(8, false) == StatsWidgetPreferences.Height, "Full 8-metric height matches default panel height");
+        Check(StatsWidgetPreferences.PanelHeight(8, true) == StatsWidgetPreferences.HeaderHeight, "Collapsed panel height matches header");
         Console.WriteLine("Mobile widget sizing: " + _checks + " checks passed");
     }
 }

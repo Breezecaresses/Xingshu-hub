@@ -17,6 +17,7 @@ internal sealed class StatsWidgetFrame
 	internal sealed class Player
 	{
 		internal string Name, Character, HeadUrl, Score = "—", State = "实时参考";
+		internal int HeroId;
 		internal bool Mvp;
 		internal readonly string[] Metrics = new string[9];
 	}

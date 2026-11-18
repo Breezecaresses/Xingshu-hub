@@ -395,7 +395,7 @@ mod tests {
         assert!(steam_cn.last_verified_at.is_none());
         assert!(!steam_cn.hook_signatures.is_empty());
         assert!(steam_cn.bundle_id.is_some());
-        assert_eq!(steam_cn.bundle_id.as_deref(), Some("536196fba89e10e449fc9b864bfdbd51"));
+        assert_eq!(steam_cn.bundle_id.as_deref(), Some("74ec34421f662150b01741f232d7497c"));
 
         let steam_global = profiles.iter().find(|p| p.platform_id == PlatformId::SteamGlobal).unwrap();
         assert_eq!(steam_global.compatibility_status, CompatibilityStatus::PartiallyAudited);
@@ -576,10 +576,10 @@ mod tests {
             None
         );
         assert!(profile.bundle_relative_path.is_some());
-        assert_eq!(profile.bundle_id.as_deref(), Some("536196fba89e10e449fc9b864bfdbd51"));
+        assert_eq!(profile.bundle_id.as_deref(), Some("74ec34421f662150b01741f232d7497c"));
         assert_eq!(
             profile.container_sha256.as_deref(),
-            Some("2110578F420D2DC436E1A411C28BE1381F4B9611774E64CD6549BC4D10BBFD9A")
+            Some("9292A1B5D4C743F2EDB42D37CDFD76FBD1DE806ECF09406E2D64A391B54D68EE")
         );
         assert_eq!(profile.hook_text_asset_path_id, Some(99992000));
         assert_eq!(

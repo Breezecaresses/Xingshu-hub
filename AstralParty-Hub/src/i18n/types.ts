@@ -39,6 +39,7 @@ export interface TranslationSchema {
     cards: string;
     matches: string;
     xingshuCore: string;
+    roomLobby: string;
     runtime: string;
     spectator: string;
     bridge: string;

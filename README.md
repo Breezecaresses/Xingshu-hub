@@ -34,7 +34,7 @@
 
 ## Stable Release
 
-[Download stable v0.1.5](https://github.com/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.5) or try the optional [v0.1.6-beta.2 preview](https://github.com/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.6-beta.2) ([preview notes](docs/records/RELEASE_0.1.6-beta.2.md)). The `v0.1.6-beta.2` Windows and Android packages target *Astral Party* `3.3.0` (`resource 160`; stable `v0.1.5` targets `resource 152`).
+[Download stable v0.1.6](https://github.com/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.6) ([release notes](docs/records/RELEASE_0.1.6.md)). Both Windows and Android packages target *Astral Party* `3.3.0` (`resource 160`).
 
 | Target | Package / Access | Highlights |
 | --- | --- | --- |
@@ -43,7 +43,7 @@
 | **Android Installer** | `XingShu_Android_*.zip` & `.apk` | Includes the phone installer APK, manual replacement files, and official recovery files with interactive guides and conflict backup. See the [phone installation guide](docs/guides/ANDROID_PHONE_INSTALL.md). |
 
 > [!NOTE]
-> Updating the Hub or Android installer app does not overwrite the in-game plugin. After an app self-update, close the game cleanly and re-apply the plugin with the installer. See the [release record](docs/records/RELEASE_20261116_0.1.5.md) and [packaging guide](docs/guides/RELEASE_PACKAGING.md).
+> Updating the Hub or Android installer app does not overwrite the in-game plugin. After an app self-update, close the game cleanly and re-apply the plugin with the installer. See the [release record](docs/records/RELEASE_0.1.6.md) and [packaging guide](docs/guides/RELEASE_PACKAGING.md).
 
 ---
 

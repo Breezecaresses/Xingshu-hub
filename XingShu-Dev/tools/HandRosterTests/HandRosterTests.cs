@@ -10,17 +10,22 @@ internal static class HandRosterTests
     { _checks++; if (!pass) { _failed++; Console.WriteLine("FAIL " + message); } }
     private static bool Near(float a, float b) => Math.Abs(a - b) < .01f;
 
-    private static void CheckLayout(int width, int height, bool mobile, float size, int count)
+    private static void CheckLayout(int width, int height, bool mobile, float size, int count, float leftOffset)
     {
         float ratio = Math.Min(width / 1600f, height / 900f);
         var safe = new Rect(mobile ? 28 * ratio : 0, 0, width - (mobile ? 56 * ratio : 0), height);
         var plans = new HandRosterPlan[4];
         for (int i = 0; i < 4; i++)
         {
-            var head = new Rect(safe.x + 4 * ratio, (90 + i * 112) * ratio, 250 * ratio, 106 * ratio);
+            var head = new Rect(safe.x + leftOffset * ratio, (90 + i * 112) * ratio, 250 * ratio, 106 * ratio);
             var p = HandRosterLayout.Build(head, safe, 112 * ratio, count, size, true, mobile); plans[i] = p;
             Check(p.Valid, "supported view must produce a usable grid");
-            Check(p.Bounds.xMin >= head.xMax, "grid stays beside native HP/coins");
+            Check(p.Bounds.xMin >= safe.xMin + p.Gap - .01f, "toggle clamps cleanly inside safe.xMin");
+            if (head.xMin - safe.xMin >= p.ToggleWidth + 2 * p.Gap)
+                Check(p.Bounds.xMin + p.ToggleWidth <= head.xMin - p.Gap + .01f, "spacious toggle stays cleanly left of native portrait");
+            Check(Near(p.Bounds.xMin + p.GridX, p.Bounds.xMin + p.ToggleWidth + p.Gap), "expanded grid immediately follows toggle to cover the player info bar");
+            Check(p.Bounds.xMin + p.GridX < head.xMax, "expanded grid overlaps the player info bar rather than sticking out past it");
+            Check(Near(p.Bounds.width, p.GridX + p.GridWidth), "bounds span left toggle and right grid");
             Check(p.Bounds.xMax <= safe.x + safe.width * .64f + .01f, "grid leaves right-hand action controls clear");
             Check(p.Bounds.yMin >= safe.yMin && p.Bounds.yMax <= safe.yMax, "grid stays inside safe area");
             Check(p.Step >= p.Cell * .72f && p.Step <= p.Cell + p.Gap, "only gentle overlap; never squeeze cards into unreadable strips");
@@ -38,6 +43,7 @@ internal static class HandRosterTests
             Check(visited.Count == count, "every card is reachable without pagination");
             if (count >= 7) Check(p.Step < p.Cell, "many cards overlap slightly instead of creating a page footer");
             var closed = HandRosterLayout.Build(head, safe, 112 * ratio, count, size, false, mobile);
+            Check(Near(closed.Bounds.xMin, p.Bounds.xMin), "toggle stays anchored at the same left position when collapsed");
             Check(Near(closed.Bounds.width, p.ToggleWidth), "closed row only captures its small toggle");
             Check(Near(closed.Bounds.height, p.ToggleHeight), "closed row does not capture invisible cards");
         }
@@ -49,7 +55,8 @@ internal static class HandRosterTests
         foreach (var screen in new[] { new[] { 1280, 720 }, new[] { 1366, 768 }, new[] { 1600, 900 }, new[] { 1920, 1080 }, new[] { 2400, 1080 }, new[] { 2560, 1440 } })
             foreach (bool mobile in new[] { false, true })
                 foreach (float size in new[] { .6f, .8f, 1f, 1.5f })
-                    foreach (int count in new[] { 0, 1, 4, 7, 12, 30 }) CheckLayout(screen[0], screen[1], mobile, size, count);
+                    foreach (int count in new[] { 0, 1, 4, 7, 12, 30 })
+                        foreach (float leftOffset in new[] { 4f, 60f }) CheckLayout(screen[0], screen[1], mobile, size, count, leftOffset);
 
         var offset = new Rect(36, 48, 1460, 780);
         var normalHead = new Rect(40, 100, 240, 100);
@@ -61,6 +68,18 @@ internal static class HandRosterTests
         Check(!HandRosterLayout.Build(new Rect(0, 0, .002f, .002f), offset, 110, 10, 1, true, false).Valid, "native transition shrinking to zero cannot flash controls at screen origin");
         Check(!HandRosterLayout.Build(normalHead, new Rect(0, 0, 0, 0), 110, 10, 1, true, false).Valid, "unavailable screen cannot build offscreen UI");
         Check(HandRosterLayout.Build(normalHead, offset, float.NaN, 10, float.NaN, true, false).Valid, "bad preferences fall back without corrupting the view");
+
+        // Anchor stabilization against portrait damage shake / idle bounce
+        var baseAnchor = new Rect(60, 200, 250, 106);
+        var safeRect = new Rect(0, 0, 1600, 900);
+        var stabilized = HandRosterLayout.StabilizeAnchor(baseAnchor, default(Rect), safeRect, default(Rect), 112, 1f);
+        Check(Near(stabilized.x, 60) && Near(stabilized.y, 200), "initial anchor establishes baseline");
+        var shaken = HandRosterLayout.StabilizeAnchor(new Rect(66, 195, 244, 102), stabilized, safeRect, safeRect, 112, 1f);
+        Check(Near(shaken.x, 60) && Near(shaken.y, 200) && Near(shaken.width, 250), "small portrait shake and scale pulse do not wobble cards");
+        var rankSwapped = HandRosterLayout.StabilizeAnchor(new Rect(60, 312, 250, 106), stabilized, safeRect, safeRect, 112, 1f);
+        Check(Near(rankSwapped.y, 312), "genuine ranking row swap updates anchor");
+        var resized = HandRosterLayout.StabilizeAnchor(new Rect(72, 210, 250, 106), stabilized, new Rect(0, 0, 1920, 1080), safeRect, 112, 1.2f);
+        Check(Near(resized.x, 72) && Near(resized.y, 210), "screen size change updates anchor");
 
         var state = new HandRosterState();
         Check(state.BeginSession("room/match1"), "first match establishes state");
@@ -103,10 +122,18 @@ internal static class HandRosterTests
         }
         var timer = new UI.OperateTimeWindow(); FairyGUI.GRoot.inst.Add(timer);
         Check(!HandCardVisibility.ShouldHide, "ordinary native HUD timer does not hide cards"); FairyGUI.GRoot.inst.Remove(timer);
+        XingShuRuntime.Utilities.StreamPrivacyHands.Enabled = true;
+        Check(HandCardVisibility.ShouldHide, "stream privacy hides hands");
+        XingShuRuntime.Utilities.StreamPrivacyHands.Enabled = false;
         Check(ui.Created == 0, "visibility checks never call UIManager's lazy chooser getter");
         Console.WriteLine("Hand roster layout/state: " + (_checks - _failed) + "/" + _checks + " passed");
         return _failed == 0 ? 0 : 1;
     }
+}
+
+namespace XingShuRuntime.Utilities
+{
+    internal static class StreamPrivacyHands { internal static bool Enabled; }
 }
 
 namespace UI

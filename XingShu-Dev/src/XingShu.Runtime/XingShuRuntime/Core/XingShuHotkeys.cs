@@ -59,7 +59,7 @@ internal static class XingShuHotkeys
     private static float _captureUntil;
     internal static int Revision { get; private set; }
     internal static int CapturingIndex { get; private set; } = -1;
-    internal static string Status { get; private set; } = "点击按键开始修改；按 Esc 取消。支持 Ctrl / Shift / Alt 组合键。";
+    internal static string Status { get; private set; } = "点击按键开始修改；按 Esc 取消。支持键盘、鼠标侧键及 Ctrl / Shift / Alt 组合键。";
     internal static int Count => Bindings.Length;
 
     internal static Binding Get(XingShuShortcut action) { EnsureLoaded(); return Bindings[(int)action]; }
@@ -91,14 +91,20 @@ internal static class XingShuHotkeys
         key == KeyCode.LeftShift || key == KeyCode.RightShift || key == KeyCode.LeftAlt || key == KeyCode.RightAlt ||
         key == KeyCode.LeftCommand || key == KeyCode.RightCommand || key == KeyCode.LeftWindows || key == KeyCode.RightWindows || key == KeyCode.AltGr;
 
+    private static bool IsMouseSideButton(KeyCode key) =>
+        key == KeyCode.Mouse3 || key == KeyCode.Mouse4 || key == KeyCode.Mouse5 || key == KeyCode.Mouse6;
+
+    private static bool IsBindableKey(KeyCode key) =>
+        key != KeyCode.None && (key < KeyCode.Mouse0 || IsMouseSideButton(key));
+
     private static bool Valid(XingShuShortcut action, KeyCode key, XingShuHotkeyModifiers modifiers, out string error)
     {
         error = null;
         if (key == KeyCode.None && action == XingShuShortcut.Center)
             error = "功能中心需要保留一个打开按键。";
-        else if (!Enum.IsDefined(typeof(KeyCode), key) || (int)key < 0 || key >= KeyCode.Mouse0 ||
+        else if (!Enum.IsDefined(typeof(KeyCode), key) || (int)key < 0 || (key != KeyCode.None && !IsBindableKey(key)) ||
             (modifiers & ~(XingShuHotkeyModifiers.Ctrl | XingShuHotkeyModifiers.Shift | XingShuHotkeyModifiers.Alt)) != 0)
-            error = "请选择键盘按键，可搭配 Ctrl / Shift / Alt。";
+            error = "请选择键盘按键或鼠标侧键，可搭配 Ctrl / Shift / Alt。";
         else if (IsModifier(key) && !(action == XingShuShortcut.Acceleration && key == KeyCode.LeftControl && modifiers == XingShuHotkeyModifiers.None))
             error = "修饰键需要搭配其他按键；快速加速也可单独轻按左 Ctrl。";
         return error == null;
@@ -161,7 +167,7 @@ internal static class XingShuHotkeys
         if (index < 0 || index >= Count || !XingShuCentralInputManager.AcquireKeyboardCapture(CaptureOwner, XingShuInputCaptureMode.KeyboardOnly))
         { Status = "当前有其他输入窗口，请先关闭后再修改。"; return false; }
         CapturingIndex = index; _captureUntil = Time.realtimeSinceStartup + 20f;
-        Status = "正在修改「" + Bindings[index].Name + "」：按下新按键，Esc 取消。";
+        Status = "正在修改「" + Bindings[index].Name + "」：按下键盘按键或鼠标侧键，Esc 取消。";
         return true;
     }
 
@@ -182,7 +188,7 @@ internal static class XingShuHotkeys
         if (CapturingIndex < 0)
         {
             foreach (KeyCode key in Keys)
-                if (key != KeyCode.None && key < KeyCode.Mouse0 && Input.GetKey(key)) return;
+                if (IsBindableKey(key) && Input.GetKey(key)) return;
             _waitForRelease = false;
             return;
         }
@@ -192,7 +198,7 @@ internal static class XingShuHotkeys
         {
             bool ctrlTap = Bindings[CapturingIndex].Action == XingShuShortcut.Acceleration && key == KeyCode.LeftControl &&
                 Input.GetKeyUp(key) && XingShuCentralInputManager.GetCurrentModifiers() == XingShuHotkeyModifiers.None;
-            if (key == KeyCode.None || key >= KeyCode.Mouse0 || (!ctrlTap && (IsModifier(key) || !Input.GetKeyDown(key)))) continue;
+            if (!IsBindableKey(key) || (!ctrlTap && (IsModifier(key) || !Input.GetKeyDown(key)))) continue;
             var action = Bindings[CapturingIndex].Action;
             var modifiers = ctrlTap ? XingShuHotkeyModifiers.None : XingShuCentralInputManager.GetCurrentModifiers();
             string error;
@@ -210,7 +216,9 @@ internal static class XingShuHotkeys
             ((modifiers & XingShuHotkeyModifiers.Shift) != 0 ? "Shift + " : "") +
             ((modifiers & XingShuHotkeyModifiers.Alt) != 0 ? "Alt + " : "");
         string name = key == KeyCode.BackQuote ? "`" : key == KeyCode.LeftControl ? "左 Ctrl（轻按）" : key == KeyCode.Escape ? "Esc" :
-            key == KeyCode.LeftArrow ? "←" : key == KeyCode.RightArrow ? "→" : key == KeyCode.UpArrow ? "↑" : key == KeyCode.DownArrow ? "↓" : key.ToString();
+            key == KeyCode.LeftArrow ? "←" : key == KeyCode.RightArrow ? "→" : key == KeyCode.UpArrow ? "↑" : key == KeyCode.DownArrow ? "↓" :
+            key == KeyCode.Mouse3 ? "鼠标侧键 1" : key == KeyCode.Mouse4 ? "鼠标侧键 2" :
+            key == KeyCode.Mouse5 ? "鼠标侧键 3" : key == KeyCode.Mouse6 ? "鼠标侧键 4" : key.ToString();
         return prefix + name;
     }
 }

@@ -29,25 +29,40 @@ namespace XingShuRuntime.Targeting
         private readonly List<GTextField> _remove = new List<GTextField>();
         private readonly List<string> _details = new List<string>();
         private bool _enabled;
+        private bool _arrowBoostEnabled;
         private object _room;
         private float _nextTick;
         private float _nextError;
         private int _selected;
         private string _status = "等待进入 PVE 对局";
         private readonly MonsterAttackWindow _attack = new MonsterAttackWindow();
+        private readonly MonsterWalkArrowBoost _arrowBoost = new MonsterWalkArrowBoost();
 
         internal static bool IsEnabled => _instance != null ? _instance._enabled :
             XingShuConfigService.GetBool(XingShuConfigKeys.MonsterTargetEnabled, XingShuConfigKeys.MonsterTargetEnabledDefault);
+
+        internal static bool ArrowBoostEnabled => _instance != null ? _instance._arrowBoostEnabled :
+            XingShuConfigService.GetBool(XingShuConfigKeys.MonsterArrowBoostEnabled, XingShuConfigKeys.MonsterArrowBoostEnabledDefault);
 
         internal static string Summary => _instance == null ? "等待索敌模块初始化" : _instance.CurrentSummary();
 
         internal static void SetEnabled(bool value)
         {
             XingShuConfigService.SetBool(XingShuConfigKeys.MonsterTargetEnabled, value);
+            XingShuConfigService.Save();
             if (_instance == null) return;
             _instance._enabled = value;
             _instance._nextTick = 0f;
             if (!value) _instance.ClearSession();
+        }
+
+        internal static void SetArrowBoostEnabled(bool value)
+        {
+            XingShuConfigService.SetBool(XingShuConfigKeys.MonsterArrowBoostEnabled, value);
+            XingShuConfigService.Save();
+            if (_instance == null) return;
+            _instance._arrowBoostEnabled = value;
+            if (!value) _instance._arrowBoost.RestoreAll();
         }
 
         internal static void Select(int delta)
@@ -68,6 +83,7 @@ namespace XingShuRuntime.Targeting
             if (_instance != null && _instance != this) { Destroy(this); return; }
             _instance = this;
             _enabled = XingShuConfigService.GetBool(XingShuConfigKeys.MonsterTargetEnabled, XingShuConfigKeys.MonsterTargetEnabledDefault);
+            _arrowBoostEnabled = XingShuConfigService.GetBool(XingShuConfigKeys.MonsterArrowBoostEnabled, XingShuConfigKeys.MonsterArrowBoostEnabledDefault);
             Debug.Log("[XingShu Targeting] 怪物索敌已接入：最大10格推演，未确认岔路保留候选");
         }
 
@@ -93,6 +109,24 @@ namespace XingShuRuntime.Targeting
         private void LateUpdate()
         {
             foreach (var row in _rows.Values) Place(row);
+            try { SyncArrowBoost(); } catch { /* A scene transition may not have initialized battle state yet. */ }
+        }
+
+        private void SyncArrowBoost()
+        {
+            if (!_arrowBoostEnabled ||
+                !SimpleSingletonProvider<GameLogicManager>.hasInstance ||
+                !SimpleSingletonProvider<SceneManager>.hasInstance)
+            {
+                _arrowBoost.RestoreAll();
+                return;
+            }
+
+            var sceneMgr = SimpleSingletonProvider<SceneManager>.inst;
+            var sceneType = sceneMgr != null && sceneMgr.currentType != null ? sceneMgr.currentType.Value : SceneType.None;
+            var logic = SimpleSingletonProvider<GameLogicManager>.inst;
+            bool isPve = HandCardDisplayManager.IsPVEMode();
+            _arrowBoost.Sync(_arrowBoostEnabled, logic, sceneType, isPve);
         }
 
         private void ObserveAttack()
@@ -341,7 +375,7 @@ namespace XingShuRuntime.Targeting
             _attack.Clear();
         }
 
-        private void OnDisable() { ClearSession(); }
-        private void OnDestroy() { ClearSession(); if (_instance == this) _instance = null; }
+        private void OnDisable() { ClearSession(); _arrowBoost.RestoreAll(); }
+        private void OnDestroy() { ClearSession(); _arrowBoost.RestoreAll(); if (_instance == this) _instance = null; }
     }
 }

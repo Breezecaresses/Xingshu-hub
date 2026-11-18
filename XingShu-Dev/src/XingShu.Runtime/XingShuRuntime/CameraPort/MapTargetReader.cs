@@ -70,13 +70,29 @@ internal static class MapTargetReader
 			return CameraControlMode.System;
 		}
 		bool fight = value2 != null && ((Window)value2).parent != null;
-		bool monster = value != null && ((Window)value).parent != null;
-		bool card = value3 != null && ((Window)value3).parent != null;
+		bool monsterWindow = value != null && ((Window)value).parent != null;
+		Window cardWindow = value3 as Window;
+		bool card = cardWindow != null && !cardWindow.isDisposed && cardWindow.parent != null;
+		bool selectingLand = card && IsSelectingLand(cardWindow);
 		var action = SimpleSingletonProvider<GameLogicManager>.inst.action;
-		bool choosingTarget = action != null && (action.playerAction == PlayerActionEnum.CHOOSETARGET_CARD
+		bool choosingTarget = !selectingLand && action != null && (action.playerAction == PlayerActionEnum.CHOOSETARGET_CARD
 			|| action.playerAction == PlayerActionEnum.CHOOSETARGET_SKILL);
-		monster |= choosingTarget;
-		return CameraSelectionPolicy.Read(contract: true, fight, monster, card, null, null, (controller.freeObject == null) ? null : new int?((int)controller.freeObject.status));
+		bool monster = monsterWindow || choosingTarget;
+		return CameraSelectionPolicy.Read(contract: true, fight, monster, card, null, null, (controller.freeObject == null) ? null : new int?((int)controller.freeObject.status), selectingLand);
+	}
+
+	private static bool IsSelectingLand(Window cardWindow)
+	{
+		if (!(cardWindow.contentPane is UICardWindow { isDisposed: false } cardUi))
+		{
+			return false;
+		}
+		if (cardUi.showContent == null || cardUi.showContent.selectedIndex != 1)
+		{
+			return false;
+		}
+		UICardWin_Com_UseCard useCard = cardUi.com_UseCard;
+		return useCard != null && !useCard.isDisposed && useCard.type != null && useCard.type.selectedIndex == 4;
 	}
 
 	internal static bool IsMarking(BattleSceneController controller)

@@ -34,7 +34,7 @@
 
 ## 正式版本
 
-[下载星枢 v0.1.5](https://github.com/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.5)，电脑端与安卓手机端同步适配《吉星派对》`3.3.0`（资源版本 `152`）。
+[下载星枢 v0.1.6](https://github.com/Breezecaresses/AstralParty-XingShu/releases/tag/v0.1.6)，电脑端与安卓手机端同步适配《吉星派对》`3.3.0`（资源版本 `160`）。
 
 | 平台 | 获取方式 | 说明 |
 | --- | --- | --- |
@@ -43,7 +43,7 @@
 | **安卓手机端** | `XingShu_Android_*.zip` / `.apk` | 含手机安装助手 APK、手动替换与官方还原文件，支持本机无线调试与同路径覆盖前备份整理。详见[手机安装说明](docs/guides/ANDROID_PHONE_INSTALL.md)。 |
 
 > [!NOTE]
-> 软件自更新不会自动替换游戏内插件。应用更新完成后，请正常退出游戏，再通过安装助手重装或校验游戏内运行时插件。详见[本次发布记录](docs/records/RELEASE_20261116_0.1.5.md)与[发布下载项](docs/guides/RELEASE_PACKAGING.md)。
+> 软件自更新不会自动替换游戏内插件。应用更新完成后，请正常退出游戏，再通过安装助手重装或校验游戏内运行时插件。详见[本次发布记录](docs/records/RELEASE_0.1.6.md)与[发布下载项](docs/guides/RELEASE_PACKAGING.md)。
 
 ---
 
