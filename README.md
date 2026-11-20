@@ -3,7 +3,7 @@
 <h3 align="center">Thank you for choosing AstralParty-XingShu!</h3>
 
 <p align="center">
-  <strong>Feedback &amp; Community: QQ Group <code>540929823</code> &nbsp;|&nbsp; <a href="https://discord.gg/dxVS6ZF393">Discord</a></strong>
+  <strong>Feedback &amp; Community: QQ Group <code>1080908767<a href="https://qm.qq.com/q/Xo5MoTCUg4"></code> &nbsp;|&nbsp; <a href="https://discord.gg/dxVS6ZF393">Discord</a></strong>
 </p>
 
 <p align="center">
